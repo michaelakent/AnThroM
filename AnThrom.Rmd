@@ -45,13 +45,7 @@ Exp 2 - 4: were already in BIDS format, only kept the relevant scans (T1w ses-01
 ## 2.2 Anonymize the data
 Data from experiment 1 need to be defaced using [Pydeface](https://github.com/poldracklab/pydeface).
 
-Copy the following code into the terminal after typing
-```
-bash
-```
-Loop that defaces the MRI per subject and replaces the old MRI with the new defaced MRI
-
-```
+```{bash}
 #!/bin/bash
 
 set -e 
@@ -66,16 +60,21 @@ rm -f ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_T
 mv ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_T1w_defaced.nii ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_T1w.nii 
 done
 done
-```
-and for the subjects that had the T1w in the ses-02 replace the three lines with:
-```
+
 for subj in 02 04 05 06 08 09 10 11 15 16 20 21 25 26 27; do
 	echo "Defacing participant $subj"
 for session in 02;do
+pydeface ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_T1w.nii
+rm -f ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_T1w.nii
+mv ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_T1w_defaced.nii ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_T1w.nii 
+done
+done
 ```
+
 ## 2.2 Compressed the data
 Use gzip to compress the data. Careful not to leave any sensitive information in the file (use --no-name)
-```
+
+```{bash}
 #!/bin/bash
 
 set -e 
@@ -88,12 +87,13 @@ for session in 01;do
 gzip --no-name ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_T1w.nii
 done
 done
-```
-and for the subjects that had the T1w in the ses-02 replace the three lines with:
-```
+
 for subj in 02 04 05 06 08 09 10 11 15 16 20 21 25 26 27; do
 	echo "Zipping participant $subj"
 for session in 02;do
+gzip --no-name ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_T1w.nii
+done
+done
 ```
 
 ## 2.3 BIDS validation
@@ -102,7 +102,6 @@ Use the BIDS-Validator to check if the dataset is BIDS compliant.
 
 ```{bash}
 docker run -ti --rm -v /Volumes/Project0245/data_exp2:/data:ro bids/validator /data
-
 ```
 
 
@@ -176,7 +175,6 @@ If run on the lab iMac, with 50GB of docker memory, and with --fs-no-reconall (n
 
 ```{bash}
 /Users/soba/.local/bin/fmriprep-docker /Volumes/Project0245/data_exp2/ /Volumes/Project0245/data_exp2/derivatives participant --participant-label 01 02 03 04 05 06 07 08 09 10 --fs-license-file /Users/soba/license.txt --fs-no-reconall --skip_bids_validation --use-syn-sdc --use-aroma
-
 ```
 
 Singularity run:
