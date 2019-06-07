@@ -17,7 +17,7 @@ by *Ruud Hortensius (University of Glasgow) - June 2019 - ...*
 
 ## 1.1 Data
   
- Exp_1: Bangor Imaging Unit; EMBOTS; *n*=28; publications [Cross...Hortensius (2019) PTRB](https://royalsocietypublishing.org/doi/10.1098/rstb.2018.0034)  
+ Exp_1: Bangor Imaging Unit; EMBOTS; *n*=28; publication [Cross...Hortensius (2019) PTRB](https://royalsocietypublishing.org/doi/10.1098/rstb.2018.0034)  
  Exp_2: Centre for Cognitive NeuroImaging; SHAREDBOTS; *n*=33  
  Exp_3: Centre for Cognitive NeuroImaging; Social_Gradient_1; *n*=10  
  Exp_4: Centre for Cognitive NeuroImaging; BOLDlight; *n*=12 (ongoing)  
@@ -26,12 +26,12 @@ by *Ruud Hortensius (University of Glasgow) - June 2019 - ...*
  
  All participants completed a Theory-of-Mind localiser ([Jacoby et al., 2016](https://www.sciencedirect.com/science/article/pii/S1053811915010472); [Richardson et al. 2018](https://www.nature.com/articles/s41467-018-03399-2)) and an anatomical scan either in the same session or in two seperate sessions. During the localiser participants passively viewed a short 5.6 min animated film ([Partly Cloudy](https://www.pixar.com/partly-cloudy#partly-cloudy-1)). This movie includes scenes depicting pain (e.g. an alligator biting the main character) and events that trigger mentalizing (e.g. the main character revealing its intention). At the end of each experiment participants completed the Individual Differences in Anthropomorphism Questionnaire (IDAQ) ([Waytz et al., 2010](https://journals.sagepub.com/doi/full/10.1177/1745691610369336)). 
  
-- BOLD:
+- BOLD:  
  Exp 1: 3x3x3.5 voxels, 32 slices, repetition time = 2s, echo time = 30ms  
  Exp 2: 3mm isotropic, 37 slices, TR = 2s, TE = 30ms  
  Exp 3 - 4: 2mm isotropic, 68 slices, TR = 2s, TE = 27ms  
  
-- T1W:
+- T1W:  
  Exp 1: 1mm isotropic resolution, TR = 12ms, TE = 3.5ms  
  Exp 2 - 4: 1mm isotropic resolution, TR = 2.3s, TE = 29.6ms (ADNI)  
 
@@ -39,7 +39,7 @@ by *Ruud Hortensius (University of Glasgow) - June 2019 - ...*
 
 ## 2.1 Creating the BIDS dataset
 
-Exp 1: already Nifti so did it manually
+Exp 1: already Nifti so did it manually  
 Exp 2 - 4: were already in BIDS format, only kept the relevant scans (T1w ses-01 and tom-bold)
 
 ## 2.2 Anonymize the data
@@ -101,7 +101,7 @@ done
 Use the BIDS-Validator to check if the dataset is BIDS compliant.
 
 ```{bash}
-docker run -ti --rm -v /Volumes/Project0245/data_exp2:/data:ro bids/validator /data
+docker run -ti --rm -v /Volumes/Project0245/data_exp1:/data:ro bids/validator /data
 ```
 
 
@@ -119,7 +119,7 @@ a[["pixdim"]][5]
 Create tsv file for functional localiser
 
 ## 3.1 Theory-of-Mind localiser
-Event coding (in s;  10s of fixation before movie starts; accounting for hemodynamic lag) is based on Richardson et al. 2018 - reverse correlation analyses. 
+Event coding (in s; 10s of fixation before movie starts; accounting for hemodynamic lag) is based on Richardson et al. 2018 - reverse correlation analyses. 
 ```{r}
 PartlyCloudy <- data.frame(onset = c(86, 98, 120, 176, 238, 252, 300, 70, 92, 106, 136, 194, 210, 228, 262, 312), #create the events (same for every sub)
                            duration = c(4, 6, 4, 16, 6, 8, 6, 4, 2, 4, 10, 4, 12, 6, 6, 4),
@@ -164,6 +164,8 @@ docker run -it --rm -v /Volumes/Project0245/data_exp2/:/data:ro -v /Volumes/Proj
 
 Run it seperately for exp 1-4. Change participant to group to create the group reports.
 
+--> Check if there are differences between the studies
+
 ## 4.2 fMRIprep 
 fMRIprep is a docker tool for preprocessing of the fMRI data. More info [here](https://fmriprep.readthedocs.io/en/stable/#)
 
@@ -183,10 +185,16 @@ Singularity run:
 singularity run --cleanenv /analyse/Project0245/my_images/fmriprep-1.3.2.simg /Volumes/Project0245/data_exp2/ //Volumes/Project0245/data_exp2/derivatives participant --participant-label sub-01 sub-02 sub-03 sub-04 sub-05 --fs-license-file /analyse/Project0245/my_images/license.txt --skip_bids_validation --fs-no-reconall --use-syn-sdc --use-aroma
 ```
 
-
-
 Run it seperately for exp 1-4.
 
 ## 4.3 GLMdenoise 
 
 GLMdenoise is an automated technique for denoising task-based fMRI data. It outperforms other [denoising methods](https://www.frontiersin.org/articles/10.3389/fnins.2013.00247/full) and improves the [MVPA analyses](https://www.sciencedirect.com/science/article/pii/S1053811918307626). More info [here](https://github.com/kendrickkay/GLMdenoise) and [here](https://github.com/Charestlab/pyGLMdenoise).
+
+# 5. IDAQ {.tabset}
+
+## Calculation of individual scores
+
+## Comparison across studies
+
+# 6. Results {.tabset}
