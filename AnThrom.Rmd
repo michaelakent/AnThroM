@@ -87,8 +87,10 @@ def infotodict(seqinfo):
     """
     t1w = create_key('sub-{subject}/anat/sub-{subject}_T1w')
     func_movie = create_key('sub-{subject}/func/sub-{subject}_task-movie_bold')
-
-    info = {t1w: [], func_movie: []} 
+    fmap_phase = create_key('sub-{subject}/fmap/sub-{subject}_phasediff')
+    fmap_magnitude = create_key('sub-{subject}/fmap/sub-{subject}_magnitude')
+    
+    info = {t1w: [], func_movie: [], fmap_phase: [], fmap_magnitude: []} 
     
     for idx, s in enumerate(seqinfo):
         if ('t1_mpr_ns_sag_iso_ADNI_32ch' in s.protocol_name):
@@ -96,7 +98,11 @@ def infotodict(seqinfo):
         if ('t1_mpr_ns_sag_P2_ADNI_32ch' in s.protocol_name):
             info[t1w].append(s.series_id)    
         if (s.dim4 == 175) and ('FMRI_MB2_p2_2MMISO_TR2_movie' in s.protocol_name):
-            info[func_movie].append(s.series_id)           
+            info[func_movie].append(s.series_id)          
+        if (s.dim3 == 92) and ('gre_field_mapping_AAH' in s.protocol_name):
+            info[fmap_magnitude].append(s.series_id)      
+        if (s.dim3 == 46) and ('gre_field_mapping_AAH' in s.protocol_name):
+            info[fmap_phase].append(s.series_id)               
     return info
 ```
 
@@ -107,7 +113,7 @@ For example, func_tom has 175 volumes, with 'ep2d_ToM_Loc_boldTR2' as name.
 Use the heuristic file to convert the .IMA (dicom) files to .nii.gz (nifti) and create .json files 
 
 ```{bash}
-docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_3/sourcedata/sub-{subject}/*.IMA -o /base/dataset_3 -f /base/code/heuristic_dataset3.py -s 301 -c dcm2niix -b --overwrite
+docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_3/sourcedata/sub-{subject}/*.IMA -o /base/dataset_3 -f /base/code/heuristic_dataset3.py -s 302 -c dcm2niix -b --overwrite
 ```
 
 ## 2.4 Anonymize the data
@@ -120,7 +126,7 @@ set -e
 ####For loop that defaces the MRI per subject and replaces the old MRI with the new defaced MRI
 rootfolder=/Volumes/Project0255/dataset_3
 
-for subj in 301; do
+for subj in 301 302; do
 	echo "Defacing participant $subj"
 pydeface ${rootfolder}/sub-${subj}/anat/sub-${subj}_T1w.nii.gz
 rm -f ${rootfolder}/sub-${subj}/anat/sub-${subj}_T1w.nii.gz
@@ -175,7 +181,7 @@ MRIQC is a docker tool to do quality control of the data. More info [here](https
 MRIQC 0.14.2 was used:
 
 ```{bash}
-docker run -it --rm -v /Volumes/Project0246/dataset_1/:/data:ro -v /Volumes/Project0245/dataset_1/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out participant --participant-label 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 -m T1w bold --ica --fft-spikes-detector
+docker run -it --rm -v /Volumes/Project0255/dataset_3/:/data:ro -v /Volumes/Project0255/dataset_3/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out participant --participant-label 301 -m T1w bold --ica --fft-spikes-detector
 ```
 
 Run it seperately for the datasets. Change participant to group to create the group reports.
