@@ -19,14 +19,14 @@ by *Ruud Hortensius and (University of Glasgow) - June 2019 - ...*
 
 Data of the Theory-of-Mind functional localiser and Individual Differences in Anthropomorphism Questionnaire are from five different studies.
   
- Dataset_1: Bangor Imaging Unit; EMBOTS; *n*=28; full dataset and publication: [Cross...Hortensius (2019) PTRB](https://royalsocietypublishing.org/doi/10.1098/rstb.2018.0034)  
- Dataset_2: Centre for Cognitive NeuroImaging; SHAREDBOTS; *n*=35 (including 2 pilot scans) publication: Hortensius & Cross, in preparation
- Dataset_3: Centre for Cognitive NeuroImaging; Two studies with the same parameters: *n*=22. Social_Gradient_1; *n*=10 (pilot experiment) and BOLDlight; *n*=12.
- Dataset_4: Centre for Cognitive NeuroImaging; GAMEBOTS; *n*
+ Dataset_1: Bangor Imaging Unit; EMBOTS; *n*=28; full dataset and publication: [Cross...Hortensius (2019)   PTRB](https://royalsocietypublishing.org/doi/10.1098/rstb.2018.0034)  
+ Dataset_2: Centre for Cognitive NeuroImaging; SHAREDBOTS; *n*=35 (including 2 pilot scans) publication: Hortensius & Cross, in preparation  
+ Dataset_3: Centre for Cognitive NeuroImaging; Two studies with the same parameters: *n*=22. Social_Gradient_1; *n*=10 (pilot experiment) and BOLDlight; *n*=12.  
+ Dataset_4: Centre for Cognitive NeuroImaging; GAMEBOTS; *n*  
 
 ## 1.2 Neuroimaging procedure
  
- All participants completed a Theory-of-Mind localiser ([Jacoby et al., 2016](https://www.sciencedirect.com/science/article/pii/S1053811915010472); [Richardson et al. 2018](https://www.nature.com/articles/s41467-018-03399-2)) and an anatomical scan either in the same session or in two seperate sessions. During the localiser participants passively viewed a short 5.6 min animated film ([Partly Cloudy](https://www.pixar.com/partly-cloudy#partly-cloudy-1)). This movie includes scenes depicting pain (e.g. an alligator biting the main character) and events that trigger mentalizing (e.g. the main character revealing its intention). At the end of each experiment participants completed the Individual Differences in Anthropomorphism Questionnaire (IDAQ) ([Waytz et al., 2010](https://journals.sagepub.com/doi/full/10.1177/1745691610369336)). 
+ All participants completed a Theory-of-Mind localiser ([Jacoby et al., 2016](https://www.sciencedirect.com/science/article/pii/S1053811915010472); [Richardson et al. 2018](https://www.nature.com/articles/s41467-018-03399-2)) and an anatomical scan either in the same session or in two seperate sessions. During the localiser participants passively viewed a short 5.6 min animated film ([Partly Cloudy](https://www.pixar.com/partly-cloudy#partly-cloudy-1)). This movie includes scenes depicting pain (e.g. an alligator biting the main character) and events that trigger mentalizing (e.g. the main character revealing its intention). For dataset_3 and dataset_4 a fieldmap was collected as well. At the end of each experiment participants completed the Individual Differences in Anthropomorphism Questionnaire (IDAQ) ([Waytz et al., 2010](https://journals.sagepub.com/doi/full/10.1177/1745691610369336)). 
  
 - BOLD:
  Dataset_1: 3x3x3.5 voxels, 32 slices, repetition time = 2s, echo time = 30ms  
@@ -37,6 +37,12 @@ Data of the Theory-of-Mind functional localiser and Individual Differences in An
 - T1W:
  Dataset_1: 1mm isotropic resolution, TR = 12ms, TE = 3.5ms  
  Dataset_2 - 4: 1mm isotropic resolution, TR = 2.3s, TE = 29.6ms (ADNI)  
+ 
+- Fieldmaps:
+ Dataset_1: no, so --use-syn-sdc
+ Dataset_2: no, so --use-syn-sdc 
+ Dataset_3: yes  
+ Dataset_4: yes
  
 ## 1.3 To do
 - get Dicoms, create BIDS dataset, use sub-101, sub-201, sub-301 etc...  
@@ -142,40 +148,9 @@ Use the BIDS-Validator to check if the dataset is BIDS compliant.
 docker run -ti --rm -v /Volumes/Project0255/dataset_3:/data:ro bids/validator /data
 ```
 
-# 3. Theory-of-Mind event protocols {.tabset}
+# 3. Preprocessing {.tabset}
 
-Create tsv file for functional localiser
-
-Event coding (in s;  10s of fixation before movie starts; accounting for hemodynamic lag) is based on Richardson et al. 2018 - reverse correlation analyses. 
-```{r}
-PartlyCloudy <- data.frame(onset = c(86, 98, 120, 176, 238, 252, 300, 70, 92, 106, 136, 194, 210, 228, 262, 312), #create the events (same for every sub)
-                           duration = c(4, 6, 4, 16, 6, 8, 6, 4, 2, 4, 10, 4, 12, 6, 6, 4),
-                           trial_type = c(rep("mental",7), rep("pain",9)))
-
-#dataset_1
-for (sub in 3:28){ #note: localisers for sub-01 and sub-02 are in ses-02
-  sub <- ifelse(sub < 10, paste0("0", sub), sub)
-  filename = paste("/Volumes/Project0246/dataset_1/sub-", sub, "/ses-01/func/sub-", sub, "_ses-01_task-tom_events.tsv", sep ="")
-write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
-}
-#dataset_2
-for (sub in 1:33){ #note: ppn22 ToM is in ses-00
-  sub <- ifelse(sub < 10, paste0("0", sub), sub)
-  filename = paste("/Volumes/Project0246/dataset_2/sub-", sub, "/ses-01/func/sub-", sub, "_ses-01_task-tom_events.tsv", sep ="")
-write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
-}
-#dataset_3
-for (sub in 1:10){ 
-  sub <- ifelse(sub < 10, paste0("0", sub), sub)
-  filename = paste("/Volumes/Project0246/dataset_3/sub-", sub, "/ses-01/func/sub-", sub, "_ses-01_task-tom_events.tsv", sep ="")
-write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
-}
-
-```
-
-# 4. Preprocessing {.tabset}
-
-## 4.1 MRIQC 
+## 3.1 MRIQC 
 MRIQC is a docker tool to do quality control of the data. More info [here](https://poldracklab.github.io/mriqc/).
 
 MRIQC 0.14.2 was used:
@@ -190,8 +165,9 @@ Run it seperately for the datasets. Change participant to group to create the gr
 docker run -it --rm -v /Volumes/Project0255/dataset_3/:/data:ro -v /Volumes/Project0255/dataset_3/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out group
 ```
 
+Compare it across the datasets.
 
-## 4.2 fMRIprep 
+## 3.2 fMRIprep 
 fMRIprep is a docker tool for preprocessing of the fMRI data. More info [here](https://fmriprep.readthedocs.io/en/stable/#)
 
 fMRIprep version 1.5.0 was used on the grid.
@@ -212,14 +188,54 @@ Singularity run:
 singularity run --cleanenv /analyse/Project0246/my_images/fmriprep-1.3.2.simg /Volumes/Project0246/dataset_1/ //Volumes/Project0246/dataset_1/derivatives participant --participant-label sub-01 sub-02 sub-03 sub-04 sub-05 --fs-license-file /analyse/Project0246/my_images/license.txt --skip_bids_validation --fs-no-reconall --use-syn-sdc
 ```
 
-Run it seperately for the datasets.
-<<<<<<< HEAD
-=======
+## 3.3 Theory-of-Mind event protocols 
 
-# 4. IDAQ {.tabset}
+Create tsv file for functional localiser
+
+Event coding (in s;  10s of fixation before movie starts; accounting for hemodynamic lag) is based on Richardson et al. 2018 - reverse correlation analyses. 
+ 
+Note: For sub-322 the trigger was at the start of the movie (thus create a different tsv, with event - 10s)
+```{r}
+PartlyCloudy <- data.frame(onset = c(86, 98, 120, 176, 238, 252, 300, 70, 92, 106, 136, 194, 210, 228, 262, 312), #create the events (same for every sub)
+                           duration = c(4, 6, 4, 16, 6, 8, 6, 4, 2, 4, 10, 4, 12, 6, 6, 4),
+                           trial_type = c(rep("mental",7), rep("pain",9)))
+
+#dataset_1
+for (sub in 101:128){ #note: localisers for sub-101 and sub-102 are in ses-02
+  filename = paste("/Volumes/Project0246/dataset_1/sub-", sub, "/ses-01/func/sub-", sub, "_ses-01_task-tom_events.tsv", sep ="")
+write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
+}
+#dataset_2
+for (sub in 201:235){ 
+  filename = paste("/Volumes/Project0246/dataset_2/sub-", sub, "/ses-01/func/sub-", sub, "_ses-01_task-tom_events.tsv", sep ="")
+write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
+}
+#dataset_3
+for (sub in 301:321){ #see comment above for sub-322
+  filename = paste("/Volumes/Project0246/dataset_3/sub-", sub, "/ses-01/func/sub-", sub, "_ses-01_task-tom_events.tsv", sep ="")
+write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
+}
+#dataset_4
+for (sub in 401:423){ 
+  filename = paste("/Volumes/Project0246/dataset_3/sub-", sub, "/ses-01/func/sub-", sub, "_ses-01_task-tom_events.tsv", sep ="")
+write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
+}
+
+```
+
+# 4. Analyses {.tabset}
+
+## 4.1 First-level fROI analysis 
+Extract data using marsbar. 
+
+## 4.2 Second-level whole-brain analysis 
+
+Run it seperately for the datasets.
+
+# 5. IDAQ {.tabset}
 
 ## Calculation of individual scores
 
-# 5. Results {.tabset}
+# 6. Results {.tabset}
 
 ## Comparison across studies
