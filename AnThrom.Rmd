@@ -11,7 +11,7 @@ output:
 ---
 #**AnThroM**
 **testing the relation between Theory-of-Mind network activation and dispositional anthropomorphism**  
-by *Ruud Hortensius and (University of Glasgow) - June 2019 - ...*
+by *Ruud Hortensius and Michaela Kent (University of Glasgow) - June 2019 - ...*
 
 # 1. Details {.tabset}
 
