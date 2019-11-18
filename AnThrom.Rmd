@@ -64,13 +64,22 @@ Dowload the latest version of Heudiconv
 docker pull nipy/heudiconv:latest
 ```
 
-Create the info file (for dataset_1 add ses-{session}/ and --ss 01 and .dcm)
+Create the info file (dataset_2 - 4)
 ```{bash}
 docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_2/sourcedata/sub-{subject}/*.IMA -o /base/dataset_1 -f convertall -s 201 -c none --overwrite
 ```
 
-docker run --rm -it -v /Volumes/Project0210/SHAREDBOTS/data:/base nipy/heudiconv:latest -d /base/sourcedata/sub-{subject}/ses-{session}/*.IMA -o /base/code -f convertall -s 01 -ss 01 -c none --overwrite
 
+For dataset_1 we first need to convert the .dcm from jpeg-2000 lossless to uncompressed dcm (thanks to Michele Svanera for the code):
+
+```{pyton}
+python3 convert_all_compressed_dicom.py
+```
+
+Create the info file (dataset_1)
+```{bash}
+docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1 -f convertall -s 101 -ss 01 -c none --overwrite
+```
 
 Get the info file
 ```{bash}
@@ -110,7 +119,7 @@ def infotodict(seqinfo):
     for idx, s in enumerate(seqinfo):
         if ('T1W_1mm_sag SENSE' in s.protocol_name):
             info[t1w1].append(s.series_id)
-        if (s.dim4 == 175) and ('ToM_PartlyCloudy SENSE' in s.protocol_name):
+        if ('ToM_PartlyCloudy SENSE' in s.protocol_name):
             info[func_movie1].append(s.series_id)
         if ('t1_mpr_ns_sag_iso_ADNI_32ch' in s.protocol_name):
             info[t1w].append(s.series_id)
@@ -127,10 +136,15 @@ def infotodict(seqinfo):
     return info
 ```
 
-Use the heuristic file to convert the Dicom files to .nii.gz (nifti) and create .json files  (for dataset_1 add ses-{session}/ and --ss 01 and .dcm).
+Use the heuristic file to convert the Dicom files to .nii.gz (nifti) and create .json files.
 
 ```{bash}
 docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_3/sourcedata/sub-{subject}/*.IMA -o /base/dataset_3 -f /base/code/heuristic_anthrom.py -s 301 -c dcm2niix -b --overwrite
+```
+
+For dataset_1 (for dataset_1 add ses-{session}/ and --ss 01 and .dcm).
+```{bash}
+docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1 -f /base/code/heuristic_anthrom.py -s 101 -ss 01 -c dcm2niix -b --overwrite
 ```
 
 ## 2.4 Anonymize the data
