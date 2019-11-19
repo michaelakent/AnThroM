@@ -58,17 +58,21 @@ Data of the Theory-of-Mind functional localiser and Individual Differences in An
 For this you need HeuDiConv [Heuristic DICOM Converter](https://github.com/nipy/heudiconv).  
 Based on the tutorial by [Franklin Feingold](http://reproducibility.stanford.edu/bids-tutorial-series-part-2a/).
 
-Dowload the latest version of Heudiconv
+Dowload the latest version of Heudiconv (we used 0.6.0.dev1)
 
 ```{bash}
 docker pull nipy/heudiconv:latest
+```
+
+If on the GRID do
+```{bash}
+singularity pull docker://nipy/heudiconv:latest
 ```
 
 Create the info file (dataset_2 - 4)
 ```{bash}
 docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_2/sourcedata/sub-{subject}/*.IMA -o /base/dataset_1 -f convertall -s 201 -c none --overwrite
 ```
-
 
 For dataset_1 we first need to convert the .dcm from jpeg-2000 lossless to uncompressed dcm (thanks to Michele Svanera for the code):
 
@@ -147,6 +151,12 @@ For dataset_1 (for dataset_1 add ses-{session}/ and --ss 01 and .dcm). Movie for
 docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1 -f /base/code/heuristic_anthrom.py -s 103 -ss 01 -c dcm2niix -b --overwrite
 ```
 
+On the grid do:
+
+```{bash}
+singularity run -B /analyse/Project0255/:/base /analyse/Project0255/my_images/heudiconv_latest.sif -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1/ -f /base/code/heuristic_anthrom.py -s 101 -ss 01 -c dcm2niix -b --overwrite
+```
+
 ## 2.4 Anonymize the data
 Deface using [Pydeface](https://github.com/poldracklab/pydeface). 
 
@@ -218,7 +228,7 @@ fMRIprep is a docker tool for preprocessing of the fMRI data. More info [here](h
 
 fMRIprep version 1.5.0 was used on a local iMac.
 
-If you run into memory problems you can use --skip_bids_validation; skipped the --write-graph flag to save space
+If you run into memory problems you can use --skip_bids_validation; skipped the --write-graph flag to save space.  --use-syn-sdc only for dataset_1 and datatset_2.
 
 --use-syn-sdc for dataset_1 and dataset_2
 
