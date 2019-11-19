@@ -142,13 +142,13 @@ Use the heuristic file to convert the Dicom files to .nii.gz (nifti) and create 
 docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_3/sourcedata/sub-{subject}/*.IMA -o /base/dataset_3 -f /base/code/heuristic_anthrom.py -s 301 -c dcm2niix -b --overwrite
 ```
 
-For dataset_1 (for dataset_1 add ses-{session}/ and --ss 01 and .dcm).
+For dataset_1 (for dataset_1 add ses-{session}/ and --ss 01 and .dcm). Movie for sub-101 and 102 is in ses-02. 
 ```{bash}
-docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1 -f /base/code/heuristic_anthrom.py -s 101 -ss 01 -c dcm2niix -b --overwrite
+docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1 -f /base/code/heuristic_anthrom.py -s 103 -ss 01 -c dcm2niix -b --overwrite
 ```
 
 ## 2.4 Anonymize the data
-Data from experiment 1 need to be defaced using [Pydeface](https://github.com/poldracklab/pydeface).
+Deface using [Pydeface](https://github.com/poldracklab/pydeface). 
 
 ```{bash}
 #!/bin/bash
@@ -165,12 +165,33 @@ mv ${rootfolder}/sub-${subj}/anat/sub-${subj}_T1w_defaced.nii.gz ${rootfolder}/s
 done
 ```
 
+
+For dataset_1
+
+```{bash}
+#!/bin/bash
+
+set -e 
+rootfolder=/Volumes/Project0255/dataset_1
+
+for subj in 101; do
+	echo "Defacing participant $subj"
+for session in 01 02; do
+for echo in 1 2 3 4 5; do
+pydeface ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_echo-${echo}_T1w.nii.gz
+rm -f ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_echo-${echo}_T1w.nii.gz 
+mv ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_echo-${echo}_T1w_defaced.nii.gz ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_echo-${echo}_T1w.nii.gz 
+done
+done
+done
+```
+
 ## 2.5 BIDS validation
 
 Use the BIDS-Validator to check if the dataset is BIDS compliant.
 
 ```{bash}
-docker run -ti --rm -v /Volumes/Project0255/dataset_3:/data:ro bids/validator /data
+docker run -ti --rm -v /Volumes/Project0255/dataset_1:/data:ro bids/validator /data
 ```
 
 # 3. Preprocessing {.tabset}
@@ -204,7 +225,7 @@ If you run into memory problems you can use --skip_bids_validation; skipped the 
 If run on the lab iMac, with 50GB of docker memory, and with --fs-no-reconall (no segmentation), it takes about 20 min per participant.
 
 ```{bash}
-/Users/soba/.local/bin/fmriprep-docker /Volumes/Project0255/dataset_3/ /Volumes/Project0255/dataset_3/derivatives participant --participant-label 301  --fs-license-file /Users/soba/license.txt --fs-no-reconall 
+/Users/soba/.local/bin/fmriprep-docker /Volumes/Project0255/dataset_1/ /Volumes/Project0255/dataset_1/derivatives participant --participant-label 101  --fs-license-file /Users/soba/license.txt --fs-no-reconall --n_cpus 14 --use-syn-sdc --skip_bids_validation
 ```
 
 ## 3.3 Theory-of-Mind event protocols 
