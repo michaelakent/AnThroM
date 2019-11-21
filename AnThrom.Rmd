@@ -148,13 +148,19 @@ docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /bas
 
 For dataset_1 (for dataset_1 add ses-{session}/ and --ss 01 and .dcm). Movie for sub-101 and 102 is in ses-02. 
 ```{bash}
-docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1 -f /base/code/heuristic_anthrom.py -s 103 -ss 01 -c dcm2niix -b --overwrite
+docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1 -f /base/code/heuristic_anthrom.py -s 116 127 -ss 01 -c dcm2niix -b --overwrite
 ```
 
-On the grid do:
+On the grid do: (sub-116: manual in dcm2niigui)
 
+Dataset_1
 ```{bash}
-singularity run -B /analyse/Project0255/:/base /analyse/Project0255/my_images/heudiconv_latest.sif -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1/ -f /base/code/heuristic_anthrom.py -s 101 -ss 01 -c dcm2niix -b --overwrite
+singularity run -B /analyse/Project0255/:/base /analyse/Project0255/my_images/heudiconv_latest.sif -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1/ -f /base/code/heuristic_anthrom.py -s 116 -ss 01 -c dcm2niix -b --overwrite
+```
+
+Dataset_2 - 4
+```{bash}
+singularity run -B /analyse/Project0255/:/base /analyse/Project0255/my_images/heudiconv_latest.sif -d /base/dataset_1/sourcedata/sub-{subject}/*.ima -o /base/dataset_2/ -f /base/code/heuristic_anthrom.py -s 201 -c dcm2niix -b --overwrite
 ```
 
 ## 2.4 Anonymize the data
@@ -177,16 +183,17 @@ done
 
 
 For dataset_1
-
+ses-01: 101 102 103 107 112 113 117 118 119 122 123 124 128
+ses-02: 104 105 106 108 109 110 111 115 116 120 121 125 126 127
 ```{bash}
 #!/bin/bash
 
 set -e 
 rootfolder=/Volumes/Project0255/dataset_1
 
-for subj in 101; do
+for subj in 104 105 106 108 109 110 111 115 116 120 121 125 126 127; do
 	echo "Defacing participant $subj"
-for session in 01 02; do
+for session in 02; do
 for echo in 1 2 3 4 5; do
 pydeface ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_echo-${echo}_T1w.nii.gz
 rm -f ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_echo-${echo}_T1w.nii.gz 
@@ -212,7 +219,7 @@ MRIQC is a docker tool to do quality control of the data. More info [here](https
 MRIQC 0.14.2 was used:
 
 ```{bash}
-docker run -it --rm -v /Volumes/Project0255/dataset_3/:/data:ro -v /Volumes/Project0255/dataset_3/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out participant --participant-label 301 -m T1w bold --ica --fft-spikes-detector
+docker run -it --rm -v /Volumes/Project0255/dataset_1/:/data:ro -v /Volumes/Project0255/dataset_1/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out participant --participant-label 102 -m T1w bold --ica --fft-spikes-detector --mem_gb 60
 ```
 
 Run it seperately for the datasets. Change participant to group to create the group reports.
