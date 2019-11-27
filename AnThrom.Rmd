@@ -217,7 +217,20 @@ done
 done
 ```
 
-## 2.5 BIDS validation
+## 2.5 Update the .json file for the fmaps for dataset_3 and dataset_4
+
+```{r}
+library("rjson")
+json_data <- fromJSON(file="/Volumes/Project0255/dataset_3/sub-301/fmap/sub-301_phasediff.json")
+json_data$IntendedFor <- 'func/sub-301_task-movie_bold.nii.gz'
+exportJson <- toJSON(json_data)
+write(exportJson, "/Volumes/Project0255/dataset_3/sub-301/fmap/sub-301_phasediff.json")
+
+```
+
+You need to specify “IntendedFor” field in the _phasediff.json files to point which scans the estimated fieldmap should be applied to.
+
+## 2.6 BIDS validation
 
 Use the BIDS-Validator to check if the dataset is BIDS compliant.
 
