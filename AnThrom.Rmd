@@ -111,12 +111,11 @@ def infotodict(seqinfo):
     
     t1w1 = create_key('sub-{subject}/{session}/anat/sub-{subject}_{session}_T1w')
     func_movie1 = create_key('sub-{subject}/{session}/func/sub-{subject}_{session}_task-movie_bold')
-    
+
     t1w = create_key('sub-{subject}/anat/sub-{subject}_T1w')
     func_movie = create_key('sub-{subject}/func/sub-{subject}_task-movie_bold')
     fmap_phase = create_key('sub-{subject}/fmap/sub-{subject}_phasediff')
     fmap_magnitude = create_key('sub-{subject}/fmap/sub-{subject}_magnitude')
-    
     
     info = {t1w1: [], func_movie1: [], t1w: [], func_movie: [], fmap_phase: [], fmap_magnitude: []} 
     
@@ -130,15 +129,25 @@ def infotodict(seqinfo):
         if ('t1_mpr_ns_sag_P2_ADNI_32ch' in s.protocol_name):
             info[t1w].append(s.series_id)
         if (s.dim4 == 175) and ('FMRI_MB2_p2_2MMISO_TR2_movie' in s.protocol_name):
-            info[func_movie].append(s.series_id) 
+            info[func_movie].append(s.series_id)
+        if (s.dim4 == 175) and ('FMRI_MB2_movie_p2_2MMISO_TR2' in s.protocol_name):
+            info[func_movie].append(s.series_id)
+        if (s.dim4 == 170) and ('ep2d_ToM_Loc' in s.protocol_name):
+            info[func_movie].append(s.series_id)
+        if (s.dim4 == 175) and ('ep2d_ToM_Loc' in s.protocol_name):
+            info[func_movie].append(s.series_id)
         if (s.dim4 == 175) and ('ep2d_ToM_Loc_boldTR2' in s.protocol_name):
             info[func_movie].append(s.series_id)
-        if (s.dim4 == 174) and ('BP_ep2d_multiecho_32ch_p3_TOM' in s.protocol_name):
+        if ('BP_ep2d_multiecho_32ch_p3_TOM' in s.protocol_name):
             info[func_movie].append(s.series_id)
         if (s.dim3 == 92) and ('gre_field_mapping_AAH' in s.protocol_name):
             info[fmap_magnitude].append(s.series_id)
         if (s.dim3 == 46) and ('gre_field_mapping_AAH' in s.protocol_name):
-            info[fmap_phase].append(s.series_id)   
+            info[fmap_phase].append(s.series_id)
+        if (s.dim3 == 64) and ('gre_field_mapping_AAH' in s.protocol_name):
+            info[fmap_magnitude].append(s.series_id)
+        if (s.dim3 == 32) and ('gre_field_mapping_AAH' in s.protocol_name):
+            info[fmap_phase].append(s.series_id)
     return info
 ```
 
@@ -176,9 +185,9 @@ Deface using [Pydeface](https://github.com/poldracklab/pydeface).
 
 set -e 
 ####For loop that defaces the MRI per subject and replaces the old MRI with the new defaced MRI
-rootfolder=/Volumes/Project0255/dataset_3
+rootfolder=/Volumes/Project0255/dataset_2
 
-for subj in 301; do
+for subj in 201 202; do
 	echo "Defacing participant $subj"
 pydeface ${rootfolder}/sub-${subj}/anat/sub-${subj}_T1w.nii.gz
 rm -f ${rootfolder}/sub-${subj}/anat/sub-${subj}_T1w.nii.gz
@@ -224,7 +233,13 @@ MRIQC is a docker tool to do quality control of the data. More info [here](https
 MRIQC 0.14.2 was used:
 
 ```{bash}
-docker run -it --rm -v /Volumes/Project0255/dataset_1/:/data:ro -v /Volumes/Project0255/dataset_1/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out participant --participant-label 102 -m T1w bold --ica --fft-spikes-detector 
+docker run -it --rm -v /Volumes/Project0255/dataset_1/:/data:ro -v /Volumes/Project0255/dataset_1/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out participant --participant-label 201 -m T1w bold --ica --fft-spikes-detector 
+```
+
+On the grid do (cd in /analyse folder):
+
+```{bash}
+singularity run --cleanenv /analyse/Project0255/my_images/mriqc-0.14.2.simg /analyse/Project0255/dataset_2 /analyse/Project0255/dataset_2/derivatives participant --participant-label 201 -m T1w bold --ica --fft-spikes-detector -w /analyse/Project0255/work
 ```
 
 Run it seperately for the datasets. Change participant to group to create the group reports.
