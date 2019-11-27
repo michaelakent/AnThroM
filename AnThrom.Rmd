@@ -157,6 +157,12 @@ On the grid do:
 singularity run -B /analyse/Project0255/:/base /analyse/Project0255/my_images/heudiconv_latest.sif -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1/ -f /base/code/heuristic_anthrom.py -s 101 -ss 01 -c dcm2niix -b --overwrite
 ```
 
+type in bash before running
+
+```{bash}
+singularity run -B /analyse/Project0255/:/base /analyse/Project0255/my_images/heudiconv_latest.sif -d /base/dataset_3/sourcedata/sub-{subject}*.dcm -o /base/dataset_3/ -f /base/code/heuristic_anthrom.py -s 313 -c dcm2niix -b --overwrite
+```
+
 ## 2.4 Anonymize the data
 Deface using [Pydeface](https://github.com/poldracklab/pydeface). 
 
