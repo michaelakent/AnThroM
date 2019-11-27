@@ -221,11 +221,13 @@ done
 
 ```{r}
 library("rjson")
-json_data <- fromJSON(file="/Volumes/Project0255/dataset_3/sub-301/fmap/sub-301_phasediff.json")
-json_data$IntendedFor <- 'func/sub-301_task-movie_bold.nii.gz'
-exportJson <- toJSON(json_data)
-write(exportJson, "/Volumes/Project0255/dataset_3/sub-301/fmap/sub-301_phasediff.json")
 
+for (sub in 301:302){
+json_data <- fromJSON(file=paste("/Volumes/Project0255/dataset_3/sub-", sub, "/fmap/sub-", sub, "_phasediff.json", sep = ""))
+json_data$IntendedFor <- paste('func/sub-', sub, '_task-movie_bold.nii.gz',sep = "")
+exportJson <- toJSON(json_data)
+write(exportJson, file=paste("/Volumes/Project0255/dataset_3/sub-", sub, "/fmap/sub-", sub, "_phasediff.json", sep = ""))
+}
 ```
 
 You need to specify “IntendedFor” field in the _phasediff.json files to point which scans the estimated fieldmap should be applied to.
