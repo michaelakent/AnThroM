@@ -222,7 +222,7 @@ done
 ```{r}
 library("rjson")
 
-for (sub in 301:302){
+for (sub in 301:322){
 json_data <- fromJSON(file=paste("/Volumes/Project0255/dataset_3/sub-", sub, "/fmap/sub-", sub, "_phasediff.json", sep = ""))
 json_data$IntendedFor <- paste('func/sub-', sub, '_task-movie_bold.nii.gz',sep = "")
 exportJson <- toJSON(json_data)
@@ -242,7 +242,7 @@ docker run -ti --rm -v /Volumes/Project0255/dataset_1:/data:ro bids/validator /d
 
 # 3. Preprocessing {.tabset}
 
-## 3.1 MRIQC 
+## 3.1 Run MRQIC
 MRIQC is a docker tool to do quality control of the data. More info [here](https://poldracklab.github.io/mriqc/).
 
 MRIQC 0.14.2 was used:
@@ -254,7 +254,7 @@ docker run -it --rm -v /Volumes/Project0255/dataset_1/:/data:ro -v /Volumes/Proj
 On the grid do (cd in /analyse folder):
 
 ```{bash}
-singularity run --cleanenv /analyse/Project0255/my_images/mriqc-0.14.2.simg /analyse/Project0255/dataset_2 /analyse/Project0255/dataset_2/derivatives participant --participant-label 201 -m T1w bold --ica --fft-spikes-detector -w /analyse/Project0255/work
+singularity run --cleanenv /analyse/Project0255/my_images/mriqc-0.14.2.simg /analyse/Project0255/dataset_2 /analyse/Project0255/dataset_2/derivatives/mriqc participant --participant-label 201 -m T1w bold --ica --fft-spikes-detector -w /analyse/Project0255/work
 ```
 
 Run it seperately for the datasets. Change participant to group to create the group reports.
@@ -263,9 +263,45 @@ Run it seperately for the datasets. Change participant to group to create the gr
 docker run -it --rm -v /Volumes/Project0255/dataset_3/:/data:ro -v /Volumes/Project0255/dataset_3/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out group
 ```
 
-Compare it across the datasets.
+## 3.2 Compare MRIQC
 
-## 3.2 fMRIprep 
+Plot the output. This is based on [MRIQCeption](https://github.com/elizabethbeard/mriqception). The MRIQCeption Visualization by Catherine Walsh was adapted. Adjust the filter if you want to look at different measures.
+
+Adjust this to your liking (e.g. bold: fd_mean, fd_perc, dvars_std, dvars_vstd, gcor, tsnr, t1w: cjv, cnr, snr, efc, inu, wm2max, fwhm) and modality (bold or t1w)
+```{r}
+QCmeasure <- "fd_mean" 
+modality <- "bold"
+```
+
+Run the following [Change the script below to load the group results for the different datasets]
+```{r}
+#load own data
+DF.dataset1  <- read_tsv(file = paste("/Volumes/Project0246/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
+  separate(bids_name, c("sub", "session", "task", "run", "modality"), sep = "_", remove = FALSE) %>% #run and modality can be removed
+  gather("measure", "value", 7:51) %>% 
+  filter(measure == QCmeasure) 
+
+#load api data
+DF.dataset2 <- read_tsv(file = paste("/Volumes/Project0246/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
+  separate(bids_name, c("sub", "session", "task", "run", "modality"), sep = "_", remove = FALSE) %>% #run and modality can be removed
+  gather("measure", "value", 7:51) %>% 
+  filter(measure == QCmeasure)
+
+#combine data
+DF.full <- bind_rows(DF.dataset1, DF.dataset2, .id = "data") %>%
+  mutate(task = replace_na(task, "api"))
+
+#create raincloud plot (check out the [github](https://github.com/RainCloudPlots/) or [preprint](https://wellcomeopenresearch.org/articles/4-63/v1)
+ggplot(DF.full,aes(x=task,y=value,fill=task))+
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .5, colour = NA)+
+  geom_point(aes(colour = task), position=position_jitter(width = .05), size = .5, shape = 20)+
+  geom_boxplot(aes(x=task,y=value),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
+  theme_classic() + ylab(QCmeasure) + scale_fill_brewer(palette = "Reds") +
+  scale_colour_brewer(palette = "Reds") + ggtitle(paste("Comparison of", modality, "QC measure", QCmeasure, "with API dataset"))
+```
+
+
+## 3.3 fMRIprep 
 fMRIprep is a docker tool for preprocessing of the fMRI data. More info [here](https://fmriprep.readthedocs.io/en/stable/#)
 
 fMRIprep version 1.5.1 was used on a local iMac.
@@ -282,7 +318,7 @@ If run on the lab iMac, with 50GB of docker memory, and with --fs-no-reconall (n
 
 singularity build /my_images/fmriprep-1.5.1.simg docker://poldracklab/fmriprep:1.5.1
 
-## 3.3 Theory-of-Mind event protocols 
+## 3.4 Theory-of-Mind event protocols 
 
 Create tsv file for functional localiser
 
