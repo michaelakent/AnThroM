@@ -111,12 +111,11 @@ def infotodict(seqinfo):
     
     t1w1 = create_key('sub-{subject}/{session}/anat/sub-{subject}_{session}_T1w')
     func_movie1 = create_key('sub-{subject}/{session}/func/sub-{subject}_{session}_task-movie_bold')
-    
+
     t1w = create_key('sub-{subject}/anat/sub-{subject}_T1w')
     func_movie = create_key('sub-{subject}/func/sub-{subject}_task-movie_bold')
     fmap_phase = create_key('sub-{subject}/fmap/sub-{subject}_phasediff')
     fmap_magnitude = create_key('sub-{subject}/fmap/sub-{subject}_magnitude')
-    
     
     info = {t1w1: [], func_movie1: [], t1w: [], func_movie: [], fmap_phase: [], fmap_magnitude: []} 
     
@@ -130,15 +129,25 @@ def infotodict(seqinfo):
         if ('t1_mpr_ns_sag_P2_ADNI_32ch' in s.protocol_name):
             info[t1w].append(s.series_id)
         if (s.dim4 == 175) and ('FMRI_MB2_p2_2MMISO_TR2_movie' in s.protocol_name):
-            info[func_movie].append(s.series_id) 
+            info[func_movie].append(s.series_id)
+        if (s.dim4 == 175) and ('FMRI_MB2_movie_p2_2MMISO_TR2' in s.protocol_name):
+            info[func_movie].append(s.series_id)
+        if (s.dim4 == 170) and ('ep2d_ToM_Loc' in s.protocol_name):
+            info[func_movie].append(s.series_id)
+        if (s.dim4 == 175) and ('ep2d_ToM_Loc' in s.protocol_name):
+            info[func_movie].append(s.series_id)
         if (s.dim4 == 175) and ('ep2d_ToM_Loc_boldTR2' in s.protocol_name):
             info[func_movie].append(s.series_id)
-        if (s.dim4 == 174) and ('BP_ep2d_multiecho_32ch_p3_TOM' in s.protocol_name):
+        if ('BP_ep2d_multiecho_32ch_p3_TOM' in s.protocol_name):
             info[func_movie].append(s.series_id)
         if (s.dim3 == 92) and ('gre_field_mapping_AAH' in s.protocol_name):
             info[fmap_magnitude].append(s.series_id)
         if (s.dim3 == 46) and ('gre_field_mapping_AAH' in s.protocol_name):
-            info[fmap_phase].append(s.series_id)   
+            info[fmap_phase].append(s.series_id)
+        if (s.dim3 == 64) and ('gre_field_mapping_AAH' in s.protocol_name):
+            info[fmap_magnitude].append(s.series_id)
+        if (s.dim3 == 32) and ('gre_field_mapping_AAH' in s.protocol_name):
+            info[fmap_phase].append(s.series_id)
     return info
 ```
 
@@ -184,9 +193,9 @@ Deface using [Pydeface](https://github.com/poldracklab/pydeface).
 
 set -e 
 ####For loop that defaces the MRI per subject and replaces the old MRI with the new defaced MRI
-rootfolder=/Volumes/Project0255/dataset_3
+rootfolder=/Volumes/Project0255/dataset_2
 
-for subj in 301; do
+for subj in 201 202; do
 	echo "Defacing participant $subj"
 pydeface ${rootfolder}/sub-${subj}/anat/sub-${subj}_T1w.nii.gz
 rm -f ${rootfolder}/sub-${subj}/anat/sub-${subj}_T1w.nii.gz
@@ -216,7 +225,22 @@ done
 done
 ```
 
-## 2.5 BIDS validation
+## 2.5 Update the .json file for the fmaps for dataset_3 and dataset_4
+
+```{r}
+library("rjson")
+
+for (sub in 301:322){
+json_data <- fromJSON(file=paste("/Volumes/Project0255/dataset_3/sub-", sub, "/fmap/sub-", sub, "_phasediff.json", sep = ""))
+json_data$IntendedFor <- paste('func/sub-', sub, '_task-movie_bold.nii.gz',sep = "")
+exportJson <- toJSON(json_data)
+write(exportJson, file=paste("/Volumes/Project0255/dataset_3/sub-", sub, "/fmap/sub-", sub, "_phasediff.json", sep = ""))
+}
+```
+
+You need to specify “IntendedFor” field in the _phasediff.json files to point which scans the estimated fieldmap should be applied to.
+
+## 2.6 BIDS validation
 
 Use the BIDS-Validator to check if the dataset is BIDS compliant.
 
@@ -226,13 +250,19 @@ docker run -ti --rm -v /Volumes/Project0255/dataset_1:/data:ro bids/validator /d
 
 # 3. Preprocessing {.tabset}
 
-## 3.1 MRIQC 
+## 3.1 Run MRQIC
 MRIQC is a docker tool to do quality control of the data. More info [here](https://poldracklab.github.io/mriqc/).
 
 MRIQC 0.14.2 was used:
 
 ```{bash}
-docker run -it --rm -v /Volumes/Project0255/dataset_1/:/data:ro -v /Volumes/Project0255/dataset_1/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out participant --participant-label 102 -m T1w bold --ica --fft-spikes-detector 
+docker run -it --rm -v /Volumes/Project0255/dataset_1/:/data:ro -v /Volumes/Project0255/dataset_1/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out participant --participant-label 201 -m T1w bold --ica --fft-spikes-detector 
+```
+
+On the grid do (cd in /analyse folder):
+
+```{bash}
+singularity run --cleanenv /analyse/Project0255/my_images/mriqc-0.14.2.simg /analyse/Project0255/dataset_2 /analyse/Project0255/dataset_2/derivatives/mriqc participant --participant-label 201 -m T1w bold --ica --fft-spikes-detector -w /analyse/Project0255/work
 ```
 
 Run it seperately for the datasets. Change participant to group to create the group reports.
@@ -241,9 +271,45 @@ Run it seperately for the datasets. Change participant to group to create the gr
 docker run -it --rm -v /Volumes/Project0255/dataset_3/:/data:ro -v /Volumes/Project0255/dataset_3/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out group
 ```
 
-Compare it across the datasets.
+## 3.2 Compare MRIQC
 
-## 3.2 fMRIprep 
+Plot the output. This is based on [MRIQCeption](https://github.com/elizabethbeard/mriqception). The MRIQCeption Visualization by Catherine Walsh was adapted. Adjust the filter if you want to look at different measures.
+
+Adjust this to your liking (e.g. bold: fd_mean, fd_perc, dvars_std, dvars_vstd, gcor, tsnr, t1w: cjv, cnr, snr, efc, inu, wm2max, fwhm) and modality (bold or t1w)
+```{r}
+QCmeasure <- "fd_mean" 
+modality <- "bold"
+```
+
+Run the following [Change the script below to load the group results for the different datasets]
+```{r}
+#load own data
+DF.dataset1  <- read_tsv(file = paste("/Volumes/Project0246/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
+  separate(bids_name, c("sub", "session", "task", "run", "modality"), sep = "_", remove = FALSE) %>% #run and modality can be removed
+  gather("measure", "value", 7:51) %>% 
+  filter(measure == QCmeasure) 
+
+#load api data
+DF.dataset2 <- read_tsv(file = paste("/Volumes/Project0246/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
+  separate(bids_name, c("sub", "session", "task", "run", "modality"), sep = "_", remove = FALSE) %>% #run and modality can be removed
+  gather("measure", "value", 7:51) %>% 
+  filter(measure == QCmeasure)
+
+#combine data
+DF.full <- bind_rows(DF.dataset1, DF.dataset2, .id = "data") %>%
+  mutate(task = replace_na(task, "api"))
+
+#create raincloud plot (check out the [github](https://github.com/RainCloudPlots/) or [preprint](https://wellcomeopenresearch.org/articles/4-63/v1)
+ggplot(DF.full,aes(x=task,y=value,fill=task))+
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .5, colour = NA)+
+  geom_point(aes(colour = task), position=position_jitter(width = .05), size = .5, shape = 20)+
+  geom_boxplot(aes(x=task,y=value),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
+  theme_classic() + ylab(QCmeasure) + scale_fill_brewer(palette = "Reds") +
+  scale_colour_brewer(palette = "Reds") + ggtitle(paste("Comparison of", modality, "QC measure", QCmeasure, "with API dataset"))
+```
+
+
+## 3.3 fMRIprep 
 fMRIprep is a docker tool for preprocessing of the fMRI data. More info [here](https://fmriprep.readthedocs.io/en/stable/#)
 
 fMRIprep version 1.5.1 was used on a local iMac.
@@ -260,7 +326,7 @@ If run on the lab iMac, with 50GB of docker memory, and with --fs-no-reconall (n
 
 singularity build /my_images/fmriprep-1.5.1.simg docker://poldracklab/fmriprep:1.5.1
 
-## 3.3 Theory-of-Mind event protocols 
+## 3.4 Theory-of-Mind event protocols 
 
 Create tsv file for functional localiser
 
