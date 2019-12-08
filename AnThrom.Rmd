@@ -309,16 +309,9 @@ If you run into memory problems you can use --skip_bids_validation; skipped the 
 
 --use-syn-sdc for dataset_1 and dataset_2
 
-If run on the lab iMac, with 50GB of docker memory, and with --fs-no-reconall (no segmentation), it takes about 20 min per participant.
-
-```{bash}
-/Users/soba/.local/bin/fmriprep-docker /Volumes/Project0255/dataset_1/ /Volumes/Project0255/dataset_1/derivatives participant --participant-label 114  --fs-license-file /Users/soba/license.txt --fs-no-reconall --use-syn-sdc --skip_bids_validation --func_only
-```
-
-
 If run on the GRID (HCP @ University of Glasgow), cd into the analyse folder and run:
 ```{bash}
-singularity run --cleanenv /analyse/Project0255/my_images/fmriprep-1.5.2.simg /analyse/Project0255/dataset_1/ /analyse/Project0255/dataset_1/derivatives participant --participant-label sub-123 --fs-license-file /analyse/Project0255/my_images/license.txt --skip_bids_validation --fs-no-reconall --use-syn-sdc -w /analyse/Project0255/work/compute00
+singularity run --cleanenv /analyse/Project0255/my_images/fmriprep-1.5.2.simg /analyse/Project0255/dataset_1/ /analyse/Project0255/dataset_1/derivatives participant --participant-label sub-128 --fs-license-file /analyse/Project0255/my_images/license.txt --skip_bids_validation --fs-no-reconall --use-syn-sdc -w /analyse/Project0255/work/compute00
 ```
 
 ## 3.4 Theory-of-Mind event protocols 
