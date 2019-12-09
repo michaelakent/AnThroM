@@ -159,7 +159,7 @@ def infotodict(seqinfo):
 Use the heuristic file to convert the Dicom files to .nii.gz (nifti) and create .json files.
 
 ```{bash}
-docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_4/sourcedata/sub-{subject}/*.IMA -o /base/dataset_4 -f /base/code/heuristic_anthrom.py -s 999 -ss 01 -c dcm2niix -b --overwrite
+docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_4/sourcedata/sub-{subject}/*.IMA -o /base/dataset_4 -f /base/code/heuristic_anthrom.py -s 412 -c dcm2niix -b --overwrite
 ```
 
 For dataset_1 (for dataset_1 add ses-{session}/ and --ss 01 and .dcm). Movie for sub-101 and 102 is in ses-02. 
@@ -168,6 +168,7 @@ docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /bas
 ```
 
 On the grid do: (sub-116: manual in dcm2niigui)
+type in bash before running
 
 Dataset_1
 ```{bash}
@@ -179,17 +180,6 @@ Dataset_2 - 4
 singularity run -B /analyse/Project0255/:/base /analyse/Project0255/my_images/heudiconv_latest.sif -d /base/dataset_2/sourcedata/sub-{subject}/*.IMA -o /base/dataset_2/ -f /base/code/heuristic_anthrom.py -s 201 -c dcm2niix -b --overwrite
 ```
 
-<<<<<<< HEAD
-type in bash before running
-
-```{bash}
-singularity run -B /analyse/Project0255/:/base /analyse/Project0255/my_images/heudiconv_latest.sif -d /base/dataset_3/sourcedata/sub-{subject}*.dcm -o /base/dataset_3/ -f /base/code/heuristic_anthrom.py -s 313 -c dcm2niix -b --overwrite
-```
-=======
-singularity run -B /autofs/space/piper_003/users/path/to/my/files/:/base /usr/pubsw/packages/heudiconv/heudiconv.simg -d /base/dicom/{subject}/* -o /base/nifti/ -f convertall -s mysubject080 -c none
-
->>>>>>> 87cec24130480075aaa66c0b0c6909abd5fcd5db
-
 ## 2.4 Anonymize the data
 Deface using [Pydeface](https://github.com/poldracklab/pydeface). 
 
@@ -198,9 +188,9 @@ Deface using [Pydeface](https://github.com/poldracklab/pydeface).
 
 set -e 
 ####For loop that defaces the MRI per subject and replaces the old MRI with the new defaced MRI
-rootfolder=/Volumes/Project0255/dataset_2
+rootfolder=/Volumes/Project0255/dataset_4
 
-for subj in 201 202; do
+for subj in 412 413 414 415 416 417 418 419 420 421 422; do
 	echo "Defacing participant $subj"
 pydeface ${rootfolder}/sub-${subj}/anat/sub-${subj}_T1w.nii.gz
 rm -f ${rootfolder}/sub-${subj}/anat/sub-${subj}_T1w.nii.gz
@@ -249,7 +239,7 @@ write(exportJson, file=paste("/Volumes/Project0255/dataset_3/sub-", sub, "/fmap/
 Use the BIDS-Validator to check if the dataset is BIDS compliant.
 
 ```{bash}
-docker run -ti --rm -v /Volumes/Project0255/dataset_1:/data:ro bids/validator /data
+docker run -ti --rm -v /Volumes/Project0255/dataset_4:/data:ro bids/validator /data
 ```
 
 # 3. Preprocessing {.tabset}
@@ -260,7 +250,7 @@ MRIQC is a docker tool to do quality control of the data. More info [here](https
 MRIQC 0.14.2 was used:
 
 ```{bash}
-docker run -it --rm -v /Volumes/Project0255/dataset_1/:/data:ro -v /Volumes/Project0255/dataset_1/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out participant --participant-label 201 -m T1w bold --ica --fft-spikes-detector 
+docker run -it --rm -v /Volumes/Project0255/dataset_4/:/data:ro -v /Volumes/Project0255/dataset_4/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out participant --participant-label 411 -m T1w bold --ica --fft-spikes-detector 
 ```
 
 On the grid do (cd in /analyse folder):
@@ -287,10 +277,10 @@ modality <- "bold"
 
 Run the following [Change the script below to load the group results for the different datasets]
 ```{r}
-# libraries
-
+#libraries
 library("tidyverse")
 library("cowplot")
+source("~/Documents/TOOLS/R_rainclouds.R")
 
 #load own data
 DF.dataset1  <- read_tsv(file = paste("/Volumes/Project0255/dataset_1/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
