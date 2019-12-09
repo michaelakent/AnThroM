@@ -282,20 +282,29 @@ modality <- "bold"
 
 Run the following [Change the script below to load the group results for the different datasets]
 ```{r}
+# libraries
+library("tidyverse")
+library("cowplot")
+
 #load own data
-DF.dataset1  <- read_tsv(file = paste("/Volumes/Project0246/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
+DF.dataset1  <- read_tsv(file = paste("/Volumes/Project0255/dataset_1/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
   separate(bids_name, c("sub", "session", "task", "run", "modality"), sep = "_", remove = FALSE) %>% #run and modality can be removed
   gather("measure", "value", 7:51) %>% 
   filter(measure == QCmeasure) 
 
-#load api data
-DF.dataset2 <- read_tsv(file = paste("/Volumes/Project0246/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
+DF.dataset2 <- read_tsv(file = paste("/Volumes/Project0255/dataset_2/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
+  separate(bids_name, c("sub", "session", "task", "run", "modality"), sep = "_", remove = FALSE) %>% #run and modality can be removed
+  gather("measure", "value", 7:51) %>% 
+  filter(measure == QCmeasure)
+
+DF.dataset3 <- read_tsv(file = paste("/Volumes/Project0255/dataset_3/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
   separate(bids_name, c("sub", "session", "task", "run", "modality"), sep = "_", remove = FALSE) %>% #run and modality can be removed
   gather("measure", "value", 7:51) %>% 
   filter(measure == QCmeasure)
 
 #combine data
-DF.full <- bind_rows(DF.dataset1, DF.dataset2, .id = "data") %>%
+DF.full <- bind_rows(DF.dataset1, DF.dataset2, DF.dataset3, .id = "dataset") %>%
+  group_by(dataset) %>%
   mutate(task = replace_na(task, "api"))
 
 #create raincloud plot (check out the [github](https://github.com/RainCloudPlots/) or [preprint](https://wellcomeopenresearch.org/articles/4-63/v1)
@@ -303,8 +312,9 @@ ggplot(DF.full,aes(x=task,y=value,fill=task))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .5, colour = NA)+
   geom_point(aes(colour = task), position=position_jitter(width = .05), size = .5, shape = 20)+
   geom_boxplot(aes(x=task,y=value),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
+  facet_wrap(. ~ dataset) +
   theme_classic() + ylab(QCmeasure) + scale_fill_brewer(palette = "Reds") +
-  scale_colour_brewer(palette = "Reds") + ggtitle(paste("Comparison of", modality, "QC measure", QCmeasure, "with API dataset"))
+  scale_colour_brewer(palette = "Reds") + ggtitle(paste("Comparison of", modality, "QC measure", QCmeasure, "between datasets"))
 ```
 
 
@@ -319,7 +329,7 @@ If you run into memory problems you can use --skip_bids_validation; skipped the 
 
 If run on the GRID (HCP @ University of Glasgow), cd into the analyse folder and run:
 ```{bash}
-singularity run --cleanenv /analyse/Project0255/my_images/fmriprep-1.5.2.simg /analyse/Project0255/dataset_1/ /analyse/Project0255/dataset_1/derivatives participant --participant-label sub-128 --fs-license-file /analyse/Project0255/my_images/license.txt --skip_bids_validation --fs-no-reconall --use-syn-sdc -w /analyse/Project0255/work/compute00
+singularity run --cleanenv /analyse/Project0255/my_images/fmriprep-1.5.2.simg /analyse/Project0255/dataset_2/ /analyse/Project0255/dataset_2/derivatives participant --participant-label sub-201 --fs-license-file /analyse/Project0255/my_images/license.txt --skip_bids_validation --fs-no-reconall --use-syn-sdc -w /analyse/Project0255/work/dataset_2
 ```
 
 ## 3.4 Theory-of-Mind event protocols 
