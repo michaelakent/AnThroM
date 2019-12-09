@@ -114,10 +114,13 @@ def infotodict(seqinfo):
 
     t1w = create_key('sub-{subject}/anat/sub-{subject}_T1w')
     func_movie = create_key('sub-{subject}/func/sub-{subject}_task-movie_bold')
+    func_movie_echo_1 = create_key('sub-{subject}/func/sub-{subject}_task-movie_echo-1_bold')
+    func_movie_echo_2 = create_key('sub-{subject}/func/sub-{subject}_task-movie_echo-2_bold')
     fmap_phase = create_key('sub-{subject}/fmap/sub-{subject}_phasediff')
     fmap_magnitude = create_key('sub-{subject}/fmap/sub-{subject}_magnitude')
     
-    info = {t1w1: [], func_movie1: [], t1w: [], func_movie: [], fmap_phase: [], fmap_magnitude: []} 
+    info = {t1w1: [], func_movie1: [], t1w: [], func_movie: [], fmap_phase: [], fmap_magnitude: [],
+            func_movie_echo_1: [], func_movie_echo_2: []} 
     
     for idx, s in enumerate(seqinfo):
         if ('T1W_1mm_sag SENSE' in s.protocol_name):
@@ -138,8 +141,10 @@ def infotodict(seqinfo):
             info[func_movie].append(s.series_id)
         if (s.dim4 == 175) and ('ep2d_ToM_Loc_boldTR2' in s.protocol_name):
             info[func_movie].append(s.series_id)
-        if ('BP_ep2d_multiecho_32ch_p3_TOM' in s.protocol_name):
-            info[func_movie].append(s.series_id)
+        if (s.TE == 13) and ('BP_ep2d_multiecho_32ch_p3_TOM' in s.protocol_name):
+            info[func_movie_echo_1].append(s.series_id)
+        if (s.TE == 31.36) and ('BP_ep2d_multiecho_32ch_p3_TOM' in s.protocol_name):
+            info[func_movie_echo_2].append(s.series_id)
         if (s.dim3 == 92) and ('gre_field_mapping_AAH' in s.protocol_name):
             info[fmap_magnitude].append(s.series_id)
         if (s.dim3 == 46) and ('gre_field_mapping_AAH' in s.protocol_name):
