@@ -24,6 +24,26 @@ Data of the Theory-of-Mind functional localiser and Individual Differences in An
  Dataset_3: Centre for Cognitive NeuroImaging; Two studies with the same parameters: *n*=22. Social_Gradient_1; *n*=10 (pilot experiment) and BOLDlight; *n*=12.  
  Dataset_4: Centre for Cognitive NeuroImaging; GAMEBOTS; *n*  
 
+```{r}
+library("tidyverse")
+
+#load own data
+DF.dataset1 <- read_tsv(file = "/Volumes/Project0255/dataset_1/participants.tsv")
+DF.dataset2 <- read_tsv(file = "/Volumes/Project0255/dataset_2/participants.tsv")
+DF.dataset3 <- read_tsv(file = "/Volumes/Project0255/dataset_3/participants.tsv")
+DF.dataset4 <- read_tsv(file = "/Volumes/Project0255/dataset_4/participants.tsv")
+
+#combine data
+bind_rows(DF.dataset1, DF.dataset2, DF.dataset3,  DF.dataset4, .id = "dataset") %>%
+  group_by(dataset) %>% 
+  summarise(mean = mean(age), 
+            sd = sd(age))
+bind_rows(DF.dataset1, DF.dataset2, DF.dataset3,  DF.dataset4, .id = "dataset") %>%
+  group_by(dataset, sex) %>% 
+  tally()
+```
+
+
 ## 1.2 Neuroimaging procedure
  
  All participants completed a Theory-of-Mind localiser ([Jacoby et al., 2016](https://www.sciencedirect.com/science/article/pii/S1053811915010472); [Richardson et al. 2018](https://www.nature.com/articles/s41467-018-03399-2)) and an anatomical scan either in the same session or in two seperate sessions. During the localiser participants passively viewed a short 5.6 min animated film ([Partly Cloudy](https://www.pixar.com/partly-cloudy#partly-cloudy-1)). This movie includes scenes depicting pain (e.g. an alligator biting the main character) and events that trigger mentalizing (e.g. the main character revealing its intention). For dataset_3 and dataset_4 a fieldmap was collected as well. At the end of each experiment participants completed the Individual Differences in Anthropomorphism Questionnaire (IDAQ) ([Waytz et al., 2010](https://journals.sagepub.com/doi/full/10.1177/1745691610369336)). 
@@ -279,7 +299,6 @@ Run the following [Change the script below to load the group results for the dif
 ```{r}
 #libraries
 library("tidyverse")
-#library("cowplot")
 source("/Volumes/Project0255/code/R_rainclouds.R")
 
 #load own data
@@ -328,7 +347,7 @@ If you run into memory problems you can use --skip_bids_validation; skipped the 
 
 If run on the GRID (HCP @ University of Glasgow), cd into the analyse folder and run:
 ```{bash}
-singularity run --cleanenv /analyse/Project0255/my_images/fmriprep-1.5.2.simg /analyse/Project0255/dataset_2/ /analyse/Project0255/dataset_2/derivatives participant --participant-label sub-201 --fs-license-file /analyse/Project0255/my_images/license.txt --skip_bids_validation --fs-no-reconall --use-syn-sdc -w /analyse/Project0255/work/dataset_2
+singularity run --cleanenv /analyse/Project0255/my_images/fmriprep-1.5.2.simg /analyse/Project0255/dataset_2/ /analyse/Project0255/dataset_2/derivatives participant --participant-label sub-222 --fs-license-file /analyse/Project0255/my_images/license.txt --skip_bids_validation --fs-no-reconall --use-syn-sdc -w /analyse/Project0255/work/dataset_2
 ```
 
 ## 3.4 Theory-of-Mind event protocols 
