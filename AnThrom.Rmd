@@ -19,10 +19,10 @@ by *Ruud Hortensius and Michaela Kent (University of Glasgow) - June 2019 - ...*
 
 Data of the Theory-of-Mind functional localiser and Individual Differences in Anthropomorphism Questionnaire are from five different studies.
   
- Dataset_1: Bangor Imaging Unit; EMBOTS; *n*=28; full dataset and publication: [Cross...Hortensius (2019)   PTRB](https://royalsocietypublishing.org/doi/10.1098/rstb.2018.0034)  
+ Dataset_1: Bangor Imaging Unit; EMBOTS; *n*=29 (including 1 pilot scan); full dataset and publication: [Cross...Hortensius (2019)   PTRB](https://royalsocietypublishing.org/doi/10.1098/rstb.2018.0034)  
  Dataset_2: Centre for Cognitive NeuroImaging; SHAREDBOTS; *n*=35 (including 2 pilot scans) publication: Hortensius & Cross, in preparation  
- Dataset_3: Centre for Cognitive NeuroImaging; Two studies with the same parameters: *n*=22. Social_Gradient_1; *n*=10 (pilot experiment) and BOLDlight; *n*=12.  
- Dataset_4: Centre for Cognitive NeuroImaging; GAMEBOTS; *n*  
+ Dataset_3: Centre for Cognitive NeuroImaging; Two studies with the same parameters: *n*=22 (including 2 pilot scans). Social_Gradient_1; *n*=10 (pilot experiment) and BOLDlight; *n*=12.  
+ Dataset_4: Centre for Cognitive NeuroImaging; GAMEBOTS; *n*=22.  
 
 ```{r}
 library("tidyverse")
@@ -243,15 +243,11 @@ done
 ## 2.5 Update the .json file for the fmaps for dataset_3 and dataset_4
 
 You need to specify “IntendedFor” field in the _phasediff.json files to point which scans the estimated fieldmap should be applied to.
-```{r}
-library("rjson")
 
-for (sub in 301:322){
-json_data <- fromJSON(file=paste("/Volumes/Project0255/dataset_3/sub-", sub, "/fmap/sub-", sub, "_phasediff.json", sep = ""))
-json_data$IntendedFor <- paste('func/sub-', sub, '_task-movie_bold.nii.gz',sep = "")
-exportJson <- toJSON(json_data)
-write(exportJson, file=paste("/Volumes/Project0255/dataset_3/sub-", sub, "/fmap/sub-", sub, "_phasediff.json", sep = ""))
-}
+Run the following script (thanks to Michele Svanera for the code):
+```{python}
+
+python change_json.py
 ```
 
 ## 2.6 BIDS validation
