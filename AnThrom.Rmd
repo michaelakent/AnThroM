@@ -91,7 +91,7 @@ singularity pull docker://nipy/heudiconv:latest
 
 Create the info file (dataset_2 - 4)
 ```{bash}
-docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_4/sourcedata/sub-{subject}/*.IMA -o /base/dataset_4 -f convertall -s 999 -c none --overwrite
+docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_3/sourcedata/sub-{subject}/*.IMA -o /base/dataset_3 -f convertall -s 315 -c none --overwrite
 ```
 
 For dataset_1 we first need to convert the .dcm from jpeg-2000 lossless to uncompressed dcm (thanks to Michele Svanera for the code):
@@ -102,7 +102,7 @@ python3 convert_all_compressed_dicom.py
 
 Create the info file (dataset_1)
 ```{bash}
-docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1 -f convertall -s 101 -ss 01 -c none --overwrite
+docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1 -f convertall -s 129 -ss 01 -c none --overwrite
 ```
 
 Get the info file
@@ -179,12 +179,12 @@ def infotodict(seqinfo):
 Use the heuristic file to convert the Dicom files to .nii.gz (nifti) and create .json files.
 
 ```{bash}
-docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_4/sourcedata/sub-{subject}/*.IMA -o /base/dataset_4 -f /base/code/heuristic_anthrom.py -s 412 -c dcm2niix -b --overwrite
+docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_3/sourcedata/sub-{subject}/*.IMA -o /base/dataset_3 -f /base/code/heuristic_anthrom.py -s 301 -c dcm2niix -b --overwrite
 ```
 
 For dataset_1 (for dataset_1 add ses-{session}/ and --ss 01 and .dcm). Movie for sub-101 and 102 is in ses-02. 
 ```{bash}
-docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1 -f /base/code/heuristic_anthrom.py -s 116 127 -ss 01 -c dcm2niix -b --overwrite
+docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1 -f /base/code/heuristic_anthrom.py -s 121 -ss 02 -c dcm2niix -b --overwrite
 ```
 
 On the grid do: (sub-116: manual in dcm2niigui)
@@ -200,7 +200,7 @@ Dataset_2 - 4
 singularity run -B /analyse/Project0255/:/base /analyse/Project0255/my_images/heudiconv_latest.sif -d /base/dataset_2/sourcedata/sub-{subject}/*.IMA -o /base/dataset_2/ -f /base/code/heuristic_anthrom.py -s 201 -c dcm2niix -b --overwrite
 ```
 
-## 2.4 Anonymize the data
+## 2.4 Anonymize the data 
 Deface using [Pydeface](https://github.com/poldracklab/pydeface). 
 
 ```{bash}
@@ -208,9 +208,9 @@ Deface using [Pydeface](https://github.com/poldracklab/pydeface).
 
 set -e 
 ####For loop that defaces the MRI per subject and replaces the old MRI with the new defaced MRI
-rootfolder=/Volumes/Project0255/dataset_4
+rootfolder=/Volumes/Project0255/dataset_3
 
-for subj in 412 413 414 415 416 417 418 419 420 421 422; do
+for subj in 315 316 317 318 319 320 321 322; do
 	echo "Defacing participant $subj"
 pydeface ${rootfolder}/sub-${subj}/anat/sub-${subj}_T1w.nii.gz
 rm -f ${rootfolder}/sub-${subj}/anat/sub-${subj}_T1w.nii.gz
@@ -228,9 +228,9 @@ ses-02: 104 105 106 108 109 110 111 115 116 120 121 125 126 127
 set -e 
 rootfolder=/Volumes/Project0255/dataset_1
 
-for subj in 104 105 106 108 109 110 111 115 116 120 121 125 126 127; do
+for subj in 129; do
 	echo "Defacing participant $subj"
-for session in 02; do
+for session in 01; do
 for echo in 1 2 3 4 5; do
 pydeface ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_echo-${echo}_T1w.nii.gz
 rm -f ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_echo-${echo}_T1w.nii.gz 
@@ -266,7 +266,7 @@ MRIQC is a docker tool to do quality control of the data. More info [here](https
 MRIQC 0.14.2 was used:
 
 ```{bash}
-docker run -it --rm -v /Volumes/Project0255/dataset_4/:/data:ro -v /Volumes/Project0255/dataset_4/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out participant --participant-label 411 -m T1w bold --ica --fft-spikes-detector 
+docker run -it --rm -v /Volumes/Project0255/dataset_1/:/data:ro -v /Volumes/Project0255/dataset_1/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out participant --participant-label 129 -m T1w bold --ica --fft-spikes-detector 
 ```
 
 On the grid do (cd in /analyse folder):
@@ -301,7 +301,6 @@ source("/Volumes/Project0255/code/R_rainclouds.R")
 DF.dataset1  <- read_tsv(file = paste("/Volumes/Project0255/dataset_1/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
   gather("measure", "value", 2:46) %>%
   select("bids_name","measure", "value")
-
 
 DF.dataset2 <- read_tsv(file = paste("/Volumes/Project0255/dataset_2/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
   gather("measure", "value", 2:46) %>%
@@ -343,7 +342,7 @@ If you run into memory problems you can use --skip_bids_validation; skipped the 
 
 If run on the GRID (HCP @ University of Glasgow), cd into the analyse folder and run:
 ```{bash}
-singularity run --cleanenv /analyse/Project0255/my_images/fmriprep-1.5.2.simg /analyse/Project0255/dataset_2/ /analyse/Project0255/dataset_2/derivatives participant --participant-label sub-222 --fs-license-file /analyse/Project0255/my_images/license.txt --skip_bids_validation --fs-no-reconall --use-syn-sdc -w /analyse/Project0255/work/dataset_2
+singularity run --cleanenv /analyse/Project0255/my_images/fmriprep-1.5.2.simg /analyse/Project0255/dataset_3/ /analyse/Project0255/dataset_3/derivatives participant --participant-label sub-301 --fs-license-file /analyse/Project0255/my_images/license.txt --skip_bids_validation --fs-no-reconall -w /analyse/Project0255/work/dataset_3
 ```
 
 ## 3.4 Theory-of-Mind event protocols 
@@ -360,26 +359,25 @@ PartlyCloudy <- data.frame(onset = c(86, 98, 120, 176, 238, 252, 300, 70, 92, 10
                            trial_type = c(rep("mental",7), rep("pain",9)))
 
 #dataset_1
-for (sub in 101:128){ #note: localisers for sub-101 and sub-102 are in ses-02
-  filename = paste("/Volumes/Project0246/dataset_1/sub-", sub, "/ses-01/func/sub-", sub, "_ses-01_task-tom_events.tsv", sep ="")
+for (sub in 102:129){ #note: localisers for sub-101 are in ses-02
+  filename = paste("/Volumes/Project0255/dataset_1/sub-", sub, "/ses-01/func/sub-", sub, "_ses-01_task-movie_events.tsv", sep ="")
 write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
 }
 #dataset_2
 for (sub in 201:235){ 
-  filename = paste("/Volumes/Project0246/dataset_2/sub-", sub, "/ses-01/func/sub-", sub, "_ses-01_task-tom_events.tsv", sep ="")
+  filename = paste("/Volumes/Project0255/dataset_2/sub-", sub, "/func/sub-", sub, "_task-movie_events.tsv", sep ="")
 write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
 }
 #dataset_3
-for (sub in 301:321){ #see comment above for sub-322
-  filename = paste("/Volumes/Project0246/dataset_3/sub-", sub, "/ses-01/func/sub-", sub, "_ses-01_task-tom_events.tsv", sep ="")
+for (sub in 301:322){ #note: localisers for sub-322 should have t-10 (no trigger) <-manually correct this
+  filename = paste("/Volumes/Project0255/dataset_3/sub-", sub, "/func/sub-", sub, "_task-movie_events.tsv", sep ="")
 write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
 }
 #dataset_4
-for (sub in 401:423){ 
-  filename = paste("/Volumes/Project0246/dataset_3/sub-", sub, "/ses-01/func/sub-", sub, "_ses-01_task-tom_events.tsv", sep ="")
+for (sub in 401:422){ 
+  filename = paste("/Volumes/Project0255/dataset_4/sub-", sub, "/func/sub-", sub, "_task-movie_events.tsv", sep ="")
 write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
 }
-
 ```
 
 # 4. Analyses {.tabset}
