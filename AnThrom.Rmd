@@ -179,7 +179,7 @@ def infotodict(seqinfo):
 Use the heuristic file to convert the Dicom files to .nii.gz (nifti) and create .json files.
 
 ```{bash}
-docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_3/sourcedata/sub-{subject}/*.IMA -o /base/dataset_3 -f /base/code/heuristic_anthrom.py -s 301 -c dcm2niix -b --overwrite
+docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_4/sourcedata/sub-{subject}/*.IMA -o /base/dataset_4 -f /base/code/heuristic_anthrom2.py -s 401 -c dcm2niix -b --overwrite
 ```
 
 For dataset_1 (for dataset_1 add ses-{session}/ and --ss 01 and .dcm). Movie for sub-101 and 102 is in ses-02. 
@@ -246,11 +246,19 @@ You need to specify “IntendedFor” field in the _phasediff.json files to poin
 
 Run the following script (thanks to Michele Svanera for the code):
 ```{python}
-
 python change_json.py
 ```
 
-## 2.6 BIDS validation
+## 2.5 Combine the dual-echo runs for dataset_4
+
+For dataset_4 we need to combine the two echo's (see [NeuroStar](https://neurostars.org/t/fmriprep-does-not-combine-multi-echo-timeseries/3398/2) for more info. We created a dual_sum volume by adding the two images together (see [Halai et al. 2014](https://onlinelibrary.wiley.com/doi/full/10.1002/hbm.22463). 
+
+```{bash}
+
+```
+
+
+## 2.7 BIDS validation
 
 Use the BIDS-Validator to check if the dataset is BIDS compliant.
 
@@ -330,7 +338,6 @@ ggplot(DF.full,aes(x=dataset,y=value,fill=dataset))+
   scale_colour_brewer(palette = "Reds") + ggtitle(paste("Comparison of", modality, "QC measure", QCmeasure, "between datasets"))
 ```
 
-
 ## 3.3 fMRIprep 
 fMRIprep is a docker tool for preprocessing of the fMRI data. More info [here](https://fmriprep.readthedocs.io/en/stable/#)
 
@@ -342,7 +349,7 @@ If you run into memory problems you can use --skip_bids_validation; skipped the 
 
 If run on the GRID (HCP @ University of Glasgow), cd into the analyse folder and run:
 ```{bash}
-singularity run --cleanenv /analyse/Project0255/my_images/fmriprep-1.5.2.simg /analyse/Project0255/dataset_3/ /analyse/Project0255/dataset_3/derivatives participant --participant-label sub-301 --fs-license-file /analyse/Project0255/my_images/license.txt --skip_bids_validation --fs-no-reconall -w /analyse/Project0255/work/dataset_3
+singularity run --cleanenv /analyse/Project0255/my_images/fmriprep-1.5.2.simg /analyse/Project0255/dataset_4/ /analyse/Project0255/dataset_4/derivatives participant --participant-label sub-401 --fs-license-file /analyse/Project0255/my_images/license.txt --skip_bids_validation --fs-no-reconall -w /analyse/Project0255/work/dataset_4
 ```
 
 ## 3.4 Theory-of-Mind event protocols 
@@ -382,7 +389,9 @@ write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = 
 
 # 4. Analyses {.tabset}
 
-## 4.1 First-level fROI analysis 
+## 4.1 First-level analysis 
+
+## 4.2 First-level fROI analysis 
 Extract data using marsbar. 
 
 ## 4.2 Second-level whole-brain analysis 
