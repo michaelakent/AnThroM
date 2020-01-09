@@ -249,7 +249,7 @@ Run the following script (thanks to Michele Svanera for the code):
 python change_json.py
 ```
 
-## 2.5 Combine the dual-echo runs for dataset_4
+## 2.6 Combine the dual-echo runs for dataset_4
 
 For dataset_4 we need to combine the two echo's (see [NeuroStar](https://neurostars.org/t/fmriprep-does-not-combine-multi-echo-timeseries/3398/2) for more info. We created a dual_sum volume by adding the two images together (see [Halai et al. 2014](https://onlinelibrary.wiley.com/doi/full/10.1002/hbm.22463). 
 
@@ -352,6 +352,22 @@ If run on the GRID (HCP @ University of Glasgow), cd into the analyse folder and
 singularity run --cleanenv /analyse/Project0255/my_images/fmriprep-1.5.2.simg /analyse/Project0255/dataset_4/ /analyse/Project0255/dataset_4/derivatives participant --participant-label sub-401 --fs-license-file /analyse/Project0255/my_images/license.txt --skip_bids_validation --fs-no-reconall -w /analyse/Project0255/work/dataset_4
 ```
 
+Resize functional files for two participants (sub-117 and sub-125) from dataset_1 (sub-{sub}_ses-01_task-movie_space-MNI152NLin2009cAsym_desc-preproc_bold.nii) to allow for group comparison. 
+
+```
+voxsiz = [3 3 3.5]; % new voxel size {mm}
+V = spm_select([1 Inf],'image');
+V = spm_vol(V);
+for i=1:numel(V)
+   bb        = spm_get_bbox(V(i));
+   VV(1:2)   = V(i);
+   VV(1).mat = spm_matrix([bb(1,:) 0 0 0 voxsiz])*spm_matrix([-1 -1 -1]);
+   VV(1).dim = ceil(VV(1).mat \ [bb(2,:) 1]' - 0.1)';
+   VV(1).dim = VV(1).dim(1:3);
+   spm_reslice(VV,struct('mean',false,'which',1,'interp',0)); % 1 for linear
+end
+```
+
 ## 3.4 Theory-of-Mind event protocols 
 
 Create tsv file for functional localiser
@@ -391,12 +407,47 @@ write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = 
 
 ## 4.1 First-level analysis 
 
-## 4.2 First-level fROI analysis 
-Extract data using marsbar. 
+Dataset_1 
+```{bash}
+cd "/Volumes/Project0255/code/"
+matlab -batch "BIDS_SPM_firstlevel_tom_dataset1"
+matlab -batch "BIDS_SPM_firstlevel_tom_dataset1_ppn101"
+matlab -batch "BIDS_SPM_firstlevel_tom_dataset1_ppn114"
+```
+
+Dataset_2 
+```{bash}
+cd "/Volumes/Project0255/code/"
+matlab -batch "BIDS_SPM_firstlevel_tom_dataset2_ppn201_202"
+```
+
+Dataset_3
+```{bash}
+cd "/Volumes/Project0255/code/"
+matlab -batch "BIDS_SPM_firstlevel_tom_dataset3"
+```
+
+Dataset_4
+```{bash}
+cd "/Volumes/Project0255/code/"
+matlab -batch "BIDS_SPM_firstlevel_tom_dataset4"
+```
 
 ## 4.2 Second-level whole-brain analysis 
 
 Run it seperately for the datasets.
+```{bash}
+cd "/Volumes/Project0255/code/"
+matlab -batch "BIDS_SPM_secondlevel_tom_dataset1"
+matlab -batch "BIDS_SPM_secondlevel_tom_dataset2"
+matlab -batch "BIDS_SPM_secondlevel_tom_dataset3"
+matlab -batch "BIDS_SPM_secondlevel_tom_dataset4"
+```
+
+
+## 4.3 First-level fROI analysis 
+Extract data using marsbar. 
+
 
 # 5. IDAQ {.tabset}
 
