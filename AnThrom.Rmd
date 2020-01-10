@@ -274,7 +274,7 @@ MRIQC is a docker tool to do quality control of the data. More info [here](https
 MRIQC 0.14.2 was used:
 
 ```{bash}
-docker run -it --rm -v /Volumes/Project0255/dataset_1/:/data:ro -v /Volumes/Project0255/dataset_1/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out participant --participant-label 129 -m T1w bold --ica --fft-spikes-detector 
+docker run -it --rm -v /Volumes/Project0255/dataset_4/:/data:ro -v /Volumes/Project0255/dataset_4/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out participant --participant-label 403 -m T1w bold --ica --fft-spikes-detector 
 ```
 
 On the grid do (cd in /analyse folder):
@@ -286,7 +286,7 @@ singularity run --cleanenv /analyse/Project0255/my_images/mriqc-0.14.2.simg /ana
 Run it seperately for the datasets. Change participant to group to create the group reports.
 
 ```{bash}
-docker run -it --rm -v /Volumes/Project0255/dataset_3/:/data:ro -v /Volumes/Project0255/dataset_3/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out group
+docker run -it --rm -v /Volumes/Project0255/dataset_4/:/data:ro -v /Volumes/Project0255/dataset_4/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out group
 ```
 
 ## 3.2 Compare MRIQC
@@ -295,7 +295,7 @@ Plot the output. This is based on [MRIQCeption](https://github.com/elizabethbear
 
 Adjust this to your liking (e.g. bold: fd_mean, fd_perc, dvars_std, dvars_vstd, gcor, tsnr, t1w: cjv, cnr, snr, efc, inu, wm2max, fwhm) and modality (bold or t1w)
 ```{r}
-QCmeasure <- "dvars_std" 
+QCmeasure <- "snr" 
 modality <- "bold"
 ```
 
@@ -335,8 +335,18 @@ ggplot(DF.full,aes(x=dataset,y=value,fill=dataset))+
   geom_boxplot(aes(x=dataset,y=value),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
   #facet_wrap(. ~ dataset) +
   theme_classic() + ylab(QCmeasure) + scale_fill_brewer(palette = "Reds") +
-  scale_colour_brewer(palette = "Reds") + ggtitle(paste("Comparison of", modality, "QC measure", QCmeasure, "between datasets"))
+  scale_colour_brewer(palette = "Reds") + ggtitle(paste("Comparison of", modality, "QC measure", QCmeasure, "between datasets")) 
 ```
+
+```{r}
+DF.full <- bind_rows(DF.dataset1, DF.dataset2, DF.dataset3,  DF.dataset4, .id = "dataset") %>%
+  group_by(dataset, measure) %>%
+  summarise(m = mean(value),
+            sd = sd(value)) %>%
+  write_csv("/Volumes/Project0255/code/MRIQC.csv")
+  
+```
+
 
 ## 3.3 fMRIprep 
 fMRIprep is a docker tool for preprocessing of the fMRI data. More info [here](https://fmriprep.readthedocs.io/en/stable/#)
@@ -451,7 +461,34 @@ Extract data using marsbar.
 
 # 5. IDAQ {.tabset}
 
-## Calculation of individual scores
+## 5.1 Calculation of individual scores
+```{r}
+library(tidyverse)
+source("/Volumes/Project0255/code/R_rainclouds.R")
+
+#load own data
+DF.dataset1  <- read_csv(file = paste("/Volumes/Project0255/dataset_1/sourcedata/IDAQ_dataset1.csv", sep ="")) %>%
+  gather("sub", "value", 3:31) 
+DF.dataset4  <- read_csv(file = paste("/Volumes/Project0255/dataset_4/sourcedata/IDAQ_dataset4.csv", sep ="")) %>%
+  gather("sub", "value", 3:24) 
+
+DF.full <- bind_rows(DF.dataset1, DF.dataset4, .id = "dataset") %>%
+  group_by(dataset, sub, Subscale) %>%
+  summarise(score = mean(value))
+
+#create raincloud plot (check out the [github](https://github.com/RainCloudPlots/) or [preprint](https://wellcomeopenresearch.org/articles/4-63/v1)
+ggplot(DF.full,aes(x=dataset,y=score,fill=dataset))+
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .5, colour = NA)+
+  geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 20)+
+  geom_boxplot(aes(x=dataset,y=score),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
+  theme_classic() + ylab(QCmeasure) + scale_fill_brewer(palette = "Reds") +
+  scale_colour_brewer(palette = "Reds") + ggtitle(paste("Comparison of IDAQ scores between datasets")) +
+  facet_wrap(~Subscale)
+```
+
+
+## 5.2 Comparison across datasets
+
 
 # 6. Results {.tabset}
 
