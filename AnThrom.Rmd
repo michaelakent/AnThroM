@@ -445,6 +445,36 @@ matlab -batch "BIDS_SPM_firstlevel_tom_dataset4"
 
 ## 4.2 Second-level whole-brain analysis 
 
+Create a group average for the GM_probseg.nii for each dataset in Matlab (change the code per dataset)
+```{}
+clear all
+
+spm('Defaults','fMRI');
+spm_jobman('initcfg');  
+
+BIDS = spm_BIDS('/Volumes/Project0255/dataset_3'); %change this
+BIDSfirst=fullfile(BIDS.dir,'derivatives/fmriprep'); 
+
+sublist = transpose(BIDS.participants.participant_id) 
+subex = [] %subjects that don't have an anatomical (14 dataset_1)
+sublist(subex) = []; 
+
+for i=1:length(sublist)
+    subdir=fullfile(BIDSfirst,sublist{i}, 'anat')
+    matlabbatch{1}.spm.util.imcalc.input{i,1} = [subdir, filesep, sublist{i}, '_space-MNI152NLin2009cAsym_label-GM_probseg.nii,1']
+end
+matlabbatch{1}.spm.util.imcalc.output = 'dataset3_averageGM';
+matlabbatch{1}.spm.util.imcalc.outdir = {'/Volumes/Project0255/dataset_3/derivatives/fmriprep'}; %change this
+matlabbatch{1}.spm.util.imcalc.expression = 'mean(X)';
+matlabbatch{1}.spm.util.imcalc.var = struct('name', {}, 'value', {});
+matlabbatch{1}.spm.util.imcalc.options.dmtx = 1;
+matlabbatch{1}.spm.util.imcalc.options.mask = 0;
+matlabbatch{1}.spm.util.imcalc.options.interp = 1;
+matlabbatch{1}.spm.util.imcalc.options.dtype = 4;
+
+spm_jobman('run',matlabbatch);
+```
+
 Run it seperately for the datasets.
 ```{bash}
 cd "/Volumes/Project0255/code/"
