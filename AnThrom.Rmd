@@ -504,16 +504,30 @@ DF.dataset4  <- read_csv(file = paste("/Volumes/Project0255/dataset_4/sourcedata
 
 DF.full <- bind_rows(DF.dataset1, DF.dataset4, .id = "dataset") %>%
   group_by(dataset, sub, Subscale) %>%
-  summarise(score = mean(value))
+  summarise(score = sum(value, na.rm = TRUE))
 
 #create raincloud plot (check out the [github](https://github.com/RainCloudPlots/) or [preprint](https://wellcomeopenresearch.org/articles/4-63/v1)
 ggplot(DF.full,aes(x=dataset,y=score,fill=dataset))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .5, colour = NA)+
   geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 20)+
   geom_boxplot(aes(x=dataset,y=score),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
-  theme_classic() + ylab(QCmeasure) + scale_fill_brewer(palette = "Reds") +
-  scale_colour_brewer(palette = "Reds") + ggtitle(paste("Comparison of IDAQ scores between datasets")) +
+  theme_classic() + ylab(paste("score (0-150)")) + scale_fill_brewer(palette = "Blues") +
+  scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of IDAQ scores between datasets")) +
   facet_wrap(~Subscale)
+
+library("psych")
+a <- bind_rows(DF.dataset1, DF.dataset4, .id = "dataset") 
+  DF.dataset4 %>% 
+  #filter(Subscale == "IDAQ") %>%
+  spread(ItemNr, value) %>%
+  select(-sub, -Subscale) %>%
+  alpha(na.rm = TRUE)
+
+
+DF.full %>%
+  group_by(dataset, Subscale) %>%
+  summarise(median = median(score),
+            iqr = IQR(score))
 ```
 
 
