@@ -516,13 +516,11 @@ ggplot(DF.full,aes(x=dataset,y=score,fill=dataset))+
   facet_wrap(~Subscale)
 
 library("psych")
-a <- bind_rows(DF.dataset1, DF.dataset4, .id = "dataset") 
-  DF.dataset4 %>% 
-  #filter(Subscale == "IDAQ") %>%
+bind_rows(DF.dataset1, DF.dataset4, .id = "dataset") %>% 
+  filter(Subscale == "IDAQ-NA") %>%
   spread(ItemNr, value) %>%
-  select(-sub, -Subscale) %>%
+  select(-sub, -Subscale, -dataset) %>%
   alpha(na.rm = TRUE)
-
 
 DF.full %>%
   group_by(dataset, Subscale) %>%
