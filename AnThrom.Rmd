@@ -179,7 +179,7 @@ def infotodict(seqinfo):
 Use the heuristic file to convert the Dicom files to .nii.gz (nifti) and create .json files.
 
 ```{bash}
-docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_4/sourcedata/sub-{subject}/*.IMA -o /base/dataset_4 -f /base/code/heuristic_anthrom2.py -s 401 -c dcm2niix -b --overwrite
+docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_4/sourcedata/sub-{subject}/*.IMA -o /base/dataset_4 -f /base/code/heuristic_anthrom.py -s 401 -c dcm2niix -b --overwrite
 ```
 
 For dataset_1 (for dataset_1 add ses-{session}/ and --ss 01 and .dcm). Movie for sub-101 and 102 is in ses-02. 
@@ -208,9 +208,9 @@ Deface using [Pydeface](https://github.com/poldracklab/pydeface).
 
 set -e 
 ####For loop that defaces the MRI per subject and replaces the old MRI with the new defaced MRI
-rootfolder=/Volumes/Project0255/dataset_3
+rootfolder=/Volumes/Project0255/dataset_4
 
-for subj in 315 316 317 318 319 320 321 322; do
+for subj in 401; do
 	echo "Defacing participant $subj"
 pydeface ${rootfolder}/sub-${subj}/anat/sub-${subj}_T1w.nii.gz
 rm -f ${rootfolder}/sub-${subj}/anat/sub-${subj}_T1w.nii.gz
@@ -253,8 +253,9 @@ python change_json.py
 
 For dataset_4 we need to combine the two echo's (see [NeuroStar](https://neurostars.org/t/fmriprep-does-not-combine-multi-echo-timeseries/3398/2) for more info. We created a dual_sum volume by adding the two images together (see [Halai et al. 2014](https://onlinelibrary.wiley.com/doi/full/10.1002/hbm.22463). 
 
-```{bash}
-
+Run the following script (thanks to Tyler Morgan for the code):
+```{python}
+python sum_echo.py
 ```
 
 
@@ -359,7 +360,7 @@ If you run into memory problems you can use --skip_bids_validation; skipped the 
 
 If run on the GRID (HCP @ University of Glasgow), cd into the analyse folder and run:
 ```{bash}
-singularity run --cleanenv /analyse/Project0255/my_images/fmriprep-1.5.2.simg /analyse/Project0255/dataset_4/ /analyse/Project0255/dataset_4/derivatives participant --participant-label sub-401 --fs-license-file /analyse/Project0255/my_images/license.txt --skip_bids_validation --fs-no-reconall -w /analyse/Project0255/work/dataset_4
+singularity run --cleanenv /analyse/Project0255/my_images/fmriprep-1.5.2.simg /analyse/Project0255/dataset_4/ /analyse/Project0255/dataset_4/derivatives participant --participant-label sub-01 --fs-license-file /analyse/Project0255/my_images/license.txt --skip_bids_validation --fs-no-reconall -w /analyse/Project0255/work/dataset_4
 ```
 
 Resize functional files for two participants (sub-117 and sub-125) from dataset_1 (sub-{sub}_ses-01_task-movie_space-MNI152NLin2009cAsym_desc-preproc_bold.nii) to allow for group comparison. 
