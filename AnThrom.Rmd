@@ -500,12 +500,18 @@ source("/Volumes/Project0255/code/R_rainclouds.R")
 #load own data
 DF.dataset1  <- read_csv(file = paste("/Volumes/Project0255/dataset_1/sourcedata/IDAQ_dataset1.csv", sep ="")) %>%
   gather("sub", "value", 3:31) 
+DF.dataset2  <- read_csv(file = paste("/Volumes/Project0255/dataset_2/sourcedata/IDAQ_dataset2.csv", sep ="")) %>%
+  gather("sub", "value", 3:37) 
+DF.dataset3  <- read_csv(file = paste("/Volumes/Project0255/dataset_3/sourcedata/IDAQ_dataset3.csv", sep ="")) %>%
+  gather("sub", "value", 3:24) 
 DF.dataset4  <- read_csv(file = paste("/Volumes/Project0255/dataset_4/sourcedata/IDAQ_dataset4.csv", sep ="")) %>%
   gather("sub", "value", 3:24) 
 
-DF.full <- bind_rows(DF.dataset1, DF.dataset4, .id = "dataset") %>%
+DF.full <- bind_rows(DF.dataset1, DF.dataset2, DF.dataset3, DF.dataset4, .id = "dataset") %>%
   group_by(dataset, sub, Subscale) %>%
-  summarise(score = sum(value, na.rm = TRUE))
+  filter(!is.na(value))%>%
+  summarise(score = sum(value, na.rm = TRUE)) 
+
 
 #create raincloud plot (check out the [github](https://github.com/RainCloudPlots/) or [preprint](https://wellcomeopenresearch.org/articles/4-63/v1)
 ggplot(DF.full,aes(x=dataset,y=score,fill=dataset))+
@@ -517,8 +523,8 @@ ggplot(DF.full,aes(x=dataset,y=score,fill=dataset))+
   facet_wrap(~Subscale)
 
 library("psych")
-bind_rows(DF.dataset1, DF.dataset4, .id = "dataset") %>% 
-  filter(Subscale == "IDAQ-NA") %>%
+bind_rows(DF.dataset1, DF.dataset2, DF.dataset3, DF.dataset4, .id = "dataset") %>% 
+  filter(Subscale == "IDAQ") %>%
   spread(ItemNr, value) %>%
   select(-sub, -Subscale, -dataset) %>%
   alpha(na.rm = TRUE)
