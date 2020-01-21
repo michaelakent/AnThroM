@@ -275,13 +275,13 @@ MRIQC is a docker tool to do quality control of the data. More info [here](https
 MRIQC 0.14.2 was used:
 
 ```{bash}
-docker run -it --rm -v /Volumes/Project0255/dataset_4/:/data:ro -v /Volumes/Project0255/dataset_4/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out participant --participant-label 403 -m T1w bold --ica --fft-spikes-detector 
+docker run -it --rm -v /Volumes/Project0255/dataset_1/:/data:ro -v /Volumes/Project0255/dataset_1/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out participant --participant-label 101 -m T1w bold --ica --fft-spikes-detector 
 ```
 
 On the grid do (cd in /analyse folder):
 
 ```{bash}
-singularity run --cleanenv /analyse/Project0255/my_images/mriqc-0.14.2.simg /analyse/Project0255/dataset_2 /analyse/Project0255/dataset_2/derivatives/mriqc participant --participant-label 201 -m T1w bold --ica --fft-spikes-detector -w /analyse/Project0255/work
+singularity run --cleanenv /analyse/Project0255/my_images/mriqc-0.14.2.simg /analyse/Project0255/dataset_1 /analyse/Project0255/dataset_1/derivatives/mriqc participant --participant-label 123 -m T1w bold --ica --fft-spikes-detector -w /analyse/Project0255/work
 ```
 
 Run it seperately for the datasets. Change participant to group to create the group reports.
@@ -340,11 +340,17 @@ ggplot(DF.full,aes(x=dataset,y=value,fill=dataset))+
 ```
 
 ```{r}
+library(devtools)
+library(tidystats)
+#install_github("willemsleegers/tidystats")
+
 DF.full <- bind_rows(DF.dataset1, DF.dataset2, DF.dataset3,  DF.dataset4, .id = "dataset") %>%
   group_by(dataset, measure) %>%
+  describe_data(value)
   summarise(m = mean(value),
             sd = sd(value)) %>%
-  write_csv("/Volumes/Project0255/code/MRIQC.csv")
+  
+  #write_csv("/Volumes/Project0255/code/MRIQC.csv")
   
 ```
 
@@ -360,7 +366,7 @@ If you run into memory problems you can use --skip_bids_validation; skipped the 
 
 If run on the GRID (HCP @ University of Glasgow), cd into the analyse folder and run:
 ```{bash}
-singularity run --cleanenv /analyse/Project0255/my_images/fmriprep-1.5.2.simg /analyse/Project0255/dataset_4/ /analyse/Project0255/dataset_4/derivatives participant --participant-label sub-01 --fs-license-file /analyse/Project0255/my_images/license.txt --skip_bids_validation --fs-no-reconall -w /analyse/Project0255/work/dataset_4
+singularity run --cleanenv /analyse/Project0255/my_images/fmriprep-1.5.2.simg /analyse/Project0255/dataset_1/ /analyse/Project0255/dataset_1/derivatives participant --participant-label sub-129 --fs-license-file /analyse/Project0255/my_images/license.txt --skip_bids_validation --use-syn-sd --fs-no-reconall -w /analyse/Project0255/work/compute00
 ```
 
 Resize functional files for two participants (sub-117 and sub-125) from dataset_1 (sub-{sub}_ses-01_task-movie_space-MNI152NLin2009cAsym_desc-preproc_bold.nii) to allow for group comparison. 
@@ -477,6 +483,9 @@ spm_jobman('run',matlabbatch);
 ```
 
 Run it seperately for the datasets.
+
+For dataset 1, sub-117 and sub-125 needed to be resized (use resize_voxels.m- slightly differences in
+%voxel size - 3.003x3.003x3.5 instead of 3x3x3.5)
 ```{bash}
 cd "/Volumes/Project0255/code/"
 matlab -batch "BIDS_SPM_secondlevel_tom_dataset1"
@@ -511,34 +520,60 @@ DF.full <- bind_rows(DF.dataset1, DF.dataset2, DF.dataset3, DF.dataset4, .id = "
   group_by(dataset, sub, Subscale) %>%
   filter(!is.na(value))%>%
   summarise(score = sum(value, na.rm = TRUE)) 
+```
 
+## 5.2 IDAQ per dataset
 
+Visualise the scores
+```{r}
 #create raincloud plot (check out the [github](https://github.com/RainCloudPlots/) or [preprint](https://wellcomeopenresearch.org/articles/4-63/v1)
 ggplot(DF.full,aes(x=dataset,y=score,fill=dataset))+
-  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .5, colour = NA)+
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
   geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 20)+
   geom_boxplot(aes(x=dataset,y=score),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
   theme_classic() + ylab(paste("score (0-150)")) + scale_fill_brewer(palette = "Blues") +
   scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of IDAQ scores between datasets")) +
   facet_wrap(~Subscale)
+```
 
-library("psych")
-bind_rows(DF.dataset1, DF.dataset2, DF.dataset3, DF.dataset4, .id = "dataset") %>% 
-  filter(Subscale == "IDAQ") %>%
-  spread(ItemNr, value) %>%
-  select(-sub, -Subscale, -dataset) %>%
-  alpha(na.rm = TRUE)
-
+Median and interquartile range per dataset
+```{r}
 DF.full %>%
   group_by(dataset, Subscale) %>%
   summarise(median = median(score),
             iqr = IQR(score))
 ```
 
+## 5.3 Calculate reliability of IDAQ
 
-## 5.2 Comparison across datasets
+```{r}
+library("psych")
+
+#IDAQ
+bind_rows(DF.dataset1, DF.dataset2, DF.dataset3, DF.dataset4, .id = "dataset") %>% 
+  filter(Subscale == "IDAQ") %>%
+  spread(ItemNr, value) %>%
+  select(-sub, -Subscale, -dataset) %>%
+  alpha(na.rm = TRUE)
+
+#IDAQ-NA
+bind_rows(DF.dataset1, DF.dataset2, DF.dataset3, DF.dataset4, .id = "dataset") %>% 
+  filter(Subscale == "IDAQ-NA") %>%
+  spread(ItemNr, value) %>%
+  select(-sub, -Subscale, -dataset) %>%
+  alpha(na.rm = TRUE)
+
+```
+
+## 5.4 Comparison across datasets
+```{r}
+library("ez")
+DF.full %>% ezANOVA(dv = score, wid = sub, within = .(Subscale), between = .(dataset))
+```
 
 
 # 6. Results {.tabset}
+
+
 
 ## Comparison across studies
