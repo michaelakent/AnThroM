@@ -65,12 +65,9 @@ bind_rows(DF.dataset1, DF.dataset2, DF.dataset3,  DF.dataset4, .id = "dataset") 
  Dataset_4: yes  
  
 ## 1.3 To do
-- get Dicoms, create BIDS dataset, use sub-101, sub-201, sub-301 etc...  
 - remove Dicoms after BIDS dataset creation  
-- Deface dataset  
-- run MRIQC
-- run fMRIprep  
 - fROI  
+- run formal analyses   
 
 # 2. BIDS dataset {.tabset}
 
@@ -574,7 +571,5 @@ DF.full %>% ezANOVA(dv = score, wid = sub, within = .(Subscale), between = .(dat
 
 
 # 6. Results {.tabset}
-
-
 
 ## Comparison across studies
