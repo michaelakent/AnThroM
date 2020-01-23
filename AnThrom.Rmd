@@ -19,9 +19,12 @@ by *Ruud Hortensius and Michaela Kent (University of Glasgow) - June 2019 - ...*
 
 Data of the Theory-of-Mind functional localiser and Individual Differences in Anthropomorphism Questionnaire are from five different studies.
   
- Dataset_1: Bangor Imaging Unit; EMBOTS; *n*=29 (including 1 pilot scan); full dataset and publication: [Cross...Hortensius (2019)   PTRB](https://royalsocietypublishing.org/doi/10.1098/rstb.2018.0034)  
- Dataset_2: Centre for Cognitive NeuroImaging; SHAREDBOTS; *n*=35 (including 2 pilot scans) publication: Hortensius & Cross, in preparation  
+ Dataset_1: Bangor Imaging Unit; EMBOTS; *n*=29 (including 1 pilot scan); full dataset and publication: [Cross...Hortensius (2019)   PTRB](https://royalsocietypublishing.org/doi/10.1098/rstb.2018.0034).  
+ 
+ Dataset_2: Centre for Cognitive NeuroImaging; SHAREDBOTS; *n*=35 (including 2 pilot scans) publication: Hortensius & Cross, in preparation.  
+ 
  Dataset_3: Centre for Cognitive NeuroImaging; Two studies with the same parameters: *n*=22 (including 2 pilot scans). Social_Gradient_1; *n*=10 (pilot experiment) and BOLDlight; *n*=12.  
+ 
  Dataset_4: Centre for Cognitive NeuroImaging; GAMEBOTS; *n*=22.  
 
 ```{r}
@@ -319,11 +322,13 @@ DF.dataset4 <- read_tsv(file = paste("/Volumes/Project0255/dataset_4/derivatives
   gather("measure", "value", 2:46) %>%
   select("bids_name","measure", "value") 
 
+#select the most relevant measures
+#selectionMeasure <- c("snr", "tsnr", "efc", "fber", "gsr_x", "gsr_y", "dvars_nstd", "dvars_std", "dvars_vstd", "gcor", "fd_mean", "fd_number", "fd_percentage", "spikes", "aor", "aqi")
+
 #combine data
 DF.full <- bind_rows(DF.dataset1, DF.dataset2, DF.dataset3,  DF.dataset4, .id = "dataset") %>%
   group_by(dataset) %>% 
-  filter(measure == QCmeasure) #%>%
-  #mutate(task = replace_na(task, "api"))
+  filter(measure == QCmeasure) #%in% c(selectionMeasure)) 
 
 #create raincloud plot (check out the [github](https://github.com/RainCloudPlots/) or [preprint](https://wellcomeopenresearch.org/articles/4-63/v1)
 p <- ggplot(DF.full,aes(x=dataset,y=value,fill=dataset))+
@@ -332,7 +337,8 @@ p <- ggplot(DF.full,aes(x=dataset,y=value,fill=dataset))+
   geom_boxplot(aes(x=dataset,y=value),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
   #facet_wrap(. ~ dataset) +
   theme_classic() + ylab(QCmeasure) + scale_fill_brewer(palette = "Reds") +
-  scale_colour_brewer(palette = "Reds") + ggtitle(paste("Comparison of", modality, "QC measure", QCmeasure, "between datasets")) 
+  scale_colour_brewer(palette = "Reds") + ggtitle(paste("Comparison of", modality, "QC measure", QCmeasure, "between datasets")) +
+  facet_wrap(~measure)
 p
 ```
 
@@ -506,7 +512,11 @@ source("/Volumes/Project0255/code/R_rainclouds.R")
 DF.dataset1  <- read_csv(file = paste("/Volumes/Project0255/dataset_1/sourcedata/IDAQ_dataset1.csv", sep ="")) %>%
   gather("sub", "value", 3:31) 
 DF.dataset2  <- read_csv(file = paste("/Volumes/Project0255/dataset_2/sourcedata/IDAQ_dataset2.csv", sep ="")) %>%
-  gather("sub", "value", 3:37) 
+  gather("sub", "value", 3:37) %>%group_by( sub, Subscale) %>%
+  filter(!is.na(value))%>%
+  summarise(score = sum(value, na.rm = TRUE))%>%
+  ungroup() %>%
+  filter(Subscale == "IDAQ")
 DF.dataset3  <- read_csv(file = paste("/Volumes/Project0255/dataset_3/sourcedata/IDAQ_dataset3.csv", sep ="")) %>%
   gather("sub", "value", 3:24) 
 DF.dataset4  <- read_csv(file = paste("/Volumes/Project0255/dataset_4/sourcedata/IDAQ_dataset4.csv", sep ="")) %>%
