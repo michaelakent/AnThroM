@@ -486,8 +486,33 @@ matlab -batch "BIDS_SPM_secondlevel_tom_dataset4"
 ```
 
 
-## 4.3 First-level fROI analysis 
-Extract data using marsbar. 
+## 4.3 fROI analysis 
+```{r}
+#load necessary libraries
+library(tidyverse)
+
+#load the fROI data
+
+tom_rois <- c("DMPFC","LTPJ","MMPFC","PC","RTPJ","VMPFC")
+dataset1 <- list.files(path = "/Volumes/Project0255/dataset_1/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
+tbl1 <- sapply(dataset1, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="test")
+#want to rename the columns with tom_rois variable?
+
+dataset2 <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
+tbl2 <- sapply(dataset2, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="test")
+
+dataset3 <- list.files(path = "/Volumes/Project0255/dataset_3/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
+tbl3 <- sapply(dataset3, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="test")
+
+dataset4 <- list.files(path = "/Volumes/Project0255/dataset_4/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
+tbl4 <- sapply(dataset4, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="test")
+
+
+```
 
 
 # 5. IDAQ {.tabset}
