@@ -644,42 +644,48 @@ Data wrangling
 library(tidyverse)
 
 #create variables
-#not including subject 201 and 202 for now 
 
 tom_rois <- c("DMPFC","LTPJ","MMPFC","PC","RTPJ","VMPFC")
-d1_subs <- c(101:129)
-d2_subs <- c(203:235)
-d3_subs <- c(301:322)
-d4_subs <- c(401:422)
 
 #load the fROI data
 roi_d1 <- list.files(path = "/Volumes/Project0255/dataset_1/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
 DF.d1 <- sapply(roi_d1, read_tsv, col_names=FALSE, simplify=TRUE) %>%
   bind_rows(.id ="bind") %>%
   rename_at(2:7, ~tom_rois) %>%
-  mutate(sub = d1_subs)
+  mutate(sub = c(101:129)) %>%
+  mutate(dataset = 1)
 
 roi_d2 <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
 DF.d2 <- sapply(roi_d2, read_tsv, col_names=FALSE, simplify=TRUE) %>%
   bind_rows(.id ="bind") %>%
   rename_at(2:7, ~tom_rois) %>%
-  mutate(sub = d2_subs)
+  mutate(sub = c(203:235))%>%
+  mutate(dataset = 2)
+
+roi_d2.extra <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/tom/201_202", pattern = "*.tsv", full.names= TRUE)
+DF.d2.extra <- sapply(roi_d2.extra, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="bind") %>%
+  rename_at(2:7, ~tom_rois) %>%
+  mutate(sub = c(201:202)) %>%
+  mutate(dataset = 2)
 
 roi_d3 <- list.files(path = "/Volumes/Project0255/dataset_3/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
 DF.d3 <- sapply(roi_d3, read_tsv, col_names=FALSE, simplify=TRUE) %>%
   bind_rows(.id ="bind") %>%
   rename_at(2:7, ~tom_rois) %>%
-  mutate(sub = d3_subs)
+  mutate(sub = c(301:322)) %>%
+  mutate(dataset = 3)
 
 roi_d4 <- list.files(path = "/Volumes/Project0255/dataset_4/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
 DF.d4 <- sapply(roi_d4, read_tsv, col_names=FALSE, simplify=TRUE) %>%
   bind_rows(.id ="bind") %>%
   rename_at(2:7, ~tom_rois) %>%
-  mutate(sub = d4_subs)
+  mutate(sub = c(401:422)) %>%
+  mutate(dataset = 4)
 
-all_tom_roi <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
+all_tom_roi <- bind_rows(DF.d1, DF.d2.extra, DF.d2, DF.d3, DF.d4) %>%
   select(-bind) %>%
-  select(8,1,2:7) 
+  select(8,7,1:6) 
 ```
 
 Visualise the data
@@ -693,8 +699,19 @@ p <- all_tom_roi %>%
   geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 20)+
   geom_boxplot(aes(x=dataset,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
   theme_classic() + ylab(paste("contrast (mental vs pain)")) + scale_fill_brewer(palette = "Blues") +
-  scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of contrasts values between datasets")) +
+  scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of ToM network contrasts values between datasets")) +
   facet_wrap(~roi)
+p
+
+p <- all_tom_roi %>%
+  gather(roi, contrast, 3:8) %>%
+  ggplot(.,aes(x=roi,y=contrast,fill=roi))+
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
+  geom_point(aes(colour = roi), position=position_jitter(width = .05), size = .5, shape = 20)+
+  geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
+  theme_classic() + ylab(paste("contrast (mental vs pain)")) + scale_fill_brewer(palette = "Blues") +
+  scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of ToM network contrasts values between datasets")) +
+  facet_wrap(~dataset)
 p
 ```
 
@@ -719,29 +736,40 @@ pain_roi_d1 <- list.files(path = "/Volumes/Project0255/dataset_1/derivatives/roi
 DF.d1 <- sapply(pain_roi_d1, read_tsv, col_names=FALSE, simplify=TRUE) %>%
   bind_rows(.id ="bind") %>%
   rename_at(2:8, ~pain_rois) %>%
-  mutate(sub = c(101:129)) 
+  mutate(sub = c(101:129)) %>%
+  mutate(dataset = 1)
+
+roi_d2.extra <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/pain/201_202", pattern = "*.tsv", full.names= TRUE)
+DF.d2.extra <- sapply(roi_d2.extra, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="bind") %>%
+  rename_at(2:8, ~pain_rois) %>%
+  mutate(sub = c(201:202)) %>%
+  mutate(dataset = 2)
 
 pain_roi_d2 <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
 DF.d2 <- sapply(pain_roi_d2, read_tsv, col_names=FALSE, simplify=TRUE) %>%
   bind_rows(.id ="bind") %>%
   rename_at(2:8, ~pain_rois) %>%
-  mutate(sub = c(203:235))
+  mutate(sub = c(203:235)) %>%
+  mutate(dataset = 2)
 
 pain_roi_d3 <- list.files(path = "/Volumes/Project0255/dataset_3/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
 DF.d3 <- sapply(pain_roi_d3, read_tsv, col_names=FALSE, simplify=TRUE) %>%
   bind_rows(.id ="bind") %>%
   rename_at(2:8, ~pain_rois) %>%
-  mutate(sub = c(301:322))
+  mutate(sub = c(301:322)) %>%
+  mutate(dataset = 3)
 
 pain_roi_d4 <- list.files(path = "/Volumes/Project0255/dataset_4/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
 DF.d4 <- sapply(pain_roi_d4, read_tsv, col_names=FALSE, simplify=TRUE) %>%
   bind_rows(.id ="bind") %>%
   rename_at(2:8, ~pain_rois) %>%
-  mutate(sub = c(401:422))
+  mutate(sub = c(401:422)) %>%
+  mutate(dataset = 4)
 
-all_pain_roi <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
+all_pain_roi <- bind_rows(DF.d1, DF.d2.extra, DF.d2, DF.d3, DF.d4) %>%
   select(-bind) %>%
-  select(9,1,2:8) 
+  select(9,8,1:7) 
 ```
 
 Visualise the data
@@ -755,6 +783,17 @@ p <- all_pain_roi %>%
   theme_classic() + ylab(paste("contrast (mental vs pain)")) + scale_fill_brewer(palette = "Blues") +
   scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of Pain Matrix contrasts estimates between datasets")) +
   facet_wrap(~roi)
+p
+
+p <- all_pain_roi %>%
+  gather(roi, contrast, 3:9) %>%
+  ggplot(.,aes(x=roi,y=contrast,fill=roi))+
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
+  geom_point(aes(colour = roi), position=position_jitter(width = .05), size = .5, shape = 20)+
+  geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
+  theme_classic() + ylab(paste("contrast (mental vs pain)")) + scale_fill_brewer(palette = "Blues") +
+  scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of Pain Matrix contrasts estimates between datasets")) +
+  facet_wrap(~dataset)
 p
 ```
 
