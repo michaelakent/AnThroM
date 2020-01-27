@@ -8,6 +8,8 @@ output:
   html_document:
     df_print: paged
     toc: yes
+editor_options: 
+  chunk_output_type: console
 ---
 #**AnThroM**
 **testing the relation between Theory-of-Mind network activation and dispositional anthropomorphism**  
@@ -505,22 +507,31 @@ library(tidyverse)
 #load the fROI data
 
 tom_rois <- c("DMPFC","LTPJ","MMPFC","PC","RTPJ","VMPFC")
-dataset1 <- list.files(path = "/Volumes/Project0255/dataset_1/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
-tbl1 <- sapply(dataset1, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="test")
-#want to rename the columns with tom_rois variable?
 
-dataset2 <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
-tbl2 <- sapply(dataset2, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="test")
+roi_d1 <- list.files(path = "/Volumes/Project0255/dataset_1/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
+DF.d1 <- sapply(roi_d1, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="bind") %>%
+  rename_at(2:7, ~tom_rois)
+  
+# use group_by() 
 
-dataset3 <- list.files(path = "/Volumes/Project0255/dataset_3/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
-tbl3 <- sapply(dataset3, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="test")
+roi_d2 <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
+DF.d2 <- sapply(roi_d2, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="bind") %>%
+  rename_at(2:7, ~tom_rois)
 
-dataset4 <- list.files(path = "/Volumes/Project0255/dataset_4/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
-tbl4 <- sapply(dataset4, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="test")
+roi_d3 <- list.files(path = "/Volumes/Project0255/dataset_3/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
+DF.d3 <- sapply(roi_d3, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="bind") %>%
+  rename_at(2:7, ~tom_rois)
+
+roi_d4 <- list.files(path = "/Volumes/Project0255/dataset_4/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
+DF.d4 <- sapply(roi_d4, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="bind") %>%
+  rename_at(2:7, ~tom_rois)
+
+all_roi_data <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
+  select(-bind)
 
 
 ```
