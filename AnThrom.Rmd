@@ -499,90 +499,61 @@ matlab -batch "BIDS_SPM_secondlevel_tom_dataset4"
 ```
 
 
-## 4.3 ToM fROI analysis 
-```{r}
-#load necessary libraries
-library(tidyverse)
+## 4.3 ToM fROI analysis  
 
-#create variables
-#not including subject 201 and 202 for now 
+Run the following (ROI_extract.m) script in matlab (change the code per dataset and roi and contrast)
+```{}
+%========================================================================
+%     fROI analysis for fmriprep data in BIDS format
+%========================================================================
+%     This script is written by  Michaela Kent and Ruud Hortensius
+%     (University of Glasgow) 
+%
+%     Last updated: January 2020
+%========================================================================
+clear all
+%add marsbar to path
+marsbar('on')
 
-tom_rois <- c("DMPFC","LTPJ","MMPFC","PC","RTPJ","VMPFC")
-d1_subs <- c(101:129)
-d2_subs <- c(203:235)
-d3_subs <- c(301:322)
-d4_subs <- c(401:422)
+%% Inputdirs
+BIDS = spm_BIDS('/Volumes/Project0255/dataset_4'); % parse BIDS directory (easier to query info from dataset)
+BIDSsecond=fullfile(BIDS.dir,'derivatives/bids_spm/second_level'); % get the second-level directory
 
-#load the fROI data
-roi_d1 <- list.files(path = "/Volumes/Project0255/dataset_1/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
-DF.d1 <- sapply(roi_d1, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="bind") %>%
-  rename_at(2:7, ~tom_rois) %>%
-  mutate(subject = d1_subs)
+contrastid = 'mental' %can be either mental (vs. pain) or pain (vs. mental)
+networkid = 'tom' %can be either tom (theory-of-mind) or pain (pain matrix)
 
-roi_d2 <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
-DF.d2 <- sapply(roi_d2, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="bind") %>%
-  rename_at(2:7, ~tom_rois) %>%
-  mutate(subject = d2_subs)
+%% Outputdirs
+outputdir=fullfile(BIDS.dir,'derivatives/roi', networkid);  % root outputdir for sublist
+spm_mkdir(outputdir); % create output directory 
 
-roi_d3 <- list.files(path = "/Volumes/Project0255/dataset_3/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
-DF.d3 <- sapply(roi_d3, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="bind") %>%
-  rename_at(2:7, ~tom_rois) %>%
-  mutate(subject = d3_subs)
+%% Load design matrix
+spm_name = spm_load(fullfile(BIDSsecond, filesep, contrastid , 'SPM.mat'))
+D  = mardo(spm_name);
 
-roi_d4 <- list.files(path = "/Volumes/Project0255/dataset_4/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
-DF.d4 <- sapply(roi_d4, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="bind") %>%
-  rename_at(2:7, ~tom_rois) %>%
-  mutate(subject = d4_subs)
 
-all_tom_roi <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
-  select(-bind) %>%
-  select(8,1,2:7)
+%% Load rois
+parcels = dir(fullfile(BIDS.dir,'derivatives/parcels/', networkid))
+parcels = struct2cell(parcels(arrayfun(@(x) ~strcmp(x.name(1),'.'),parcels)))
+parcels(2:6,:) = []
+
+for i=1:length(parcels) 
+    roi = fullfile(BIDS.dir,'derivatives/parcels/',  networkid, parcels{i})
+    R  = maroi(roi);
+    % Fetch data into marsbar data object
+    mY  = get_marsy(R, D, 'mean');
+    roi_data = summary_data(mY); % get summary time course(s)
+    roi_name = [outputdir,filesep,parcels{i},'.tsv'];
+    dlmwrite(roi_name,roi_data);
+end
 ```
 
-## 4.4 Pain Matrix fROI analysis
-```{r}
-#create variables
-pain_rois <- c("AMCC","LINSULA","LMFG","LS2","RINSULA","RMFG","RS2")
-#subject variables are the same as before
-d1_subs <- c(101:129)
-d2_subs <- c(203:235)
-d3_subs <- c(301:322)
-d4_subs <- c(401:422)
+Add sub-201 and sub-202 (different parameters so now combined in whole-brain group analysis)
+```{bash}
+cd "/Volumes/Project0255/code/"
+matlab -batch "BIDS_SPM_secondlevel_tom_dataset2_201_202"
+matlab -batch "ROI_extract_201_202"
 
-#load the fROI data
-pain_roi_d1 <- list.files(path = "/Volumes/Project0255/dataset_1/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
-DF.d1 <- sapply(pain_roi_d1, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="bind") %>%
-  rename_at(2:8, ~pain_rois) %>%
-  mutate(subject = d1_subs)
-
-pain_roi_d2 <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
-DF.d2 <- sapply(pain_roi_d2, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="bind") %>%
-  rename_at(2:8, ~pain_rois) %>%
-  mutate(subject = d2_subs)
-
-pain_roi_d3 <- list.files(path = "/Volumes/Project0255/dataset_3/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
-DF.d3 <- sapply(pain_roi_d3, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="bind") %>%
-  rename_at(2:8, ~pain_rois) %>%
-  mutate(subject = d3_subs)
-
-pain_roi_d4 <- list.files(path = "/Volumes/Project0255/dataset_4/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
-DF.d4 <- sapply(pain_roi_d4, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="bind") %>%
-  rename_at(2:8, ~pain_rois) %>%
-  mutate(subject = d4_subs)
-
-all_pain_roi <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
-  select(-bind) %>%
-  select(9,1,2:8)
 ```
-
 
 # 5. IDAQ {.tabset}
 
@@ -663,6 +634,134 @@ DF.full %>% ezANOVA(dv = score, wid = sub, within = .(Subscale), between = .(dat
 ```
 
 
-# 6. Results {.tabset}
+# 6. fROI results {.tabset}
 
-## Comparison across studies
+## 6.1 Comparison of ToM network contrast estimates across studies
+
+Data wrangling
+```{r}
+#load necessary libraries
+library(tidyverse)
+
+#create variables
+#not including subject 201 and 202 for now 
+
+tom_rois <- c("DMPFC","LTPJ","MMPFC","PC","RTPJ","VMPFC")
+d1_subs <- c(101:129)
+d2_subs <- c(203:235)
+d3_subs <- c(301:322)
+d4_subs <- c(401:422)
+
+#load the fROI data
+roi_d1 <- list.files(path = "/Volumes/Project0255/dataset_1/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
+DF.d1 <- sapply(roi_d1, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="bind") %>%
+  rename_at(2:7, ~tom_rois) %>%
+  mutate(sub = d1_subs)
+
+roi_d2 <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
+DF.d2 <- sapply(roi_d2, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="bind") %>%
+  rename_at(2:7, ~tom_rois) %>%
+  mutate(sub = d2_subs)
+
+roi_d3 <- list.files(path = "/Volumes/Project0255/dataset_3/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
+DF.d3 <- sapply(roi_d3, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="bind") %>%
+  rename_at(2:7, ~tom_rois) %>%
+  mutate(sub = d3_subs)
+
+roi_d4 <- list.files(path = "/Volumes/Project0255/dataset_4/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
+DF.d4 <- sapply(roi_d4, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="bind") %>%
+  rename_at(2:7, ~tom_rois) %>%
+  mutate(sub = d4_subs)
+
+all_tom_roi <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
+  select(-bind) %>%
+  select(8,1,2:7) 
+```
+
+Visualise the data
+```{r}
+source("/Volumes/Project0255/code/R_rainclouds.R")
+
+p <- all_tom_roi %>%
+  gather(roi, contrast, 3:8) %>%
+  ggplot(.,aes(x=dataset,y=contrast,fill=dataset))+
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
+  geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 20)+
+  geom_boxplot(aes(x=dataset,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
+  theme_classic() + ylab(paste("contrast (mental vs pain)")) + scale_fill_brewer(palette = "Blues") +
+  scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of contrasts values between datasets")) +
+  facet_wrap(~roi)
+p
+```
+
+Comparison across datasets
+
+```{r}
+library("ez")
+all_tom_roi %>%
+  gather(roi, contrast, 3:8) %>%
+  ezANOVA(dv = contrast, wid = sub, within = .(roi), between = .(dataset))
+```
+
+## 6.2 Comparison of Pain Matrix contrast estimates across studies
+
+Data wrangling
+```{r}
+#create variables
+pain_rois <- c("AMCC","LINSULA","LMFG","LS2","RINSULA","RMFG","RS2")
+
+#load the fROI data
+pain_roi_d1 <- list.files(path = "/Volumes/Project0255/dataset_1/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
+DF.d1 <- sapply(pain_roi_d1, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="bind") %>%
+  rename_at(2:8, ~pain_rois) %>%
+  mutate(sub = c(101:129)) 
+
+pain_roi_d2 <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
+DF.d2 <- sapply(pain_roi_d2, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="bind") %>%
+  rename_at(2:8, ~pain_rois) %>%
+  mutate(sub = c(203:235))
+
+pain_roi_d3 <- list.files(path = "/Volumes/Project0255/dataset_3/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
+DF.d3 <- sapply(pain_roi_d3, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="bind") %>%
+  rename_at(2:8, ~pain_rois) %>%
+  mutate(sub = c(301:322))
+
+pain_roi_d4 <- list.files(path = "/Volumes/Project0255/dataset_4/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
+DF.d4 <- sapply(pain_roi_d4, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="bind") %>%
+  rename_at(2:8, ~pain_rois) %>%
+  mutate(sub = c(401:422))
+
+all_pain_roi <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
+  select(-bind) %>%
+  select(9,1,2:8) 
+```
+
+Visualise the data
+```{r}
+p <- all_pain_roi %>%
+  gather(roi, contrast, 3:9) %>%
+  ggplot(.,aes(x=dataset,y=contrast,fill=dataset))+
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
+  geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 20)+
+  geom_boxplot(aes(x=dataset,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
+  theme_classic() + ylab(paste("contrast (mental vs pain)")) + scale_fill_brewer(palette = "Blues") +
+  scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of Pain Matrix contrasts estimates between datasets")) +
+  facet_wrap(~roi)
+p
+```
+
+Comparison across datasets
+```{r}
+library("ez")
+all_pain_roi %>%
+  gather(roi, contrast, 3:9) %>%
+  ezANOVA(dv = contrast, wid = sub, within = .(roi), between = .(dataset))
+```
