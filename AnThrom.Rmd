@@ -499,41 +499,88 @@ matlab -batch "BIDS_SPM_secondlevel_tom_dataset4"
 ```
 
 
-## 4.3 fROI analysis 
+## 4.3 ToM fROI analysis 
 ```{r}
 #load necessary libraries
 library(tidyverse)
 
-#load the fROI data
+#create variables
+#not including subject 201 and 202 for now 
 
 tom_rois <- c("DMPFC","LTPJ","MMPFC","PC","RTPJ","VMPFC")
+d1_subs <- c(101:129)
+d2_subs <- c(203:235)
+d3_subs <- c(301:322)
+d4_subs <- c(401:422)
 
+#load the fROI data
 roi_d1 <- list.files(path = "/Volumes/Project0255/dataset_1/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
 DF.d1 <- sapply(roi_d1, read_tsv, col_names=FALSE, simplify=TRUE) %>%
   bind_rows(.id ="bind") %>%
-  rename_at(2:7, ~tom_rois)
-  
-# use group_by() 
+  rename_at(2:7, ~tom_rois) %>%
+  mutate(subject = d1_subs)
 
 roi_d2 <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
 DF.d2 <- sapply(roi_d2, read_tsv, col_names=FALSE, simplify=TRUE) %>%
   bind_rows(.id ="bind") %>%
-  rename_at(2:7, ~tom_rois)
+  rename_at(2:7, ~tom_rois) %>%
+  mutate(subject = d2_subs)
 
 roi_d3 <- list.files(path = "/Volumes/Project0255/dataset_3/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
 DF.d3 <- sapply(roi_d3, read_tsv, col_names=FALSE, simplify=TRUE) %>%
   bind_rows(.id ="bind") %>%
-  rename_at(2:7, ~tom_rois)
+  rename_at(2:7, ~tom_rois) %>%
+  mutate(subject = d3_subs)
 
 roi_d4 <- list.files(path = "/Volumes/Project0255/dataset_4/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
 DF.d4 <- sapply(roi_d4, read_tsv, col_names=FALSE, simplify=TRUE) %>%
   bind_rows(.id ="bind") %>%
-  rename_at(2:7, ~tom_rois)
+  rename_at(2:7, ~tom_rois) %>%
+  mutate(subject = d4_subs)
 
-all_roi_data <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
-  select(-bind)
+all_tom_roi <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
+  select(-bind) %>%
+  select(8,1,2:7)
+```
 
+## 4.4 Pain Matrix fROI analysis
+```{r}
+#create variables
+pain_rois <- c("AMCC","LINSULA","LMFG","LS2","RINSULA","RMFG","RS2")
+#subject variables are the same as before
+d1_subs <- c(101:129)
+d2_subs <- c(203:235)
+d3_subs <- c(301:322)
+d4_subs <- c(401:422)
 
+#load the fROI data
+pain_roi_d1 <- list.files(path = "/Volumes/Project0255/dataset_1/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
+DF.d1 <- sapply(pain_roi_d1, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="bind") %>%
+  rename_at(2:8, ~pain_rois) %>%
+  mutate(subject = d1_subs)
+
+pain_roi_d2 <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
+DF.d2 <- sapply(pain_roi_d2, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="bind") %>%
+  rename_at(2:8, ~pain_rois) %>%
+  mutate(subject = d2_subs)
+
+pain_roi_d3 <- list.files(path = "/Volumes/Project0255/dataset_3/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
+DF.d3 <- sapply(pain_roi_d3, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="bind") %>%
+  rename_at(2:8, ~pain_rois) %>%
+  mutate(subject = d3_subs)
+
+pain_roi_d4 <- list.files(path = "/Volumes/Project0255/dataset_4/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
+DF.d4 <- sapply(pain_roi_d4, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+  bind_rows(.id ="bind") %>%
+  rename_at(2:8, ~pain_rois) %>%
+  mutate(subject = d4_subs)
+
+all_pain_roi <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
+  select(-bind) %>%
+  select(9,1,2:8)
 ```
 
 
