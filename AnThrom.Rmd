@@ -842,7 +842,7 @@ idaq_roi_wide <- left_join(all_tom_roi, idaq_full, by = "sub") %>%
   rename(dataset = dataset.x) %>%
   transform(IDAQ=as.numeric(IDAQ)) 
 
-cormat <- round(cor(as.matrix(idaq_roi_wide[3:9])), digits=3)
+cormat <- round(cor(as.matrix(idaq_roi_wide[3:9]), use = "complete.obs"), digits=3)
 
 cormat
 
