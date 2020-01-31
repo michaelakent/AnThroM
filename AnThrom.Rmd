@@ -893,6 +893,19 @@ plot2
 
 
 
+```{r}
+plot3 <- idaq_roi %>%
+  ggplot(aes(x=IDAQ, y=value, colour=roi)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=FALSE, show.legend=FALSE) +
+  labs(
+    x="IDAQ score",
+    y="Contrast"
+  ) +
+  facet_grid(.~roi)
+
+plot3
+```
 
 
 
