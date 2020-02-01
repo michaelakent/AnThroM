@@ -643,7 +643,7 @@ print(idaq_ez)
 
 # 6. fROI results {.tabset}
 
-## 6.1 Comparison of contrast estimates across studies and networks
+## 6.1 Data wrangling
 
 Create function to load the data
 ```{r}
@@ -689,110 +689,64 @@ DF.d4 <- roi_extract(4, 401, 422, "pain", 7)
 DF.roi <- bind_rows(DF.temp, DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4)
 
 rm(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4, DF.temp)
-  
 ```
 
+## 6.2 Theory-of-Mind network activation across datasets
 
-Visualise the data
+Visualise the data - Theory-of-Mind network
 ```{r}
 source("/Volumes/Project0255/code/R_rainclouds.R")
 
-p <- all_tom_roi %>%
-  gather(roi, contrast, 3:8) %>%
+p <- DF.roi %>%
+  filter(network == "tom") %>%
   ggplot(.,aes(x=roi,y=contrast,fill=roi))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
   geom_point(aes(colour = roi), position=position_jitter(width = .05), size = .5, shape = 20)+
   geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
   theme_classic() + ylab(paste("contrast (mental vs pain)")) + scale_fill_brewer(palette = "Blues") +
-  scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of ToM network contrasts values between datasets")) +
+  scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of ToM network contrasts values between datasets")) + theme(legend.position="none") +
   facet_wrap(~dataset)
 p
 ```
 
-Comparison across datasets
+Comparison across datasets - Theory-of-Mind network
 
 ```{r}
 library("ez")
-tom_ez <- all_tom_roi %>%
-  gather(roi, contrast, 3:8) %>%
+tom_ez <- DF.roi %>%
+  filter(network == "tom") %>%
   ezANOVA(dv = contrast, wid = sub, within = .(roi), between = .(dataset))
 print(tom_ez)
 
 ```
+## 6.2 Theory-of-Mind network activation across datasets
 
-## 6.2 Comparison of Pain Matrix contrast estimates across studies
-
-Data wrangling
+Visualise the data - Pain Matrix
 ```{r}
-#create variables
-pain_rois <- c("AMCC","LINSULA","LMFG","LS2","RINSULA","RMFG","RS2")
+source("/Volumes/Project0255/code/R_rainclouds.R")
 
-#load the fROI data
-temp <- list.files(path = "/Volumes/Project0255/dataset_1/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
-DF.d1 <- sapply(temp, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="bind") %>%
-  rename_at(2:8, ~pain_rois) %>%
-  mutate(sub = c(101:129)) %>%
-  mutate(dataset = 1)
-
-temp <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/pain/201_202", pattern = "*.tsv", full.names= TRUE)
-DF.d2.extra <- sapply(temp, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="bind") %>%
-  rename_at(2:8, ~pain_rois) %>%
-  mutate(sub = c(201:202)) %>%
-  mutate(dataset = 2)
-
-temp <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
-DF.d2 <- sapply(temp, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="bind") %>%
-  rename_at(2:8, ~pain_rois) %>%
-  mutate(sub = c(203:235)) %>%
-  mutate(dataset = 2)
-
-temp <- list.files(path = "/Volumes/Project0255/dataset_3/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
-DF.d3 <- sapply(temp, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="bind") %>%
-  rename_at(2:8, ~pain_rois) %>%
-  mutate(sub = c(301:322)) %>%
-  mutate(dataset = 3)
-
-temp <- list.files(path = "/Volumes/Project0255/dataset_4/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
-DF.d4 <- sapply(temp, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="bind") %>%
-  rename_at(2:8, ~pain_rois) %>%
-  mutate(sub = c(401:422)) %>%
-  mutate(dataset = 4)
-
-all_pain_roi <- bind_rows(DF.d1, DF.d2.extra, DF.d2, DF.d3, DF.d4) %>%
-  select(-bind) %>%
-  select(9,8,1:7) 
-```
-
-Visualise the data
-```{r}
-p <- all_pain_roi %>%
-  gather(roi, contrast, 3:9) %>%
+p <- DF.roi %>%
+  filter(network == "pain") %>%
   ggplot(.,aes(x=roi,y=contrast,fill=roi))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
   geom_point(aes(colour = roi), position=position_jitter(width = .05), size = .5, shape = 20)+
   geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
   theme_classic() + ylab(paste("contrast (mental vs pain)")) + scale_fill_brewer(palette = "Blues") +
-  scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of Pain Matrix contrasts estimates between datasets")) +
+  scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of ToM network contrasts values between datasets")) + theme(legend.position="none") +
   facet_wrap(~dataset)
 p
 ```
 
-Comparison across datasets
+Comparison across datasets - Pain Matrix
+
 ```{r}
 library("ez")
-pain_ez <- all_pain_roi %>%
-  gather(roi, contrast, 3:9) %>%
+pain_ez <- DF.roi %>%
+  filter(network == "pain") %>%
   ezANOVA(dv = contrast, wid = sub, within = .(roi), between = .(dataset))
-
 print(pain_ez)
+
 ```
-
-
 # 7. IDAQ and ROI Analysis 
 
 ## 7.1 Combine IDAQ scores and ROI data
