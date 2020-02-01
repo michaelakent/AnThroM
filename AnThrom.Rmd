@@ -582,44 +582,13 @@ DF.d4  <- read_csv(file = paste("/Volumes/Project0255/dataset_4/sourcedata/IDAQ_
   gather("sub", "value", 3:24) 
 
 DF.idaq <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
-  mutate(sub=gsub('sub-','',sub))
+  mutate(sub=gsub('sub-','',sub))%>%
+  transform(sub=as.integer(sub), dataset=as.integer(dataset))  
 
 rm(DF.d1, DF.d2, DF.d3, DF.d4)
 ```
 
-## 5.2 IDAQ per dataset
-
-Visualise the scores
-```{r}
-source("/Volumes/Project0255/code/R_rainclouds.R")
-
-
-p <- DF.idaq %>%
-  group_by(sub,dataset, Subscale) %>%
-  summarise(score = sum(value, na.rm = TRUE)) %>%
- ggplot(.,aes(x=dataset,y=score,fill=dataset))+
-  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
-  geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 20)+
-  geom_boxplot(aes(x=dataset,y=score),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
-  theme_classic() + ylab(paste("score (0-150)")) + scale_fill_brewer(palette = "Blues") +
-  scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of IDAQ scores between datasets")) +
-  facet_wrap(~Subscale)
-
-p
-```
-
-Median and interquartile range per dataset
-```{r}
-DF.idaq %>%
-  group_by(sub,dataset, Subscale) %>%
-  summarise(score = sum(value, na.rm = TRUE))%>%
-  ungroup()%>%
-  group_by(dataset, Subscale) %>%
-  summarise(median = median(score),
-            iqr = IQR(score))
-```
-
-## 5.3 Calculate reliability of IDAQ
+## 5.2 Reliability of IDAQ
 
 ```{r}
 library("psych")
@@ -635,11 +604,11 @@ DF.idaq %>%
 
 ```
 
-## 5.3 Calculate reliability of IDAQ-NA
+## 5.3 Reliability of IDAQ-NA
 
 ```{r}
 #IDAQ-NA
-bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>% 
+DF.idaq %>% 
   filter(Subscale == "IDAQ-NA") %>%
   spread(ItemNr, value) %>%
   select(-sub, -Subscale, -dataset) %>%
@@ -647,13 +616,46 @@ bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
 
 ```
 
-## 5.5 Comparison across datasets
+## 5.4 IDAQ per subject
+
+```{r}
+DF.idaq <- DF.idaq %>%
+  group_by(sub,dataset, Subscale) %>%
+  summarise(score = sum(value, na.rm = TRUE))
+```
+
+
+## 5.5 Visualise the scores
+```{r}
+source("/Volumes/Project0255/code/R_rainclouds.R")
+
+
+p <- DF.idaq %>%
+ ggplot(.,aes(x=dataset,y=score,fill=dataset))+
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
+  geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 20)+
+  geom_boxplot(aes(x=dataset,y=score),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
+  theme_classic() + ylab(paste("score (0-150)")) + scale_fill_brewer(palette = "Blues") +
+  scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of IDAQ scores between datasets")) +
+  facet_wrap(~Subscale)
+
+p
+```
+
+## 5.6 Median and interquartile range per dataset
+```{r}
+DF.idaq %>%
+  group_by(dataset, Subscale) %>%
+  summarise(median = median(score),
+            iqr = IQR(score))
+```
+
+## 5.7 Comparison across datasets
 ```{r}
 library("ez")
 idaq_ez <- DF.idaq %>% ezANOVA(dv = score, wid = sub, within = .(Subscale), between = .(dataset))
 print(idaq_ez)
 ```
-
 
 # 6. fROI results {.tabset}
 
@@ -707,7 +709,6 @@ rm(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4, DF.temp)
 
 ## 6.2 Theory-of-Mind network activation across datasets
 
-Visualise the data - Theory-of-Mind network
 ```{r}
 source("/Volumes/Project0255/code/R_rainclouds.R")
 
@@ -723,7 +724,7 @@ p <- DF.roi %>%
 p
 ```
 
-Comparison across datasets - Theory-of-Mind network
+## 6.3 Comparison across datasets - Theory-of-Mind network
 
 ```{r}
 library("ez")
@@ -733,9 +734,8 @@ tom_ez <- DF.roi %>%
 print(tom_ez)
 
 ```
-## 6.2 Theory-of-Mind network activation across datasets
+## 6.4 Pain Matrix activation across datasets
 
-Visualise the data - Pain Matrix
 ```{r}
 source("/Volumes/Project0255/code/R_rainclouds.R")
 
@@ -745,13 +745,13 @@ p <- DF.roi %>%
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
   geom_point(aes(colour = roi), position=position_jitter(width = .05), size = .5, shape = 20)+
   geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
-  theme_classic() + ylab(paste("contrast (mental vs pain)")) + scale_fill_brewer(palette = "Blues") +
-  scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of ToM network contrasts values between datasets")) + theme(legend.position="none") +
+  theme_classic() + ylab(paste("contrast (mental vs pain)")) + scale_fill_brewer(palette = "Reds") +
+  scale_colour_brewer(palette = "Reds") + ggtitle(paste("Comparison of ToM network contrasts values between datasets")) + theme(legend.position="none") +
   facet_wrap(~dataset)
 p
 ```
 
-Comparison across datasets - Pain Matrix
+## 6.5 Comparison across datasets - Pain Matrix
 
 ```{r}
 library("ez")
@@ -765,25 +765,8 @@ print(pain_ez)
 
 ## 7.1 Combine IDAQ scores and ROI data
 ```{r}
-
-idaq_full <- DF.idaq %>% 
-  ungroup() %>%
-  mutate(sub=gsub('sub-','',sub)) %>%
-  transform(sub=as.integer(sub))  %>%
-  spread(key=Subscale, value=score) #to separate idaq and idaq-na, e.g. wide format
-
-#tidy data into long format
-
-idaq_tom <- left_join(all_tom_roi, idaq_full, by = "sub") %>%
-  select(-dataset.y) %>%
-  rename(dataset = dataset.x) %>%
-  pivot_longer(c(DMPFC:VMPFC), names_to="roi",values_to="value")
-
-idaq_pain <- left_join(all_pain_roi, idaq_full, by = "sub") %>%
-  select(-dataset.y) %>%
-  rename(dataset = dataset.x) %>%
-  pivot_longer(c(AMCC:RS2), names_to="roi",values_to="value")
-
+DF.roi <- left_join(DF.roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
+  spread(key=Subscale, value=score)
 ```
 
 ## 7.2 Correlations
@@ -794,12 +777,11 @@ idaq_pain <- left_join(all_pain_roi, idaq_full, by = "sub") %>%
 
 library("GGally")
 
-idaq_roi_wide <- left_join(all_tom_roi, idaq_full, by = "sub") %>%
-  select(-dataset.y) %>%
-  rename(dataset = dataset.x) %>%
-  transform(IDAQ=as.numeric(IDAQ)) 
+cormat <- DF.roi %>% 
+  unite(network_roi, network, roi) %>%
+  spread(network_roi, contrast)
 
-cormat <- round(cor(as.matrix(idaq_roi_wide[3:10]), use = "complete.obs"), digits=3)
+cormat <- round(cor(as.matrix(cormat[3:17]), use = "complete.obs"), digits=3)
 
 cormat
 
@@ -816,14 +798,14 @@ ggcorr(cormat,
 ## 7.3 Linear relationship
 
 ```{r}
-plot1 <- idaq_pain %>%
-  ggplot(aes(x=IDAQ, y=value, colour=roi)) +
+plot1 <- DF.roi %>%
+  ggplot(aes(x=IDAQ, y=contrast, colour=roi)) +
   geom_point(alpha=0.5,show.legend = FALSE) +
   geom_smooth(method="lm", se=FALSE, show.legend = FALSE) +
   labs(
     x="IDAQ score",
     y="Contrast"
-  ) +
+  ) + theme_classic() +
   facet_grid(.~roi)
 
 plot1
@@ -834,14 +816,14 @@ plot1
 ```{r}
 #load the data
 
-plot2 <- idaq_roi %>%
-  ggplot(aes(x=IDAQ, y=value, colour=roi)) +
+plot2 <- DF.roi %>%
+  ggplot(aes(x=IDAQ, y=contrast, colour=roi)) +
   geom_point(alpha=0.5,show.legend = FALSE) +
   geom_smooth(method="loess", se=FALSE, show.legend = FALSE) +
   labs(
     x="IDAQ score",
     y="Contrast"
-  ) +
+  ) + theme_classic() +
   facet_grid(.~roi)
 
 plot2
@@ -851,24 +833,19 @@ plot2
 
 
 ```{r}
-plot3 <- idaq_pain %>%
-  ggplot(aes(x=IDAQ, y=value, colour=roi)) +
+plot3 <- DF.roi %>%
+  filter(network == "tom") %>%
+  filter(!sub %in% c(sub_ex)) %>%
+  ggplot(aes(x=IDAQ, y=contrast, colour=roi)) +
   geom_point(alpha=0.5,show.legend = FALSE) +
   geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=FALSE, show.legend=FALSE) +
   labs(
     x="IDAQ score",
     y="Contrast"
-  ) +
+  ) + theme_classic() +
   facet_grid(.~roi)
 plot3
 ```
-
-
-
-
-
-
-
 
 
 
