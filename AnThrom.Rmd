@@ -557,16 +557,18 @@ matlab -batch "ROI_extract_201_202"
 
 # 5. IDAQ {.tabset}
 
-Dataset 2: 1-10 for 206-212, 219, 221-22, 224-25, 228, 231, 233-34
-
 ## 5.1 Calculation of individual scores
-```{r echo=FALSE}
-library(tidyverse)
-source("/Volumes/Project0255/code/R_rainclouds.R")
 
+Dataset 2: sub-206-212, 219, 221-22, 224-25, 228, 231, 233-34 completed a version with 1-10 instead of 0-10
+```{r}
 sub_ex = c(206:212, 219, 221:222, 224:225, 228, 231, 233:234)
+```
 
-#load  data
+
+```{r}
+library(tidyverse)
+
+#load data
 DF.d1  <- read_csv(file = paste("/Volumes/Project0255/dataset_1/sourcedata/IDAQ_dataset1.csv", sep ="")) %>%
   gather("sub", "value", 3:31)
 
@@ -580,18 +582,22 @@ DF.d4  <- read_csv(file = paste("/Volumes/Project0255/dataset_4/sourcedata/IDAQ_
   gather("sub", "value", 3:24) 
 
 DF.idaq <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
-  group_by(dataset, sub, Subscale) %>%
-  filter(!is.na(value))%>%
-  summarise(score = sum(value, na.rm = TRUE)) 
+  mutate(sub=gsub('sub-','',sub))
 
+rm(DF.d1, DF.d2, DF.d3, DF.d4)
 ```
 
 ## 5.2 IDAQ per dataset
 
 Visualise the scores
 ```{r}
-#create raincloud plot (check out the [github](https://github.com/RainCloudPlots/) or [preprint](https://wellcomeopenresearch.org/articles/4-63/v1)
-p <- ggplot(DF.idaq,aes(x=dataset,y=score,fill=dataset))+
+source("/Volumes/Project0255/code/R_rainclouds.R")
+
+
+p <- DF.idaq %>%
+  group_by(sub,dataset, Subscale) %>%
+  summarise(score = sum(value, na.rm = TRUE)) %>%
+ ggplot(.,aes(x=dataset,y=score,fill=dataset))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
   geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 20)+
   geom_boxplot(aes(x=dataset,y=score),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
@@ -605,6 +611,9 @@ p
 Median and interquartile range per dataset
 ```{r}
 DF.idaq %>%
+  group_by(sub,dataset, Subscale) %>%
+  summarise(score = sum(value, na.rm = TRUE))%>%
+  ungroup()%>%
   group_by(dataset, Subscale) %>%
   summarise(median = median(score),
             iqr = IQR(score))
@@ -616,14 +625,19 @@ DF.idaq %>%
 library("psych")
 
 #IDAQ
-test <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>% 
-  mutate(sub=gsub('sub-','',sub)) %>%
+DF.idaq %>% 
   filter(Subscale == "IDAQ") %>%
   #filter(sub != sub_ex) %>% 
   spread(ItemNr, value) %>%
   select(-sub, -Subscale, -dataset) %>%
   alpha()
 
+
+```
+
+## 5.3 Calculate reliability of IDAQ-NA
+
+```{r}
 #IDAQ-NA
 bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>% 
   filter(Subscale == "IDAQ-NA") %>%
@@ -633,7 +647,7 @@ bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
 
 ```
 
-## 5.4 Comparison across datasets
+## 5.5 Comparison across datasets
 ```{r}
 library("ez")
 idaq_ez <- DF.idaq %>% ezANOVA(dv = score, wid = sub, within = .(Subscale), between = .(dataset))
