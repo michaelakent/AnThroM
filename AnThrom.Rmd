@@ -557,26 +557,29 @@ matlab -batch "ROI_extract_201_202"
 
 # 5. IDAQ {.tabset}
 
+Dataset 2: 1-10 for 206-212, 219, 221-22, 224-25, 228, 231, 233-34
+
 ## 5.1 Calculation of individual scores
 ```{r echo=FALSE}
 library(tidyverse)
 source("/Volumes/Project0255/code/R_rainclouds.R")
 
-#load own data
-DF.dataset1  <- read_csv(file = paste("/Volumes/Project0255/dataset_1/sourcedata/IDAQ_dataset1.csv", sep ="")) %>%
-  gather("sub", "value", 3:31) 
-DF.dataset2  <- read_csv(file = paste("/Volumes/Project0255/dataset_2/sourcedata/IDAQ_dataset2.csv", sep ="")) %>%
-  gather("sub", "value", 3:37) %>%group_by( sub, Subscale) %>%
-  filter(!is.na(value))%>%
-  summarise(score = sum(value, na.rm = TRUE))%>%
-  ungroup() %>%
-  filter(Subscale == "IDAQ")
-DF.dataset3  <- read_csv(file = paste("/Volumes/Project0255/dataset_3/sourcedata/IDAQ_dataset3.csv", sep ="")) %>%
-  gather("sub", "value", 3:24) 
-DF.dataset4  <- read_csv(file = paste("/Volumes/Project0255/dataset_4/sourcedata/IDAQ_dataset4.csv", sep ="")) %>%
+sub_ex = c(206:212, 219, 221:222, 224:225, 228, 231, 233:234)
+
+#load  data
+DF.d1  <- read_csv(file = paste("/Volumes/Project0255/dataset_1/sourcedata/IDAQ_dataset1.csv", sep ="")) %>%
+  gather("sub", "value", 3:31)
+
+DF.d2  <- read_csv(file = paste("/Volumes/Project0255/dataset_2/sourcedata/IDAQ_dataset2.csv", sep ="")) %>%
+  gather("sub", "value", 3:37) 
+
+DF.d3  <- read_csv(file = paste("/Volumes/Project0255/dataset_3/sourcedata/IDAQ_dataset3.csv", sep ="")) %>%
   gather("sub", "value", 3:24) 
 
-DF.full <- bind_rows(DF.dataset1, DF.dataset2, DF.dataset3, DF.dataset4, .id = "dataset") %>%
+DF.d4  <- read_csv(file = paste("/Volumes/Project0255/dataset_4/sourcedata/IDAQ_dataset4.csv", sep ="")) %>%
+  gather("sub", "value", 3:24) 
+
+DF.idaq <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
   group_by(dataset, sub, Subscale) %>%
   filter(!is.na(value))%>%
   summarise(score = sum(value, na.rm = TRUE)) 
@@ -588,7 +591,7 @@ DF.full <- bind_rows(DF.dataset1, DF.dataset2, DF.dataset3, DF.dataset4, .id = "
 Visualise the scores
 ```{r}
 #create raincloud plot (check out the [github](https://github.com/RainCloudPlots/) or [preprint](https://wellcomeopenresearch.org/articles/4-63/v1)
-p <- ggplot(DF.full,aes(x=dataset,y=score,fill=dataset))+
+p <- ggplot(DF.idaq,aes(x=dataset,y=score,fill=dataset))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
   geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 20)+
   geom_boxplot(aes(x=dataset,y=score),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
@@ -601,7 +604,7 @@ p
 
 Median and interquartile range per dataset
 ```{r}
-DF.full %>%
+DF.idaq %>%
   group_by(dataset, Subscale) %>%
   summarise(median = median(score),
             iqr = IQR(score))
@@ -613,14 +616,16 @@ DF.full %>%
 library("psych")
 
 #IDAQ
-bind_rows(DF.dataset1, DF.dataset2, DF.dataset3, DF.dataset4, .id = "dataset") %>% 
+test <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>% 
+  mutate(sub=gsub('sub-','',sub)) %>%
   filter(Subscale == "IDAQ") %>%
+  #filter(sub != sub_ex) %>% 
   spread(ItemNr, value) %>%
   select(-sub, -Subscale, -dataset) %>%
-  alpha(na.rm = TRUE)
+  alpha()
 
 #IDAQ-NA
-bind_rows(DF.dataset1, DF.dataset2, DF.dataset3, DF.dataset4, .id = "dataset") %>% 
+bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>% 
   filter(Subscale == "IDAQ-NA") %>%
   spread(ItemNr, value) %>%
   select(-sub, -Subscale, -dataset) %>%
@@ -631,78 +636,66 @@ bind_rows(DF.dataset1, DF.dataset2, DF.dataset3, DF.dataset4, .id = "dataset") %
 ## 5.4 Comparison across datasets
 ```{r}
 library("ez")
-DF.full %>% ezANOVA(dv = score, wid = sub, within = .(Subscale), between = .(dataset))
+idaq_ez <- DF.idaq %>% ezANOVA(dv = score, wid = sub, within = .(Subscale), between = .(dataset))
+print(idaq_ez)
 ```
 
 
 # 6. fROI results {.tabset}
 
-## 6.1 Comparison of ToM network contrast estimates across studies
+## 6.1 Comparison of contrast estimates across studies and networks
 
-Data wrangling
+Create function to load the data
 ```{r}
 #load necessary libraries
-library(tidyverse)
+library("tidyverse")
+library("fs")
 
-#create variables
-
-tom_rois <- c("DMPFC","LTPJ","MMPFC","PC","RTPJ","VMPFC")
-
-#load the fROI data
-roi_d1 <- list.files(path = "/Volumes/Project0255/dataset_1/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
-DF.d1 <- sapply(roi_d1, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="bind") %>%
-  rename_at(2:7, ~tom_rois) %>%
-  mutate(sub = c(101:129)) %>%
-  mutate(dataset = 1)
-
-roi_d2 <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
-DF.d2 <- sapply(roi_d2, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="bind") %>%
-  rename_at(2:7, ~tom_rois) %>%
-  mutate(sub = c(203:235))%>%
-  mutate(dataset = 2)
-
-roi_d2.extra <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/tom/201_202", pattern = "*.tsv", full.names= TRUE)
-DF.d2.extra <- sapply(roi_d2.extra, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="bind") %>%
-  rename_at(2:7, ~tom_rois) %>%
-  mutate(sub = c(201:202)) %>%
-  mutate(dataset = 2)
-
-roi_d3 <- list.files(path = "/Volumes/Project0255/dataset_3/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
-DF.d3 <- sapply(roi_d3, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="bind") %>%
-  rename_at(2:7, ~tom_rois) %>%
-  mutate(sub = c(301:322)) %>%
-  mutate(dataset = 3)
-
-roi_d4 <- list.files(path = "/Volumes/Project0255/dataset_4/derivatives/roi/tom", pattern = "*.tsv", full.names= TRUE)
-DF.d4 <- sapply(roi_d4, read_tsv, col_names=FALSE, simplify=TRUE) %>%
-  bind_rows(.id ="bind") %>%
-  rename_at(2:7, ~tom_rois) %>%
-  mutate(sub = c(401:422)) %>%
-  mutate(dataset = 4)
-
-all_tom_roi <- bind_rows(DF.d1, DF.d2.extra, DF.d2, DF.d3, DF.d4) %>%
-  select(-bind) %>%
-  select(8,7,1:6) 
+#create function to load roi datasets for the different networks
+roi_extract <- function(datasetno, substart, subend, network, nroi) {
+  
+  dir_ls(paste("/Volumes/Project0255/dataset_", datasetno, "/derivatives/roi/", network, sep = ""), regexp = "\\.tsv$") %>% 
+    map_dfr(read.delim, sep = "\t", .id = "id", header = FALSE)  %>%
+    mutate(dataset = datasetno) %>%
+    mutate(network = network) %>%
+    mutate(network = str_extract(network, "tom|pain")) %>%
+    mutate(id = str_extract(id, "dmpfc|mmpfc|vmpfc|ltpj|rtpj|prec|amcc|lmfg|rmfg|ls2|rs2|linsula|rinsula")) %>%
+    rename(roi = id, contrast = V1) %>%
+    mutate(sub = rep(substart:subend, times=nroi, each=1)) %>%
+    select(5,3,4,1:2)
+} 
 ```
+
+Load the data for the Theory-of-Mind network
+```{r}
+DF.d1 <- roi_extract(1, 101, 129, "tom", 6)
+DF.d2.a <- roi_extract(2, 201, 202, "tom/201_202", 6)
+DF.d2.b <- roi_extract(2, 203, 235, "tom", 6)
+DF.d3 <- roi_extract(3, 301, 322, "tom", 6)
+DF.d4 <- roi_extract(4, 401, 422, "tom", 6)
+
+DF.temp <- bind_rows(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4) 
+
+```
+
+Load the data for the Pain Matrix network
+```{r}
+DF.d1 <- roi_extract(1, 101, 129, "pain", 7)
+DF.d2.a <- roi_extract(2, 201, 202, "pain/201_202/", 7)
+DF.d2.b <- roi_extract(2, 203, 235, "pain", 7)
+DF.d3 <- roi_extract(3, 301, 322, "pain", 7)
+DF.d4 <- roi_extract(4, 401, 422, "pain", 7)
+
+DF.roi <- bind_rows(DF.temp, DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4)
+
+rm(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4, DF.temp)
+  
+```
+
 
 Visualise the data
 ```{r}
 source("/Volumes/Project0255/code/R_rainclouds.R")
-
-p <- all_tom_roi %>%
-  gather(roi, contrast, 3:8) %>%
-  ggplot(.,aes(x=dataset,y=contrast,fill=dataset))+
-  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
-  geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 20)+
-  geom_boxplot(aes(x=dataset,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
-  theme_classic() + ylab(paste("contrast (mental vs pain)")) + scale_fill_brewer(palette = "Blues") +
-  scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of ToM network contrasts values between datasets")) +
-  facet_wrap(~roi)
-p
 
 p <- all_tom_roi %>%
   gather(roi, contrast, 3:8) %>%
@@ -720,9 +713,11 @@ Comparison across datasets
 
 ```{r}
 library("ez")
-all_tom_roi %>%
+tom_ez <- all_tom_roi %>%
   gather(roi, contrast, 3:8) %>%
   ezANOVA(dv = contrast, wid = sub, within = .(roi), between = .(dataset))
+print(tom_ez)
+
 ```
 
 ## 6.2 Comparison of Pain Matrix contrast estimates across studies
@@ -733,36 +728,36 @@ Data wrangling
 pain_rois <- c("AMCC","LINSULA","LMFG","LS2","RINSULA","RMFG","RS2")
 
 #load the fROI data
-pain_roi_d1 <- list.files(path = "/Volumes/Project0255/dataset_1/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
-DF.d1 <- sapply(pain_roi_d1, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+temp <- list.files(path = "/Volumes/Project0255/dataset_1/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
+DF.d1 <- sapply(temp, read_tsv, col_names=FALSE, simplify=TRUE) %>%
   bind_rows(.id ="bind") %>%
   rename_at(2:8, ~pain_rois) %>%
   mutate(sub = c(101:129)) %>%
   mutate(dataset = 1)
 
-roi_d2.extra <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/pain/201_202", pattern = "*.tsv", full.names= TRUE)
-DF.d2.extra <- sapply(roi_d2.extra, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+temp <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/pain/201_202", pattern = "*.tsv", full.names= TRUE)
+DF.d2.extra <- sapply(temp, read_tsv, col_names=FALSE, simplify=TRUE) %>%
   bind_rows(.id ="bind") %>%
   rename_at(2:8, ~pain_rois) %>%
   mutate(sub = c(201:202)) %>%
   mutate(dataset = 2)
 
-pain_roi_d2 <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
-DF.d2 <- sapply(pain_roi_d2, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+temp <- list.files(path = "/Volumes/Project0255/dataset_2/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
+DF.d2 <- sapply(temp, read_tsv, col_names=FALSE, simplify=TRUE) %>%
   bind_rows(.id ="bind") %>%
   rename_at(2:8, ~pain_rois) %>%
   mutate(sub = c(203:235)) %>%
   mutate(dataset = 2)
 
-pain_roi_d3 <- list.files(path = "/Volumes/Project0255/dataset_3/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
-DF.d3 <- sapply(pain_roi_d3, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+temp <- list.files(path = "/Volumes/Project0255/dataset_3/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
+DF.d3 <- sapply(temp, read_tsv, col_names=FALSE, simplify=TRUE) %>%
   bind_rows(.id ="bind") %>%
   rename_at(2:8, ~pain_rois) %>%
   mutate(sub = c(301:322)) %>%
   mutate(dataset = 3)
 
-pain_roi_d4 <- list.files(path = "/Volumes/Project0255/dataset_4/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
-DF.d4 <- sapply(pain_roi_d4, read_tsv, col_names=FALSE, simplify=TRUE) %>%
+temp <- list.files(path = "/Volumes/Project0255/dataset_4/derivatives/roi/pain", pattern = "*.tsv", full.names= TRUE)
+DF.d4 <- sapply(temp, read_tsv, col_names=FALSE, simplify=TRUE) %>%
   bind_rows(.id ="bind") %>%
   rename_at(2:8, ~pain_rois) %>%
   mutate(sub = c(401:422)) %>%
@@ -777,17 +772,6 @@ Visualise the data
 ```{r}
 p <- all_pain_roi %>%
   gather(roi, contrast, 3:9) %>%
-  ggplot(.,aes(x=dataset,y=contrast,fill=dataset))+
-  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
-  geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 20)+
-  geom_boxplot(aes(x=dataset,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
-  theme_classic() + ylab(paste("contrast (mental vs pain)")) + scale_fill_brewer(palette = "Blues") +
-  scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of Pain Matrix contrasts estimates between datasets")) +
-  facet_wrap(~roi)
-p
-
-p <- all_pain_roi %>%
-  gather(roi, contrast, 3:9) %>%
   ggplot(.,aes(x=roi,y=contrast,fill=roi))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
   geom_point(aes(colour = roi), position=position_jitter(width = .05), size = .5, shape = 20)+
@@ -801,9 +785,11 @@ p
 Comparison across datasets
 ```{r}
 library("ez")
-all_pain_roi %>%
+pain_ez <- all_pain_roi %>%
   gather(roi, contrast, 3:9) %>%
   ezANOVA(dv = contrast, wid = sub, within = .(roi), between = .(dataset))
+
+print(pain_ez)
 ```
 
 
@@ -812,20 +798,23 @@ all_pain_roi %>%
 ## 7.1 Combine IDAQ scores and ROI data
 ```{r}
 
-idaq_full <- DF.full %>% 
-  ungroup(sub) %>% 
+idaq_full <- DF.idaq %>% 
+  ungroup() %>%
   mutate(sub=gsub('sub-','',sub)) %>%
-  transform(sub=as.integer(sub)) %>% 
+  transform(sub=as.integer(sub))  %>%
   spread(key=Subscale, value=score) #to separate idaq and idaq-na, e.g. wide format
-
 
 #tidy data into long format
 
-idaq_roi <- left_join(all_tom_roi, idaq_full, by = "sub") %>%
+idaq_tom <- left_join(all_tom_roi, idaq_full, by = "sub") %>%
   select(-dataset.y) %>%
   rename(dataset = dataset.x) %>%
   pivot_longer(c(DMPFC:VMPFC), names_to="roi",values_to="value")
 
+idaq_pain <- left_join(all_pain_roi, idaq_full, by = "sub") %>%
+  select(-dataset.y) %>%
+  rename(dataset = dataset.x) %>%
+  pivot_longer(c(AMCC:RS2), names_to="roi",values_to="value")
 
 ```
 
@@ -842,7 +831,7 @@ idaq_roi_wide <- left_join(all_tom_roi, idaq_full, by = "sub") %>%
   rename(dataset = dataset.x) %>%
   transform(IDAQ=as.numeric(IDAQ)) 
 
-cormat <- round(cor(as.matrix(idaq_roi_wide[3:9]), use = "complete.obs"), digits=3)
+cormat <- round(cor(as.matrix(idaq_roi_wide[3:10]), use = "complete.obs"), digits=3)
 
 cormat
 
@@ -859,7 +848,7 @@ ggcorr(cormat,
 ## 7.3 Linear relationship
 
 ```{r}
-plot1 <- idaq_roi %>%
+plot1 <- idaq_pain %>%
   ggplot(aes(x=IDAQ, y=value, colour=roi)) +
   geom_point(alpha=0.5,show.legend = FALSE) +
   geom_smooth(method="lm", se=FALSE, show.legend = FALSE) +
@@ -894,7 +883,7 @@ plot2
 
 
 ```{r}
-plot3 <- idaq_roi %>%
+plot3 <- idaq_pain %>%
   ggplot(aes(x=IDAQ, y=value, colour=roi)) +
   geom_point(alpha=0.5,show.legend = FALSE) +
   geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=FALSE, show.legend=FALSE) +
@@ -903,7 +892,6 @@ plot3 <- idaq_roi %>%
     y="Contrast"
   ) +
   facet_grid(.~roi)
-
 plot3
 ```
 
