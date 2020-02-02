@@ -583,7 +583,8 @@ DF.d4  <- read_csv(file = paste("/Volumes/Project0255/dataset_4/sourcedata/IDAQ_
 
 DF.idaq <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
   mutate(sub=gsub('sub-','',sub))%>%
-  transform(sub=as.integer(sub), dataset=as.integer(dataset))  
+  transform(sub=as.integer(sub)) %>%
+  mutate(Subscale = as.factor(ifelse(Subscale == "IDAQ-NA", "IDAQNA", "IDAQ")))
 
 rm(DF.d1, DF.d2, DF.d3, DF.d4)
 ```
@@ -609,7 +610,7 @@ DF.idaq %>%
 ```{r}
 #IDAQ-NA
 DF.idaq %>% 
-  filter(Subscale == "IDAQ-NA") %>%
+  filter(Subscale == "IDAQNA") %>%
   spread(ItemNr, value) %>%
   select(-sub, -Subscale, -dataset) %>%
   alpha(na.rm = TRUE)
@@ -621,7 +622,7 @@ DF.idaq %>%
 ```{r}
 DF.idaq <- DF.idaq %>%
   group_by(sub,dataset, Subscale) %>%
-  summarise(score = sum(value, na.rm = TRUE))
+  summarise(score = sum(value, na.rm = TRUE)) 
 ```
 
 
@@ -631,12 +632,12 @@ source("/Volumes/Project0255/code/R_rainclouds.R")
 
 
 p <- DF.idaq %>%
- ggplot(.,aes(x=dataset,y=score,fill=dataset))+
+ ggplot(.,aes(x=dataset,y=score,fill=dataset, group = dataset))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
   geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 20)+
-  geom_boxplot(aes(x=dataset,y=score),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
-  theme_classic() + ylab(paste("score (0-150)")) + scale_fill_brewer(palette = "Blues") +
-  scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of IDAQ scores between datasets")) +
+  geom_boxplot(aes(x=dataset,y=score),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ scale_fill_brewer(palette = "Blues") +
+  scale_colour_brewer(palette = "Blues") +
+  theme_classic() + ylab(paste("score (0-150)"))  + ggtitle(paste("Comparison of IDAQ scores between datasets")) +
   facet_wrap(~Subscale)
 
 p
@@ -765,8 +766,44 @@ print(pain_ez)
 
 ## 7.1 Combine IDAQ scores and ROI data
 ```{r}
-DF.roi <- left_join(DF.roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
-  spread(key=Subscale, value=score)
+DF.roi <- DF.idaq %>% ungroup() %>% mutate(dataset = as.numeric(dataset)) %>% left_join(DF.roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
+  spread(key=Subscale, value=score) #change this
+```
+
+#center the variables
+
+```{r}
+DF.roi$cent_IDAQNA <- scale(DF.roi$IDAQNA, scale = FALSE)
+DF.roi$cent_IDAQ <- scale(DF.roi$IDAQ, scale = FALSE)
+
+DF.roi <- DF.roi %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, scale =FALSE))
+```
+
+```{r}
+x <- DF.roi$cent_IDAQ
+y <- DF.roi$cent_contrast
+plot (x, y,
+      xlab = "log lex. frequency",
+ylab = "RT(ms)",
+abline(LF2, col="red", lwd=2))
+
+# Calculate intercept (beta_0) and
+# slope (beta_1) "on foot"
+slope <- cor(x, y) * (sd(y) / sd(x)) 
+intercept <- mean(y) - slope * mean(x)
+# Look at what we’ve done
+c("beta_0" = intercept, "beta_1" = slope)
+
+LF1 <- lm(y ~ x) 
+LF2 <- lm(y ~ x+ I(x^2))  
+summary(LF1)
+
+summary(LF2)
+
+library(ordinal)
+ordinal.mod <- clm(cent_IDAQ ~ cent_contrast, data = DF.roi) 
+summary(ordinal.mod)
+
 ```
 
 ## 7.2 Correlations
@@ -781,7 +818,7 @@ cormat <- DF.roi %>%
   unite(network_roi, network, roi) %>%
   spread(network_roi, contrast)
 
-cormat <- round(cor(as.matrix(cormat[3:17]), use = "complete.obs"), digits=3)
+cormat <- round(cor(as.matrix(cormat[3:20]), use = "complete.obs"), digits=3)
 
 cormat
 
@@ -799,14 +836,15 @@ ggcorr(cormat,
 
 ```{r}
 plot1 <- DF.roi %>%
-  ggplot(aes(x=IDAQ, y=contrast, colour=roi)) +
+  filter(network == "tom") %>%
+  ggplot(aes(x=cent_IDAQ, y=cent_contrast, colour=roi)) +
   geom_point(alpha=0.5,show.legend = FALSE) +
   geom_smooth(method="lm", se=FALSE, show.legend = FALSE) +
   labs(
     x="IDAQ score",
     y="Contrast"
   ) + theme_classic() +
-  facet_grid(.~roi)
+  facet_grid(~roi)
 
 plot1
 ```
@@ -835,10 +873,10 @@ plot2
 ```{r}
 plot3 <- DF.roi %>%
   filter(network == "tom") %>%
-  filter(!sub %in% c(sub_ex)) %>%
-  ggplot(aes(x=IDAQ, y=contrast, colour=roi)) +
+  #filter(!sub %in% c(sub_ex)) %>%
+  ggplot(aes(x=cent_IDAQ, y=cent_contrast, colour=roi)) +
   geom_point(alpha=0.5,show.legend = FALSE) +
-  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=FALSE, show.legend=FALSE) +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE) +
   labs(
     x="IDAQ score",
     y="Contrast"
