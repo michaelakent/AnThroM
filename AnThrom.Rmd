@@ -847,6 +847,25 @@ plot1 <- DF.roi %>%
   facet_grid(~roi)
 
 plot1
+
+linearmod1 <- lm(IDAQ ~ contrast, data = DF.roi)
+summary(linearmod1)
+
+plot4 <- DF.roi %>%
+  filter(network == "tom") %>%
+  ggplot(aes(x=cent_IDAQ, y=cent_contrast, colour=roi)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula =y~splines::bs(x,3), se=FALSE, show.legend = FALSE) +
+  labs(
+    x="IDAQ score",
+    y="Contrast"
+  ) + theme_classic() +
+  facet_grid(~roi)
+
+plot4
+
+linearmod4 <- glm(cent_IDAQ ~ cent_contrast, data=DF.roi)
+summary(linearmod4)
 ```
 
 ## 7.4 Non-linear relationship
@@ -865,6 +884,8 @@ plot2 <- DF.roi %>%
   facet_grid(.~roi)
 
 plot2
+
+
 ```
 
 
@@ -883,6 +904,10 @@ plot3 <- DF.roi %>%
   ) + theme_classic() +
   facet_grid(.~roi)
 plot3
+
+linearmod3 <- lm(formula = IDAQ ~ contrast + I(x^2), data = DF.roi)
+summary(linearmod3)
+
 ```
 
 
