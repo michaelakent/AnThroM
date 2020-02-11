@@ -570,21 +570,21 @@ library(tidyverse)
 
 #load data
 DF.d1  <- read_csv(file = paste("/Volumes/Project0255/dataset_1/sourcedata/IDAQ_dataset1.csv", sep ="")) %>%
-  gather("sub", "value", 3:31)
+  gather("sub", "value", 4:32)
 
 DF.d2  <- read_csv(file = paste("/Volumes/Project0255/dataset_2/sourcedata/IDAQ_dataset2.csv", sep ="")) %>%
-  gather("sub", "value", 3:37) 
+  gather("sub", "value", 4:38) 
 
 DF.d3  <- read_csv(file = paste("/Volumes/Project0255/dataset_3/sourcedata/IDAQ_dataset3.csv", sep ="")) %>%
-  gather("sub", "value", 3:24) 
+  gather("sub", "value", 4:25) 
 
 DF.d4  <- read_csv(file = paste("/Volumes/Project0255/dataset_4/sourcedata/IDAQ_dataset4.csv", sep ="")) %>%
-  gather("sub", "value", 3:24) 
+  gather("sub", "value", 4:25) 
 
 DF.idaq <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
   mutate(sub=gsub('sub-','',sub))%>%
   transform(sub=as.integer(sub)) %>%
-  mutate(Subscale = as.factor(ifelse(Subscale == "IDAQ-NA", "IDAQNA", "IDAQ")))
+  mutate(scale = as.factor(ifelse(scale == "IDAQ-NA", "IDAQNA", "IDAQ")))
 
 rm(DF.d1, DF.d2, DF.d3, DF.d4)
 ```
@@ -596,13 +596,12 @@ library("psych")
 
 #IDAQ
 DF.idaq %>% 
-  filter(Subscale == "IDAQ") %>%
+  filter(scale == "IDAQ") %>%
   #filter(sub != sub_ex) %>% 
-  spread(ItemNr, value) %>%
-  select(-sub, -Subscale, -dataset) %>%
-  alpha()
-
-
+  select(-scale, -subscale)  %>%
+  spread(itemnr, value) %>%
+  select(-sub, -dataset) %>%
+  alpha(na.rm = TRUE)
 ```
 
 ## 5.3 Reliability of IDAQ-NA
@@ -610,18 +609,19 @@ DF.idaq %>%
 ```{r}
 #IDAQ-NA
 DF.idaq %>% 
-  filter(Subscale == "IDAQNA") %>%
-  spread(ItemNr, value) %>%
-  select(-sub, -Subscale, -dataset) %>%
+  filter(scale == "IDAQNA") %>%
+  #filter(sub != sub_ex) %>% 
+  select(-scale, -subscale)  %>%
+  spread(itemnr, value) %>%
+  select(-sub, -dataset) %>%
   alpha(na.rm = TRUE)
-
 ```
 
 ## 5.4 IDAQ per subject
 
 ```{r}
 DF.idaq <- DF.idaq %>%
-  group_by(sub,dataset, Subscale) %>%
+  group_by(sub,dataset, scale, subscale) %>%
   summarise(score = sum(value, na.rm = TRUE)) 
 ```
 
@@ -630,15 +630,16 @@ DF.idaq <- DF.idaq %>%
 ```{r}
 source("/Volumes/Project0255/code/R_rainclouds.R")
 
-
 p <- DF.idaq %>%
- ggplot(.,aes(x=dataset,y=score,fill=dataset, group = dataset))+
+  group_by(sub,dataset, scale) %>%
+  summarise(score = sum(score)) %>%
+  ggplot(.,aes(x=dataset,y=score,fill=dataset, group = dataset))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
   geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 20)+
   geom_boxplot(aes(x=dataset,y=score),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ scale_fill_brewer(palette = "Blues") +
   scale_colour_brewer(palette = "Blues") +
   theme_classic() + ylab(paste("score (0-150)"))  + ggtitle(paste("Comparison of IDAQ scores between datasets")) +
-  facet_wrap(~Subscale)
+  facet_wrap(~scale)
 
 p
 ```
@@ -646,7 +647,9 @@ p
 ## 5.6 Median and interquartile range per dataset
 ```{r}
 DF.idaq %>%
-  group_by(dataset, Subscale) %>%
+  group_by(sub,dataset, scale) %>%
+  summarise(score = sum(score)) %>%
+  group_by(dataset, scale) %>%
   summarise(median = median(score),
             iqr = IQR(score))
 ```
@@ -654,7 +657,7 @@ DF.idaq %>%
 ## 5.7 Comparison across datasets
 ```{r}
 library("ez")
-idaq_ez <- DF.idaq %>% ezANOVA(dv = score, wid = sub, within = .(Subscale), between = .(dataset))
+idaq_ez <- DF.idaq %>% ezANOVA(dv = score, wid = sub, within = .(scale), between = .(dataset))
 print(idaq_ez)
 ```
 
@@ -778,14 +781,23 @@ print(pain_ez)
 
 ## 7.1 Combine IDAQ scores and ROI data
 ```{r}
-DF.roi <- DF.idaq %>% ungroup() %>% mutate(dataset = as.numeric(dataset)) %>% left_join(DF.roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
-  spread(key=Subscale, value=score) #change this
+DF.roi <- DF.idaq %>% 
+  group_by(sub,dataset, scale) %>%
+  summarise(score = sum(score)) %>%
+  ungroup() %>% 
+  mutate(dataset = as.numeric(dataset)) %>% 
+  left_join(DF.roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
+  spread(key=scale, value=score) #change this
 
 
 # Try for other rois (Waytz_mpfc and Cullen_ltpj)
-
-DF.roi2 <- DF.idaq %>% ungroup() %>% mutate(dataset = as.numeric(dataset)) %>% left_join(DF.other_roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
-  spread(key=Subscale, value=score)
+DF.roi2 <- DF.idaq %>% 
+  group_by(sub,dataset, scale) %>%
+  summarise(score = sum(score)) %>%
+  ungroup() %>% 
+  mutate(dataset = as.numeric(dataset)) %>% 
+  left_join(DF.other_roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
+  spread(key=scale, value=score)
 ```
 
 #center the variables
@@ -800,10 +812,7 @@ DF.roi <- DF.roi %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, sc
 ```{r}
 x <- DF.roi$cent_IDAQ
 y <- DF.roi$cent_contrast
-plot (x, y,
-      xlab = "log lex. frequency",
-ylab = "RT(ms)",
-abline(LF2, col="red", lwd=2))
+
 
 # Calculate intercept (beta_0) and
 # slope (beta_1) "on foot"
@@ -821,7 +830,10 @@ summary(LF2)
 library(ordinal)
 ordinal.mod <- clm(cent_IDAQ ~ cent_contrast, data = DF.roi) 
 summary(ordinal.mod)
-
+plot (x, y,
+      xlab = "log lex. frequency",
+ylab = "RT(ms)",
+abline(LF2, col="red", lwd=2))
 ```
 
 ## 7.2 Correlations
@@ -857,7 +869,7 @@ plot1 <- DF.roi %>%
   filter(network == "tom") %>%
   ggplot(aes(x=cent_IDAQ, y=cent_contrast, colour=roi)) +
   geom_point(alpha=0.5,show.legend = FALSE) +
-  geom_smooth(method="lm", se=FALSE, show.legend = FALSE) +
+  geom_smooth(method="lm", se=TRUE, show.legend = FALSE) +
   labs(
     x="IDAQ score",
     y="Contrast"
