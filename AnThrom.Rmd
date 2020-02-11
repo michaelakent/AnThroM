@@ -675,8 +675,8 @@ roi_extract <- function(datasetno, substart, subend, network, nroi) {
     map_dfr(read.delim, sep = "\t", .id = "id", header = FALSE)  %>%
     mutate(dataset = datasetno) %>%
     mutate(network = network) %>%
-    mutate(network = str_extract(network, "tom|pain")) %>%
-    mutate(id = str_extract(id, "dmpfc|mmpfc|vmpfc|ltpj|rtpj|prec|amcc|lmfg|rmfg|ls2|rs2|linsula|rinsula")) %>%
+    mutate(network = str_extract(network, "tom|pain|other")) %>%
+    mutate(id = str_extract(id, "dmpfc|mmpfc|vmpfc|ltpj|rtpj|prec|amcc|lmfg|rmfg|ls2|rs2|linsula|rinsula|Cullen_ltpj|Waytz_mpfc")) %>%
     rename(roi = id, contrast = V1) %>%
     mutate(sub = rep(substart:subend, times=nroi, each=1)) %>%
     select(5,3,4,1:2)
@@ -692,7 +692,6 @@ DF.d3 <- roi_extract(3, 301, 322, "tom", 6)
 DF.d4 <- roi_extract(4, 401, 422, "tom", 6)
 
 DF.temp <- bind_rows(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4) 
-
 ```
 
 Load the data for the Pain Matrix network
@@ -707,6 +706,19 @@ DF.roi <- bind_rows(DF.temp, DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4)
 
 rm(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4, DF.temp)
 ```
+
+Load the data for the other peak voxels taken from Waytz et al. (mPFC) and Cullen et al. (lTPJ)
+```{r}
+DF.other_1 <- roi_extract(1, 101, 129, "other", 2)
+DF.other_2a <- roi_extract(2, 201, 202, "other/201_202/", 2)
+DF.other_2b <- roi_extract(2, 203, 235, "other", 2)
+DF.other_3 <- roi_extract(3, 301, 322, "other", 2)
+DF.other_4 <- roi_extract(4, 401, 422, "other", 2)
+
+DF.other_roi <- bind_rows(DF.other_1,DF.other_2a,DF.other_2b,DF.other_3,DF.other_4)
+head(DF.other_roi)
+```
+
 
 ## 6.2 Theory-of-Mind network activation across datasets
 
@@ -768,6 +780,12 @@ print(pain_ez)
 ```{r}
 DF.roi <- DF.idaq %>% ungroup() %>% mutate(dataset = as.numeric(dataset)) %>% left_join(DF.roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
   spread(key=Subscale, value=score) #change this
+
+
+# Try for other rois (Waytz_mpfc and Cullen_ltpj)
+
+DF.roi2 <- DF.idaq %>% ungroup() %>% mutate(dataset = as.numeric(dataset)) %>% left_join(DF.other_roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
+  spread(key=Subscale, value=score)
 ```
 
 #center the variables
@@ -864,7 +882,7 @@ plot4 <- DF.roi %>%
 
 plot4
 
-linearmod4 <- glm(cent_IDAQ ~ cent_contrast, data=DF.roi)
+linearmod4 <- lm(cent_IDAQ ~ cent_contrast, data=DF.roi)
 summary(linearmod4)
 ```
 
@@ -907,6 +925,46 @@ plot3
 
 linearmod3 <- lm(formula = IDAQ ~ contrast + I(x^2), data = DF.roi)
 summary(linearmod3)
+
+```
+
+## 7.5 Relationships with other voxels (Cullen_ltpj and Waytz_mpfc)
+```{r}
+
+# Linear 
+
+other_roi_plot1 <- DF.roi2 %>%
+  filter(network == "other") %>%
+  ggplot(aes(x=IDAQ, y=contrast, colour=roi)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", se=FALSE, show.legend = FALSE) +
+  labs(
+    x="IDAQ score",
+    y="Contrast"
+  ) + theme_classic() +
+  facet_grid(~roi)
+
+other_roi_plot1
+```
+
+
+```{r}
+
+# Quadratic
+
+other_roi_plot2 <- DF.roi2 %>%
+  filter(network == "other") %>%
+  #filter(!sub %in% c(sub_ex)) %>%
+  ggplot(aes(x=IDAQ, y=contrast, colour=roi)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE) +
+  labs(
+    x="IDAQ score",
+    y="Contrast"
+  ) + theme_classic() +
+  facet_grid(.~roi)
+
+other_roi_plot2
 
 ```
 
