@@ -567,18 +567,18 @@ sub_ex = c(206:212, 219, 221:222, 224:225, 228, 231, 233:234)
 
 ```{r}
 library(tidyverse)
-
+#"/Volumes/Project0255/dataset_1/sourcedata/
 #load data
-DF.d1  <- read_csv(file = paste("/Volumes/Project0255/dataset_1/sourcedata/IDAQ_dataset1.csv", sep ="")) %>%
+DF.d1  <- read_csv(file = paste("~/Desktop/anthrom/IDAQ_dataset1.csv", sep ="")) %>%
   gather("sub", "value", 4:32)
 
-DF.d2  <- read_csv(file = paste("/Volumes/Project0255/dataset_2/sourcedata/IDAQ_dataset2.csv", sep ="")) %>%
+DF.d2  <- read_csv(file = paste("~/Desktop/anthrom/IDAQ_dataset2.csv", sep ="")) %>%
   gather("sub", "value", 4:38) 
 
-DF.d3  <- read_csv(file = paste("/Volumes/Project0255/dataset_3/sourcedata/IDAQ_dataset3.csv", sep ="")) %>%
+DF.d3  <- read_csv(file = paste("~/Desktop/anthrom/IDAQ_dataset3.csv", sep ="")) %>%
   gather("sub", "value", 4:25) 
 
-DF.d4  <- read_csv(file = paste("/Volumes/Project0255/dataset_4/sourcedata/IDAQ_dataset4.csv", sep ="")) %>%
+DF.d4  <- read_csv(file = paste("~/Desktop/anthrom/IDAQ_dataset4.csv", sep ="")) %>%
   gather("sub", "value", 4:25) 
 
 DF.idaq <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
@@ -628,7 +628,7 @@ DF.idaq <- DF.idaq %>%
 
 ## 5.5 Visualise the scores
 ```{r}
-source("/Volumes/Project0255/code/R_rainclouds.R")
+source("R_rainclouds.R")
 
 p <- DF.idaq %>%
   group_by(sub,dataset, scale) %>%
@@ -673,8 +673,8 @@ library("fs")
 
 #create function to load roi datasets for the different networks
 roi_extract <- function(datasetno, substart, subend, network, nroi) {
-  
-  dir_ls(paste("/Volumes/Project0255/dataset_", datasetno, "/derivatives/roi/", network, sep = ""), regexp = "\\.tsv$") %>% 
+  #/Volumes/Project0255
+  dir_ls(paste("~/desktop/anthrom/dataset_", datasetno, "/derivatives/roi/", network, sep = ""), regexp = "\\.tsv$") %>% 
     map_dfr(read.delim, sep = "\t", .id = "id", header = FALSE)  %>%
     mutate(dataset = datasetno) %>%
     mutate(network = network) %>%
@@ -726,7 +726,8 @@ head(DF.other_roi)
 ## 6.2 Theory-of-Mind network activation across datasets
 
 ```{r}
-source("/Volumes/Project0255/code/R_rainclouds.R")
+#source("/Volumes/Project0255/code/R_rainclouds.R")
+source("~/desktop/anthrom/R_rainclouds.R")
 
 p <- DF.roi %>%
   filter(network == "tom") %>%
@@ -753,8 +754,6 @@ print(tom_ez)
 ## 6.4 Pain Matrix activation across datasets
 
 ```{r}
-source("/Volumes/Project0255/code/R_rainclouds.R")
-
 p <- DF.roi %>%
   filter(network == "pain") %>%
   ggplot(.,aes(x=roi,y=contrast,fill=roi))+
@@ -770,7 +769,6 @@ p
 ## 6.5 Comparison across datasets - Pain Matrix
 
 ```{r}
-library("ez")
 pain_ez <- DF.roi %>%
   filter(network == "pain") %>%
   ezANOVA(dv = contrast, wid = sub, within = .(roi), between = .(dataset))
@@ -800,7 +798,7 @@ DF.roi2 <- DF.idaq %>%
   spread(key=scale, value=score)
 ```
 
-#center the variables
+## 7.2 Center the variables
 
 ```{r}
 DF.roi$cent_IDAQNA <- scale(DF.roi$IDAQNA, scale = FALSE)
@@ -809,60 +807,7 @@ DF.roi$cent_IDAQ <- scale(DF.roi$IDAQ, scale = FALSE)
 DF.roi <- DF.roi %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, scale =FALSE))
 ```
 
-```{r}
-x <- DF.roi$cent_IDAQ
-y <- DF.roi$cent_contrast
-
-
-# Calculate intercept (beta_0) and
-# slope (beta_1) "on foot"
-slope <- cor(x, y) * (sd(y) / sd(x)) 
-intercept <- mean(y) - slope * mean(x)
-# Look at what we’ve done
-c("beta_0" = intercept, "beta_1" = slope)
-
-LF1 <- lm(y ~ x) 
-LF2 <- lm(y ~ x+ I(x^2))  
-summary(LF1)
-
-summary(LF2)
-
-library(ordinal)
-ordinal.mod <- clm(cent_IDAQ ~ cent_contrast, data = DF.roi) 
-summary(ordinal.mod)
-plot (x, y,
-      xlab = "log lex. frequency",
-ylab = "RT(ms)",
-abline(LF2, col="red", lwd=2))
-```
-
-## 7.2 Correlations
-
-```{r}
-#want data in wide format
-#make sure package GGally is installed 
-
-library("GGally")
-
-cormat <- DF.roi %>% 
-  unite(network_roi, network, roi) %>%
-  spread(network_roi, contrast)
-
-cormat <- round(cor(as.matrix(cormat[3:20]), use = "complete.obs"), digits=3)
-
-cormat
-
-ggcorr(cormat, 
-       geom="circle", 
-       max_size=15,
-       min_size=4,
-       name="Correlation (Pearson)"
-       ) 
-```
-
-
-
-## 7.3 Linear relationship
+## 7.3 Plot ToM and IDAQ
 
 ```{r}
 plot1 <- DF.roi %>%
@@ -870,6 +815,7 @@ plot1 <- DF.roi %>%
   ggplot(aes(x=cent_IDAQ, y=cent_contrast, colour=roi)) +
   geom_point(alpha=0.5,show.legend = FALSE) +
   geom_smooth(method="lm", se=TRUE, show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE) +
   labs(
     x="IDAQ score",
     y="Contrast"
@@ -877,110 +823,7 @@ plot1 <- DF.roi %>%
   facet_grid(~roi)
 
 plot1
-
-linearmod1 <- lm(IDAQ ~ contrast, data = DF.roi)
-summary(linearmod1)
-
-plot4 <- DF.roi %>%
-  filter(network == "tom") %>%
-  ggplot(aes(x=cent_IDAQ, y=cent_contrast, colour=roi)) +
-  geom_point(alpha=0.5,show.legend = FALSE) +
-  geom_smooth(method="lm", formula =y~splines::bs(x,3), se=FALSE, show.legend = FALSE) +
-  labs(
-    x="IDAQ score",
-    y="Contrast"
-  ) + theme_classic() +
-  facet_grid(~roi)
-
-plot4
-
-linearmod4 <- lm(cent_IDAQ ~ cent_contrast, data=DF.roi)
-summary(linearmod4)
 ```
-
-## 7.4 Non-linear relationship
-
-```{r}
-#load the data
-
-plot2 <- DF.roi %>%
-  ggplot(aes(x=IDAQ, y=contrast, colour=roi)) +
-  geom_point(alpha=0.5,show.legend = FALSE) +
-  geom_smooth(method="loess", se=FALSE, show.legend = FALSE) +
-  labs(
-    x="IDAQ score",
-    y="Contrast"
-  ) + theme_classic() +
-  facet_grid(.~roi)
-
-plot2
-
-
-```
-
-
-
-
-```{r}
-plot3 <- DF.roi %>%
-  filter(network == "tom") %>%
-  #filter(!sub %in% c(sub_ex)) %>%
-  ggplot(aes(x=cent_IDAQ, y=cent_contrast, colour=roi)) +
-  geom_point(alpha=0.5,show.legend = FALSE) +
-  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE) +
-  labs(
-    x="IDAQ score",
-    y="Contrast"
-  ) + theme_classic() +
-  facet_grid(.~roi)
-plot3
-
-linearmod3 <- lm(formula = IDAQ ~ contrast + I(x^2), data = DF.roi)
-summary(linearmod3)
-
-```
-
-## 7.5 Relationships with other voxels (Cullen_ltpj and Waytz_mpfc)
-```{r}
-
-# Linear 
-
-other_roi_plot1 <- DF.roi2 %>%
-  filter(network == "other") %>%
-  ggplot(aes(x=IDAQ, y=contrast, colour=roi)) +
-  geom_point(alpha=0.5,show.legend = FALSE) +
-  geom_smooth(method="lm", se=FALSE, show.legend = FALSE) +
-  labs(
-    x="IDAQ score",
-    y="Contrast"
-  ) + theme_classic() +
-  facet_grid(~roi)
-
-other_roi_plot1
-```
-
-
-```{r}
-
-# Quadratic
-
-other_roi_plot2 <- DF.roi2 %>%
-  filter(network == "other") %>%
-  #filter(!sub %in% c(sub_ex)) %>%
-  ggplot(aes(x=IDAQ, y=contrast, colour=roi)) +
-  geom_point(alpha=0.5,show.legend = FALSE) +
-  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE) +
-  labs(
-    x="IDAQ score",
-    y="Contrast"
-  ) + theme_classic() +
-  facet_grid(.~roi)
-
-other_roi_plot2
-
-```
-
-
 
 
 
