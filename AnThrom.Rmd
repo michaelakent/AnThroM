@@ -29,6 +29,7 @@ Data of the Theory-of-Mind functional localiser and Individual Differences in An
  
  Dataset_4: Centre for Cognitive NeuroImaging; GAMEBOTS; *n*=22.  
 
+Get info for table S1:
 ```{r}
 library("tidyverse")
 
@@ -54,13 +55,13 @@ bind_rows(DF.dataset1, DF.dataset2, DF.dataset3,  DF.dataset4, .id = "dataset") 
  All participants completed a Theory-of-Mind localiser ([Jacoby et al., 2016](https://www.sciencedirect.com/science/article/pii/S1053811915010472); [Richardson et al. 2018](https://www.nature.com/articles/s41467-018-03399-2)) and an anatomical scan either in the same session or in two seperate sessions. During the localiser participants passively viewed a short 5.6 min animated film ([Partly Cloudy](https://www.pixar.com/partly-cloudy#partly-cloudy-1)). This movie includes scenes depicting pain (e.g. an alligator biting the main character) and events that trigger mentalizing (e.g. the main character revealing its intention). For dataset_3 and dataset_4 a fieldmap was collected as well. At the end of each experiment participants completed the Individual Differences in Anthropomorphism Questionnaire (IDAQ) ([Waytz et al., 2010](https://journals.sagepub.com/doi/full/10.1177/1745691610369336)). 
  
 - BOLD:   
- Dataset_1: 3x3x3.5 voxels, 32 slices, repetition time = 2s, echo time = 30ms  
+ Dataset_1: 3x3x3.5mm voxels, 32 slices, repetition time = 2s, echo time = 30ms  
  Dataset_2: 3mm isotropic, 37 slices, TR = 2s, TE = 30ms  
- Dataset_3: 2mm isotropic, 68 slices, TR = 2s, TE = 27ms  
- Dataset_4:  2.75 x 2.75 x 4, 32 slices, TR = 2s, TE = 13 and 31ms  
+ Dataset_3: 2mm isotropic, 68 slices, TR = 2s, TE = 26ms  
+ Dataset_4: 2.75 x 2.75 x 4mm, 32 slices, TR = 2s, TE = 13 and 31ms  
  
 - T1W:   
- Dataset_1: 1mm isotropic resolution, TR = 12ms, TE = 3.5ms  
+ Dataset_1: 1mm isotropic resolution, TR = 12ms, TE = 3.47 / 5.15 / 6.83 / 8.52 / 10.20ms (SENSE)  
  Dataset_2 - 4: 1mm isotropic resolution, TR = 2.3s, TE = 29.6ms (ADNI)  
  
 - Fieldmaps:   
@@ -71,8 +72,9 @@ bind_rows(DF.dataset1, DF.dataset2, DF.dataset3,  DF.dataset4, .id = "dataset") 
  
 ## 1.3 To do
 - remove Dicoms after BIDS dataset creation  
-- fROI  
-- run formal analyses   
+- run formal analyses (Bayesian)   
+
+Note: for the code chunk the language is listed, but all except for r-chunks are executed in the terminal   
 
 # 2. BIDS dataset {.tabset}
 
@@ -80,41 +82,40 @@ bind_rows(DF.dataset1, DF.dataset2, DF.dataset3,  DF.dataset4, .id = "dataset") 
 For this you need HeuDiConv [Heuristic DICOM Converter](https://github.com/nipy/heudiconv).  
 Based on the tutorial by [Franklin Feingold](http://reproducibility.stanford.edu/bids-tutorial-series-part-2a/).
 
-Dowload the latest version of Heudiconv (we used 0.6.0.dev1)
-
+Dowload the latest version of Heudiconv (we used 0.6.0.dev1):
 ```{bash}
 docker pull nipy/heudiconv:latest
 ```
 
-If on the GRID do
+If on the GRID do:
 ```{bash}
 singularity pull docker://nipy/heudiconv:latest
 ```
 
-Create the info file (dataset_2 - 4)
+Create the info file (dataset_2 - 4):
 ```{bash}
 docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_3/sourcedata/sub-{subject}/*.IMA -o /base/dataset_3 -f convertall -s 315 -c none --overwrite
 ```
 
 For dataset_1 we first need to convert the .dcm from jpeg-2000 lossless to uncompressed dcm (thanks to Michele Svanera for the code):
-
 ```{pyton}
 python3 convert_all_compressed_dicom.py
 ```
 
-Create the info file (dataset_1)
+Create the info file (dataset_1):
 ```{bash}
 docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1 -f convertall -s 129 -ss 01 -c none --overwrite
 ```
 
-Get the info file
+Get the info file:
 ```{bash}
 cp /Volumes/Project0255/code/.heudiconv/301/info/dicominfo.tsv /Volumes/Project0255/code
 ```
 
 ## 2.2 Create the heuristic file
-Create the following python file and save it in the code folder (don't run the code). There is one functional task (func_movie) and one anatomical (t1w). Dataset_3 and 4 have a field map as well (fmap_phase and fmap_magnitude) Create a heuristic to automatically convert the files.
+Create the following python file and save it in the code folder. There is one functional task (func_movie) and one anatomical (t1w). Dataset_3 and 4 have a field map as well (fmap_phase and fmap_magnitude) 
 
+Create a heuristic to automatically convert the files:
 ```{python}
 import os
 def create_key(template, outtype=('nii.gz',), annotation_classes=None):
@@ -178,33 +179,32 @@ def infotodict(seqinfo):
     return info
 ```
 
-Use the heuristic file to convert the Dicom files to .nii.gz (nifti) and create .json files.
-
+Use the heuristic file to convert the Dicom files to .nii.gz (nifti) and create .json files:
 ```{bash}
 docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_4/sourcedata/sub-{subject}/*.IMA -o /base/dataset_4 -f /base/code/heuristic_anthrom.py -s 401 -c dcm2niix -b --overwrite
 ```
 
-For dataset_1 (for dataset_1 add ses-{session}/ and --ss 01 and .dcm). Movie for sub-101 and 102 is in ses-02. 
+For dataset_1 (for dataset_1 add ses-{session}/ and --ss 01 and .dcm). Movie for sub-101 and 102 is in ses-02:
 ```{bash}
 docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1 -f /base/code/heuristic_anthrom.py -s 121 -ss 02 -c dcm2niix -b --overwrite
 ```
 
-On the grid do: (sub-116: manual in dcm2niigui)
-type in bash before running
+On the grid do (Sub-116 was done manually in dcm2niigui): 
 
-Dataset_1
+Type in bash before running
+
+Dataset_1:
 ```{bash}
 singularity run -B /analyse/Project0255/:/base /analyse/Project0255/my_images/heudiconv_latest.sif -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1/ -f /base/code/heuristic_anthrom.py -s 116 -ss 01 -c dcm2niix -b --overwrite
 ```
 
-Dataset_2 - 4
+Dataset_2 - 4:
 ```{bash}
 singularity run -B /analyse/Project0255/:/base /analyse/Project0255/my_images/heudiconv_latest.sif -d /base/dataset_2/sourcedata/sub-{subject}/*.IMA -o /base/dataset_2/ -f /base/code/heuristic_anthrom.py -s 201 -c dcm2niix -b --overwrite
 ```
 
 ## 2.3 Anonymize the data 
-Deface using [Pydeface](https://github.com/poldracklab/pydeface). 
-
+Deface using [Pydeface](https://github.com/poldracklab/pydeface):
 ```{bash}
 #!/bin/bash
 
@@ -220,8 +220,7 @@ mv ${rootfolder}/sub-${subj}/anat/sub-${subj}_T1w_defaced.nii.gz ${rootfolder}/s
 done
 ```
 
-
-For dataset_1
+For dataset_1:
 ses-01: 101 102 103 107 112 113 117 118 119 122 123 124 128
 ses-02: 104 105 106 108 109 110 111 115 116 120 121 125 126 127
 ```{bash}
@@ -243,7 +242,6 @@ done
 ```
 
 ## 2.4 Update the .json file for the fmaps for dataset_3 and dataset_4
-
 You need to specify “IntendedFor” field in the _phasediff.json files to point which scans the estimated fieldmap should be applied to.
 
 Run the following script (thanks to Michele Svanera for the code):
@@ -252,7 +250,6 @@ python change_json.py
 ```
 
 ## 2.5 Combine the dual-echo runs for dataset_4
-
 For dataset_4 we need to combine the two echo's (see [NeuroStar](https://neurostars.org/t/fmriprep-does-not-combine-multi-echo-timeseries/3398/2) for more info. We created a dual_sum volume by adding the two images together (see [Halai et al. 2014](https://onlinelibrary.wiley.com/doi/full/10.1002/hbm.22463). 
 
 Run the following script (thanks to Tyler Morgan for the code):
@@ -260,10 +257,40 @@ Run the following script (thanks to Tyler Morgan for the code):
 python sum_echo.py
 ```
 
+## 2.6 Theory-of-Mind event protocols 
+Create tsv file for functional localiser. Event coding (in s; 10s of fixation before movie starts; accounting for hemodynamic lag) is based on Richardson et al. 2018 - reverse correlation analyses. 
+ 
+Note: For sub-322 the trigger was at the start of the movie (thus create a different tsv, with event - 10s).
+Check the triggers for dataset_1.
+```{r}
+PartlyCloudy <- data.frame(onset = c(86, 98, 120, 176, 238, 252, 300, 70, 92, 106, 136, 194, 210, 228, 262, 312), #create the events (same for every sub)
+                           duration = c(4, 6, 4, 16, 6, 8, 6, 4, 2, 4, 10, 4, 12, 6, 6, 4),
+                           trial_type = c(rep("mental",7), rep("pain",9)))
+
+#dataset_1
+for (sub in 102:129){ #note: localisers for sub-101 are in ses-02
+  filename = paste("/Volumes/Project0255/dataset_1/sub-", sub, "/ses-01/func/sub-", sub, "_ses-01_task-movie_events.tsv", sep ="")
+write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
+}
+#dataset_2
+for (sub in 201:235){ 
+  filename = paste("/Volumes/Project0255/dataset_2/sub-", sub, "/func/sub-", sub, "_task-movie_events.tsv", sep ="")
+write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
+}
+#dataset_3
+for (sub in 301:322){ #note: localisers for sub-322 should have t-10 (no trigger) <-manually correct this
+  filename = paste("/Volumes/Project0255/dataset_3/sub-", sub, "/func/sub-", sub, "_task-movie_events.tsv", sep ="")
+write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
+}
+#dataset_4
+for (sub in 401:422){ 
+  filename = paste("/Volumes/Project0255/dataset_4/sub-", sub, "/func/sub-", sub, "_task-movie_events.tsv", sep ="")
+write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
+}
+```
+
 ## 2.6 BIDS validation
-
-Use the BIDS-Validator to check if the dataset is BIDS compliant.
-
+Use the BIDS-Validator to check if the dataset is BIDS compliant:
 ```{bash}
 docker run -ti --rm -v /Volumes/Project0255/dataset_4:/data:ro bids/validator /data
 ```
@@ -274,34 +301,30 @@ docker run -ti --rm -v /Volumes/Project0255/dataset_4:/data:ro bids/validator /d
 MRIQC is a docker tool to do quality control of the data. More info [here](https://poldracklab.github.io/mriqc/).
 
 MRIQC 0.14.2 was used:
-
 ```{bash}
 docker run -it --rm -v /Volumes/Project0255/dataset_1/:/data:ro -v /Volumes/Project0255/dataset_1/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out participant --participant-label 101 -m T1w bold --ica --fft-spikes-detector 
 ```
 
 On the grid do (cd in /analyse folder):
-
 ```{bash}
 singularity run --cleanenv /analyse/Project0255/my_images/mriqc-0.14.2.simg /analyse/Project0255/dataset_1 /analyse/Project0255/dataset_1/derivatives/mriqc participant --participant-label 123 -m T1w bold --ica --fft-spikes-detector -w /analyse/Project0255/work
 ```
 
-Run it seperately for the datasets. Change participant to group to create the group reports.
-
+Run it seperately for the datasets. Change participant to group to create the group reports:
 ```{bash}
 docker run -it --rm -v /Volumes/Project0255/dataset_4/:/data:ro -v /Volumes/Project0255/dataset_4/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out group
 ```
 
 ## 3.2 Compare MRIQC
-
 Plot the output. This is based on [MRIQCeption](https://github.com/elizabethbeard/mriqception). The MRIQCeption Visualization by Catherine Walsh was adapted. Adjust the filter if you want to look at different measures.
 
-Adjust this to your liking (e.g. bold: fd_mean, fd_perc, dvars_std, dvars_vstd, gcor, tsnr, t1w: cjv, cnr, snr, efc, inu, wm2max, fwhm) and modality (bold or t1w)
+Adjust this to your liking (e.g. bold: fd_mean, fd_perc, dvars_std, dvars_vstd, gcor, tsnr, t1w: cjv, cnr, snr, efc, inu, wm2max, fwhm) and modality (bold or t1w):
 ```{r}
 QCmeasure <- "fd_mean" 
 modality <- "bold"
 ```
 
-Run the following [Change the script below to load the group results for the different datasets]
+Run the following code. Change the script below to load the group results for the different datasets:
 ```{r}
 #libraries
 library("tidyverse")
@@ -344,41 +367,20 @@ p <- ggplot(DF.full,aes(x=dataset,y=value,fill=dataset))+
 p
 ```
 
-```{r}
-library(devtools)
-library(tidystats)
-#install_github("willemsleegers/tidystats")
-
-#DF.full <- 
-  
-bind_rows(DF.dataset1, DF.dataset2, DF.dataset3,  DF.dataset4, .id = "dataset") %>%
-  group_by(dataset, measure) %>%
-  describe_data(value)
- # summarise(m = mean(value),
- #            sd = sd(value)) #%>%
-  
-  #write_csv("/Volumes/Project0255/code/MRIQC.csv")
-  
-```
-
-
 ## 3.3 fMRIprep 
 fMRIprep is a docker tool for preprocessing of the fMRI data. More info [here](https://fmriprep.readthedocs.io/en/stable/#)
 
 fMRIprep version 1.5.2 was used on a local iMac.
 
-If you run into memory problems you can use --skip_bids_validation; skipped the --write-graph flag to save space.  --use-syn-sdc only for dataset_1 and datatset_2.
+If you run into memory problems you can use --skip_bids_validation; skipped the --write-graph flag to save space, and --use-syn-sdc only for dataset_1 and datatset_2.
 
---use-syn-sdc for dataset_1 and dataset_2
-
-If run on the GRID (HCP @ University of Glasgow), cd into the analyse folder and run:
+If run on the GRID, cd into the analyse folder and run:
 ```{bash}
 singularity run --cleanenv /analyse/Project0255/my_images/fmriprep-1.5.2.simg /analyse/Project0255/dataset_1/ /analyse/Project0255/dataset_1/derivatives participant --participant-label sub-129 --fs-license-file /analyse/Project0255/my_images/license.txt --skip_bids_validation --use-syn-sd --fs-no-reconall -w /analyse/Project0255/work/compute00
 ```
 
-Resize functional files for two participants (sub-117 and sub-125) from dataset_1 (sub-{sub}_ses-01_task-movie_space-MNI152NLin2009cAsym_desc-preproc_bold.nii) to allow for group comparison. 
-
-```
+Resize functional files for two participants (sub-117 and sub-125) from dataset_1 (sub-{sub}_ses-01_task-movie_space-MNI152NLin2009cAsym_desc-preproc_bold.nii) to allow for group comparison (run this in MATLAB):
+```{}
 voxsiz = [3 3 3.5]; % new voxel size {mm}
 V = spm_select([1 Inf],'image');
 V = spm_vol(V);
@@ -392,46 +394,10 @@ for i=1:numel(V)
 end
 ```
 
-## 3.4 Theory-of-Mind event protocols 
-
-Create tsv file for functional localiser
-
-Event coding (in s;  10s of fixation before movie starts; accounting for hemodynamic lag) is based on Richardson et al. 2018 - reverse correlation analyses. 
- 
-Note: For sub-322 the trigger was at the start of the movie (thus create a different tsv, with event - 10s).
-Check the triggers for dataset_1.
-```{r}
-PartlyCloudy <- data.frame(onset = c(86, 98, 120, 176, 238, 252, 300, 70, 92, 106, 136, 194, 210, 228, 262, 312), #create the events (same for every sub)
-                           duration = c(4, 6, 4, 16, 6, 8, 6, 4, 2, 4, 10, 4, 12, 6, 6, 4),
-                           trial_type = c(rep("mental",7), rep("pain",9)))
-
-#dataset_1
-for (sub in 102:129){ #note: localisers for sub-101 are in ses-02
-  filename = paste("/Volumes/Project0255/dataset_1/sub-", sub, "/ses-01/func/sub-", sub, "_ses-01_task-movie_events.tsv", sep ="")
-write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
-}
-#dataset_2
-for (sub in 201:235){ 
-  filename = paste("/Volumes/Project0255/dataset_2/sub-", sub, "/func/sub-", sub, "_task-movie_events.tsv", sep ="")
-write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
-}
-#dataset_3
-for (sub in 301:322){ #note: localisers for sub-322 should have t-10 (no trigger) <-manually correct this
-  filename = paste("/Volumes/Project0255/dataset_3/sub-", sub, "/func/sub-", sub, "_task-movie_events.tsv", sep ="")
-write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
-}
-#dataset_4
-for (sub in 401:422){ 
-  filename = paste("/Volumes/Project0255/dataset_4/sub-", sub, "/func/sub-", sub, "_task-movie_events.tsv", sep ="")
-write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
-}
-```
-
 # 4. Analyses {.tabset}
 
 ## 4.1 First-level analysis 
-
-Dataset_1 
+Dataset_1:
 ```{bash}
 cd "/Volumes/Project0255/code/"
 matlab -batch "BIDS_SPM_firstlevel_tom_dataset1"
@@ -439,27 +405,26 @@ matlab -batch "BIDS_SPM_firstlevel_tom_dataset1_ppn101"
 matlab -batch "BIDS_SPM_firstlevel_tom_dataset1_ppn114"
 ```
 
-Dataset_2 
+Dataset_2:
 ```{bash}
 cd "/Volumes/Project0255/code/"
 matlab -batch "BIDS_SPM_firstlevel_tom_dataset2_ppn201_202"
 ```
 
-Dataset_3
+Dataset_3:
 ```{bash}
 cd "/Volumes/Project0255/code/"
 matlab -batch "BIDS_SPM_firstlevel_tom_dataset3"
 ```
 
-Dataset_4
+Dataset_4:
 ```{bash}
 cd "/Volumes/Project0255/code/"
 matlab -batch "BIDS_SPM_firstlevel_tom_dataset4"
 ```
 
 ## 4.2 Second-level whole-brain analysis 
-
-Create a group average for the GM_probseg.nii for each dataset in Matlab (change the code per dataset)
+Create a group average for the GM_probseg.nii for each dataset in Matlab (change the code per dataset; run this in MATLAB):
 ```{}
 clear all
 
@@ -489,7 +454,7 @@ matlabbatch{1}.spm.util.imcalc.options.dtype = 4;
 spm_jobman('run',matlabbatch);
 ```
 
-Run it seperately for the datasets.
+Run it seperately for the datasets:
 ```{bash}
 cd "/Volumes/Project0255/code/"
 matlab -batch "BIDS_SPM_secondlevel_tom_dataset1"
@@ -498,10 +463,8 @@ matlab -batch "BIDS_SPM_secondlevel_tom_dataset3"
 matlab -batch "BIDS_SPM_secondlevel_tom_dataset4"
 ```
 
-
 ## 4.3 ToM fROI analysis  
-
-Run the following (ROI_extract.m) script in matlab (change the code per dataset and roi and contrast)
+Run the following (ROI_extract.m) script in matlab (change the code per dataset and roi and contrast - run this in MATLAB):
 ```{}
 %========================================================================
 %     fROI analysis for fmriprep data in BIDS format
@@ -547,24 +510,22 @@ for i=1:length(parcels)
 end
 ```
 
-Add sub-201 and sub-202 (different parameters so now combined in whole-brain group analysis)
+Add sub-201 and sub-202 (different parameters so not combined in whole-brain group analysis):
 ```{bash}
 cd "/Volumes/Project0255/code/"
 matlab -batch "BIDS_SPM_secondlevel_tom_dataset2_201_202"
 matlab -batch "ROI_extract_201_202"
-
 ```
 
 # 5. IDAQ {.tabset}
 
-## 5.1 Calculation of individual scores
-
-Dataset 2: sub-206-212, 219, 221-22, 224-25, 228, 231, 233-34 completed a version with 1-10 instead of 0-10
+## 5.1 Calculation of individual scores:
+Dataset 2: sub-206-212, 219, 221-22, 224-25, 228, 231, 233-34 completed a version with the scale ranging from 1-10 instead of 0-10. Analyses should be run with and without these participants:
 ```{r}
 sub_ex = c(206:212, 219, 221:222, 224:225, 228, 231, 233:234)
 ```
 
-
+Get the IDAQ data for all the participants:
 ```{r}
 library(tidyverse)
 
@@ -590,7 +551,7 @@ rm(DF.d1, DF.d2, DF.d3, DF.d4)
 ```
 
 ## 5.2 Reliability of IDAQ
-
+Check the reliability of the IDAQ scale:
 ```{r}
 library("psych")
 
@@ -605,7 +566,7 @@ DF.idaq %>%
 ```
 
 ## 5.3 Reliability of IDAQ-NA
-
+Check the reliability of the IDAQ-NA scale:
 ```{r}
 #IDAQ-NA
 DF.idaq %>% 
@@ -615,23 +576,20 @@ DF.idaq %>%
   spread(itemnr, value) %>%
   select(-sub, -dataset) %>%
   alpha(na.rm = TRUE)
-
-
 ```
 
 ## 5.4 IDAQ per subject
-
+Calculate the IDAQ per subject:
 ```{r}
 DF.idaq <- DF.idaq %>%
   group_by(sub,dataset, scale, subscale) %>%
   summarise(score = sum(value, na.rm = TRUE)) 
 ```
 
-
 ## 5.5 Visualise the scores
+Visualise the scores across the datasets and scales:
 ```{r}
 source("/Volumes/Project0255/code/R_rainclouds.R")
-
 
 p <- DF.idaq %>%
   group_by(sub,dataset, scale) %>%
@@ -648,6 +606,7 @@ p
 ```
 
 ## 5.6 Median and interquartile range per dataset
+Calculate the median IQR per dataset (table S2)
 ```{r}
 DF.idaq %>%
   group_by(sub,dataset, scale) %>%
@@ -657,18 +616,10 @@ DF.idaq %>%
             iqr = IQR(score))
 ```
 
-## 5.7 Comparison across datasets
-```{r}
-library("ez")
-idaq_ez <- DF.idaq %>% ezANOVA(dv = score, wid = sub, within = .(scale), between = .(dataset))
-print(idaq_ez)
-```
-
 # 6. fROI results {.tabset}
 
 ## 6.1 Data wrangling
-
-Create function to load the data
+Create function to load the data:
 ```{r}
 #load necessary libraries
 library("tidyverse")
@@ -689,7 +640,7 @@ roi_extract <- function(datasetno, substart, subend, network, nroi) {
 } 
 ```
 
-Load the data for the Theory-of-Mind network
+Load the data for the Theory-of-Mind network:
 ```{r}
 DF.d1 <- roi_extract(1, 101, 129, "tom", 6)
 DF.d2.a <- roi_extract(2, 201, 202, "tom/201_202", 6)
@@ -698,10 +649,9 @@ DF.d3 <- roi_extract(3, 301, 322, "tom", 6)
 DF.d4 <- roi_extract(4, 401, 422, "tom", 6)
 
 DF.temp <- bind_rows(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4) 
-
 ```
 
-Load the data for the Pain Matrix network
+Load the data for the Pain Matrix:
 ```{r}
 DF.d1 <- roi_extract(1, 101, 129, "pain", 7)
 DF.d2.a <- roi_extract(2, 201, 202, "pain/201_202/", 7)
@@ -714,8 +664,8 @@ DF.roi <- bind_rows(DF.temp, DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4)
 rm(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4, DF.temp)
 ```
 
-## 6.2 Theory-of-Mind network activation across datasets
-
+## 6.2 Theory-of-Mind network activation across datasets:
+Plot the TOM activity across regions and datasets:
 ```{r}
 source("/Volumes/Project0255/code/R_rainclouds.R")
 
@@ -731,18 +681,8 @@ p <- DF.roi %>%
 p
 ```
 
-## 6.3 Comparison across datasets - Theory-of-Mind network
-
-```{r}
-library("ez")
-tom_ez <- DF.roi %>%
-  filter(network == "tom") %>%
-  ezANOVA(dv = contrast, wid = sub, within = .(roi), between = .(dataset))
-print(tom_ez)
-
-```
 ## 6.4 Pain Matrix activation across datasets
-
+Plot the Pain Matrix activity across regions and datasets:
 ```{r}
 source("/Volumes/Project0255/code/R_rainclouds.R")
 
@@ -757,220 +697,3 @@ p <- DF.roi %>%
   facet_wrap(~dataset)
 p
 ```
-
-## 6.5 Comparison across datasets - Pain Matrix
-
-```{r}
-library("ez")
-pain_ez <- DF.roi %>%
-  filter(network == "pain") %>%
-  ezANOVA(dv = contrast, wid = sub, within = .(roi), between = .(dataset))
-print(pain_ez)
-
-```
-# 7. IDAQ and ROI Analysis - Overall
-
-## 7.1 Combine IDAQ scores and ROI data
-```{r}
-DF.roi <- DF.idaq %>% 
-  group_by(sub,dataset, scale) %>%
-  summarise(score = sum(score)) %>%
-  ungroup() %>% 
-  mutate(dataset = as.numeric(dataset)) %>% 
-  left_join(DF.roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
-  spread(key=scale, value=score) #change this
-```
-
-#center the variables
-
-```{r}
-DF.roi$cent_IDAQNA <- scale(DF.roi$IDAQNA, scale = FALSE)
-DF.roi$cent_IDAQ <- scale(DF.roi$IDAQ, scale = FALSE)
-
-DF.roi <- DF.roi %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, scale =FALSE))
-```
-
-## 7.2 Correlations
-
-```{r}
-#want data in wide format
-#make sure package GGally is installed 
-library("GGally")
-
-cormat <- DF.roi %>% 
-  unite(network_roi, network, roi) %>%
-  spread(network_roi, contrast)
-
-cormat <- round(cor(as.matrix(cormat[3:20]), use = "complete.obs"), digits=3)
-
-cormat
-
-ggcorr(cormat, 
-       geom="circle", 
-       max_size=15,
-       min_size=4,
-       name="Correlation (Pearson)"
-       ) 
-```
-
-
-
-## 7.3 Linear relationship
-
-```{r}
-plot1 <- DF.roi %>%
-  filter(network == "tom") %>%
-  ggplot(aes(x=cent_IDAQ, y=cent_contrast, colour=roi)) +
-  geom_point(alpha=0.5,show.legend = FALSE) +
-  geom_smooth(method="lm", se=FALSE, show.legend = FALSE) +
-  labs(
-    x="IDAQ score",
-    y="Contrast"
-  ) + theme_classic() +
-  facet_grid(~roi)
-
-plot1
-```
-
-## 7.4 Non-linear relationship
-
-```{r}
-#load the data
-
-plot2 <- DF.roi %>%
-  ggplot(aes(x=IDAQ, y=contrast, colour=roi)) +
-  geom_point(alpha=0.5,show.legend = FALSE) +
-  geom_smooth(method="loess", se=FALSE, show.legend = FALSE) +
-  labs(
-    x="IDAQ score",
-    y="Contrast"
-  ) + theme_classic() +
-  facet_grid(.~roi)
-
-plot2
-```
-
-```{r}
-plot3 <- DF.roi %>%
-  filter(network == "tom") %>%
-  #filter(!sub %in% c(sub_ex)) %>%
-  ggplot(aes(x=cent_IDAQ, y=cent_contrast, colour=roi)) +
-  geom_point(alpha=0.5,show.legend = FALSE) +
-  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE) +
-  labs(
-    x="IDAQ score",
-    y="Contrast"
-  ) + theme_classic() +
-  facet_grid(.~roi)
-plot3
-plot4
-
-```
-
-
-
-```{r}
-DF.test <- DF.roi  %>% filter(roi == "mmpfc")
-
-x <- DF.test$cent_IDAQ
-y <- DF.test$cent_contrast
-
-
-# Calculate intercept (beta_0) and
-# slope (beta_1) "on foot"
-slope <- cor(x, y) * (sd(y) / sd(x)) 
-intercept <- mean(y) - slope * mean(x)
-# Look at what we’ve done
-c("beta_0" = intercept, "beta_1" = slope)
-
-LF1 <- lm(y ~ x) 
-LF2 <- lm(y ~ x+ I(x^2))  
-
-summary(LF1)
-summary(LF2)
-
-plot (x, y,
-abline(LF1, col="red", lwd=2))
-```
-
-# 8. IDAQ and ROI Analysis - Overall
-
-## 8.1 Combine IDAQ scores and ROI data
-```{r}
-DF.roi2 <- DF.idaq %>% 
-  ungroup() %>% 
-  mutate(dataset = as.numeric(dataset)) %>% 
-  left_join(DF.roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
-    filter(scale == "IDAQ") %>%
-  spread(key=subscale, value=score) %>%
-  select(-scale, -IDAQNA)
-```
-
-#center the variables
-
-```{r}
-DF.roi2$cent_animal <- scale(DF.roi2$animal, scale = FALSE)
-DF.roi2$cent_nature<- scale(DF.roi2$nature, scale = FALSE)
-DF.roi2$cent_technology<- scale(DF.roi2$technology, scale = FALSE)
-
-DF.roi2 <- DF.roi2 %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, scale =FALSE))
-
-```
-
-## 8.2 Correlations
-
-## 8.3 Linear relationship
-
-```{r}
-plot1 <- DF.roi2 %>%
-  filter(network == "tom") %>%
-  ggplot(aes(x=cent_nature, y=cent_contrast, colour=roi)) +
-  geom_point(alpha=0.5,show.legend = FALSE) +
-  geom_smooth(method="lm", se=FALSE, show.legend = FALSE) +
-  labs(
-    x="IDAQ score",
-    y="Contrast"
-  ) + theme_classic() +
-    facet_grid(dataset~roi)
-
-plot1
-```
-
-## 8.4 Non-linear relationship
-
-```{r}
-#load the data
-
-plot2 <- DF.roi2 %>%
-  ggplot(aes(x=cent_nature, y=cent_contrast, colour=roi)) +
-  geom_point(alpha=0.5,show.legend = FALSE) +
-  geom_smooth(method="loess", se=FALSE, show.legend = FALSE) +
-  labs(
-    x="IDAQ score",
-    y="Contrast"
-  ) + theme_classic() +
-  facet_grid(.~roi)
-
-plot2
-```
-
-```{r}
-plot3 <- DF.roi2 %>%
-  filter(network == "tom") %>%
-  #filter(!sub %in% c(sub_ex)) %>%
-  ggplot(aes(x=cent_nature, y=cent_contrast, colour=roi)) +
-  geom_point(alpha=0.5,show.legend = FALSE) +
-  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE) +
-  labs(
-    x="IDAQ score",
-    y="Contrast"
-  ) + theme_classic() +
-  facet_grid(dataset~roi)
-
-plot3
-
-
-```
-
-
-
