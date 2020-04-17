@@ -781,17 +781,17 @@ Get the IDAQ data for all the participants:
 ```{r}
 library(tidyverse)
 
-#load data
-DF.d1  <- read_csv(file = paste("/Volumes/Project0255/dataset_1/sourcedata/IDAQ_dataset1.csv", sep ="")) %>%
+#load data (/Volumes/Project0255/dataset_1/sourcedata/)
+DF.d1  <- read_csv(file = paste("IDAQ_dataset1.csv", sep ="")) %>%
   gather("sub", "value", 4:32)
 
-DF.d2  <- read_csv(file = paste("/Volumes/Project0255/dataset_2/sourcedata/IDAQ_dataset2.csv", sep ="")) %>%
+DF.d2  <- read_csv(file = paste("IDAQ_dataset2.csv", sep ="")) %>%
   gather("sub", "value", 4:38) 
 
-DF.d3  <- read_csv(file = paste("/Volumes/Project0255/dataset_3/sourcedata/IDAQ_dataset3.csv", sep ="")) %>%
+DF.d3  <- read_csv(file = paste("IDAQ_dataset3.csv", sep ="")) %>%
   gather("sub", "value", 4:25) 
 
-DF.d4  <- read_csv(file = paste("/Volumes/Project0255/dataset_4/sourcedata/IDAQ_dataset4.csv", sep ="")) %>%
+DF.d4  <- read_csv(file = paste("IDAQ_dataset4.csv", sep ="")) %>%
   gather("sub", "value", 4:25) 
 
 DF.idaq <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
@@ -810,7 +810,7 @@ library("psych")
 #IDAQ
 DF.idaq %>% 
   filter(scale == "IDAQ") %>%
-  #filter(sub != sub_ex) %>% 
+  filter(!sub %in%  sub_ex) %>% 
   select(-scale, -subscale)  %>%
   spread(itemnr, value) %>%
   select(-sub, -dataset) %>%
@@ -823,7 +823,7 @@ Check the reliability of the IDAQ-NA scale:
 #IDAQ-NA
 DF.idaq %>% 
   filter(scale == "IDAQNA") %>%
-  #filter(sub != sub_ex) %>% 
+  filter(!sub %in%  sub_ex) %>% 
   select(-scale, -subscale)  %>%
   spread(itemnr, value) %>%
   select(-sub, -dataset) %>%
@@ -841,7 +841,7 @@ DF.idaq <- DF.idaq %>%
 ## 5.5 Visualise the scores
 Visualise the scores across the datasets and scales:
 ```{r}
-source("/Volumes/Project0255/code/R_rainclouds.R")
+source("R_rainclouds.R") #/Volumes/Project0255/code
 
 p <- DF.idaq %>%
   group_by(sub,dataset, scale) %>%
@@ -861,6 +861,7 @@ p
 Calculate the median IQR per dataset (table S2)
 ```{r}
 DF.idaq %>%
+  filter(!sub %in%  sub_ex) %>% 
   group_by(sub,dataset, scale) %>%
   summarise(score = sum(score)) %>%
   group_by(dataset, scale) %>%
