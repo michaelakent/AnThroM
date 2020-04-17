@@ -397,6 +397,141 @@ end
 # 4. Analyses {.tabset}
 
 ## 4.1 First-level analysis 
+
+Example:
+```{}
+%========================================================================
+%     SPM first-level analysis for fmriprep data in BIDS format
+%========================================================================
+%     This script is written by Ruud Hortensius and Michaela Kent
+%     (University of Glasgow). Based upon a script written by 
+%     Shengdong Chen (ACRLAB) and Stephan Heunis (TU Eindhoven).
+%
+%     Added: loop for runs
+%     Parameters as specified by Saxelab: https://saxelab.mit.edu/theory-mind-and-pain-matrix-localizer-movie-viewing-experiment
+%
+%     Last updated: January 2020
+%========================================================================
+
+clear all 
+
+%% Inputdirs
+BIDS = spm_BIDS('/Volumes/Project0255/dataset_3/'); % Parse BIDS directory (easier to query info from dataset)
+BIDSpreproc=fullfile(BIDS.dir,'derivatives/fmriprep'); % get the preprocessed directory
+
+%sublist = spm_BIDS(BIDS,'subjects') %number of subjects
+sublist = transpose(BIDS.participants.participant_id) %get subject list including the 'sub'
+subex = [] 
+sublist(subex) = []; %update the subjects
+
+taskid='movie'; %specify the task to be analysed
+
+numScans=175;  %The number of volumes per run <---
+
+TR = 2;     % Repetition time, in seconds <---
+unit='secs'; % onset times in secs (seconds) or scans (TRs)
+
+%% Outputdirs
+outputdir=fullfile(BIDS.dir,'derivatives/bids_spm/first_level');  % root outputdir for sublist
+spm_mkdir(outputdir,char(sublist), char(taskid)); % create output directory
+
+%% Loop for sublist
+spm('Defaults','fMRI'); %Initialise SPM fmri
+spm_jobman('initcfg');  %Initialise SPM batch mode
+
+for i=1:length(sublist)
+    
+    
+    %% Output dirs where you save SPM.mat
+    subdir=fullfile(outputdir,sublist{i},taskid);
+    
+    %% Basic parameters
+    matlabbatch{1}.spm.stats.fmri_spec.dir = {subdir};
+    matlabbatch{1}.spm.stats.fmri_spec.timing.units = unit; % specified above
+    matlabbatch{1}.spm.stats.fmri_spec.timing.RT = TR; % specified above
+    matlabbatch{1}.spm.stats.fmri_spec.timing.fmri_t = 68; %<--- look into this
+    matlabbatch{1}.spm.stats.fmri_spec.timing.fmri_t0 = 34; %<--- look into this
+    
+    %% Load input files for task specilized
+    sub_inputdir=fullfile(BIDSpreproc,sublist{i},'func');
+    sub_inputdirA=fullfile(BIDSpreproc,sublist{i},'anat');
+    
+    %------------------------------------------------------------------
+    func=[sub_inputdir,filesep,sublist{i},'_task-',taskid,'_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz'];
+    func_nii=[sub_inputdir,filesep,sublist{i}, '_task-',taskid,'_space-MNI152NLin2009cAsym_desc-preproc_bold.nii'];
+    if ~exist(func_nii,'file'), gunzip(func)
+    end
+    run_scans = spm_select('Expand',func_nii);
+    
+    matlabbatch{1}.spm.stats.fmri_spec.sess(1).scans = cellstr(run_scans);
+    
+    % Load the condition files
+    events = spm_load([BIDS.dir,filesep,sublist{i},'/func/', sublist{i},'_task-',taskid,'_events.tsv']) %load TSV condition file
+    
+    names{1} = 'mental';
+    t = strcmp(names{1}, events.trial_type)
+    onsets{1} = transpose(events.onset(t));
+    durations{1} = transpose(events.duration(t));
+    
+    names{2} = 'pain';
+    t = strcmp(names{2}, events.trial_type)
+    onsets{2} = transpose(events.onset(t));
+    durations{2} = transpose(events.duration(t));
+    
+    
+    file_mat = [subdir,filesep,sublist{i},'_task-',taskid,'_conditions.mat'];
+    save(file_mat, 'names', 'onsets', 'durations')
+    matlabbatch{1}.spm.stats.fmri_spec.sess(1).cond = struct('name', {}, 'onset', {}, 'duration', {}, 'tmod', {}, 'pmod', {}, 'orth', {});
+    matlabbatch{1}.spm.stats.fmri_spec.sess(1).multi = {file_mat};
+    
+    % Confounds file
+    confounds=spm_load([sub_inputdir,filesep,sublist{i},'_task-',taskid,'_desc-confounds_regressors.tsv'])  ;
+    confounds_matrix=[confounds.framewise_displacement, confounds.a_comp_cor_00,confounds.a_comp_cor_01,confounds.a_comp_cor_02,confounds.a_comp_cor_03, confounds.a_comp_cor_04,confounds.a_comp_cor_05, confounds.trans_x, confounds.trans_y, confounds.trans_z, confounds.rot_x, confounds.rot_y, confounds.rot_z];
+    confounds_name=[subdir,filesep,sublist{i},'_task-',taskid,'_acomcorr.txt'];
+    
+    confounds_matrix(isnan(confounds_matrix)) = 0 % nanmean(confounds_matrix); %check this <-----
+    
+    if ~exist(confounds_name,'file'), dlmwrite(confounds_name,confounds_matrix)
+    end
+    matlabbatch{1}.spm.stats.fmri_spec.sess(1).multi_reg = {confounds_name};
+    matlabbatch{1}.spm.stats.fmri_spec.sess(1).hpf = 128; % High-pass filter (hpf) without using consine
+    
+    %% Model  (Default)
+    matlabbatch{1}.spm.stats.fmri_spec.fact = struct('name', {}, 'levels', {});
+    matlabbatch{1}.spm.stats.fmri_spec.bases.hrf.derivs = [0 0];
+    matlabbatch{1}.spm.stats.fmri_spec.volt = 1;
+    matlabbatch{1}.spm.stats.fmri_spec.global = 'Scaling';
+    mask=[sub_inputdirA,filesep,sublist{i},'_space-MNI152NLin2009cAsym_label-GM_probseg.nii.gz'];
+    mask_nii=[sub_inputdirA,filesep,sublist{i},'_space-MNI152NLin2009cAsym_label-GM_probseg.nii'];
+    
+    if ~exist(mask_nii,'file'), gunzip(mask)
+    end
+    mask_nii=[mask_nii, ',1']
+    matlabbatch{1}.spm.stats.fmri_spec.mask = {mask_nii};
+    matlabbatch{1}.spm.stats.fmri_spec.mthresh = 0.8;
+    matlabbatch{1}.spm.stats.fmri_spec.cvi = 'none';
+    
+    %% Model estimation (Default)subdir
+    matlabbatch{2}.spm.stats.fmri_est.spmmat = {[subdir filesep 'SPM.mat']};
+    matlabbatch{2}.spm.stats.fmri_est.write_residuals = 0;
+    matlabbatch{2}.spm.stats.fmri_est.method.Classical = 1;
+    
+    %% Contrasts
+    matlabbatch{3}.spm.stats.con.spmmat = {[subdir filesep 'SPM.mat']};
+    % Set contrasts of interest.
+    matlabbatch{3}.spm.stats.con.consess{1}.tcon.name = 'mental_pain';
+    matlabbatch{3}.spm.stats.con.consess{1}.tcon.convec = [1 -1 0 0 0 0 0 0 0 0 0 0 0 0 0];
+    matlabbatch{3}.spm.stats.con.consess{2}.tcon.name = 'pain_mental';
+    matlabbatch{3}.spm.stats.con.consess{2}.tcon.convec = [-1 1 0 0 0 0 0 0 0 0 0 0 0 0 0];
+    matlabbatch{3}.spm.stats.con.delete = 0;
+    
+    %% Run matlabbatch jobs
+    spm_jobman('run',matlabbatch);
+    
+end
+```
+
+
 Dataset_1:
 ```{bash}
 cd "/Volumes/Project0255/code/"
@@ -453,6 +588,119 @@ matlabbatch{1}.spm.util.imcalc.options.dtype = 4;
 
 spm_jobman('run',matlabbatch);
 ```
+
+```{}
+%========================================================================
+%     SPM second-level analysis for fmriprep data in BIDS format
+%========================================================================
+%     This script is written by Ruud Hortensius and Michaela Kent 
+%     (University of Glasgow) 
+%
+%     Last updated: January 2020
+%========================================================================
+
+
+clear all
+
+%% Inputdirs
+BIDS = spm_BIDS('/Volumes/Project0255/dataset_3'); % Parse BIDS directory (easier to query info from dataset)
+BIDSfirst=fullfile(BIDS.dir,'derivatives/bids_spm/first_level'); % get the first-level directory
+
+sublist = transpose(BIDS.participants.participant_id) %get subject list including the 'sub'
+subex = [] %subjects that don't have a second-session
+sublist(subex) = []; %update the subjects
+
+%nsession = spm_BIDS(BIDS,'sessions') %how many sessions? careful, sometimes collapsing across sessions not wanted
+%sessionid = 'ses-01' %get session id
+
+taskid='movieHC'; %specify the task to be analysed
+
+contrast='con_0001'; %specify the contrast to be analysed
+contrast_name='mental_hc'; %specify the name of the contrast
+
+smoothing = 1; %soomthing of first-level contrasts (1=yes, 0=no)
+s_kernel = [5 5 5]
+
+%% Outputdirs
+outputdir=fullfile(BIDS.dir,'derivatives/bids_spm/second_level', char(contrast_name));  % root outputdir for sublist
+spm_mkdir(outputdir); % create output directory 
+
+spm('Defaults','fMRI'); %Initialise SPM fmri
+spm_jobman('initcfg');  %Initialise SPM batch mode
+
+
+%% Smoothing of first-level contrasts
+if smoothing == 1
+    for i=1:length(sublist)
+        subdir=fullfile(BIDSfirst,sublist{i}, taskid);
+        matlabbatch{1}.spm.spatial.smooth.data{i,1} = [subdir, filesep, contrast, '.nii,1'];
+        matlabbatch{1}.spm.spatial.smooth.fwhm = s_kernel;
+        matlabbatch{1}.spm.spatial.smooth.dtype = 0;
+        matlabbatch{1}.spm.spatial.smooth.im = 0;
+        matlabbatch{1}.spm.spatial.smooth.prefix = 's';
+    end
+    spm_jobman('run',matlabbatch);
+    
+    clear matlabbatch
+end
+
+
+%% Load the contrasts
+matlabbatch{1}.spm.stats.factorial_design.dir = {outputdir};
+
+for i=1:length(sublist)
+    subdir=fullfile(BIDSfirst,sublist{i}, taskid);
+    if smoothing == 1
+        matlabbatch{1,1}.spm.stats.factorial_design.des.t1.scans{i,1} = [subdir, filesep, 's', contrast, '.nii,1']
+    else
+        matlabbatch{1,1}.spm.stats.factorial_design.des.t1.scans{i,1} = [subdir, filesep, contrast, '.nii,1']
+    end
+end
+
+matlabbatch{1}.spm.stats.factorial_design.cov = struct('c', {}, 'cname', {}, 'iCFI', {}, 'iCC', {});
+matlabbatch{1}.spm.stats.factorial_design.multi_cov = struct('files', {}, 'iCFI', {}, 'iCC', {});
+matlabbatch{1}.spm.stats.factorial_design.masking.tm.tm_none = 1;
+matlabbatch{1}.spm.stats.factorial_design.masking.im = 1;
+matlabbatch{1}.spm.stats.factorial_design.masking.em = {''};
+matlabbatch{1}.spm.stats.factorial_design.globalc.g_omit = 1;
+matlabbatch{1}.spm.stats.factorial_design.globalm.gmsca.gmsca_no = 1;
+matlabbatch{1}.spm.stats.factorial_design.globalm.glonorm = 1;
+
+%% Model estimation 
+matlabbatch{2}.spm.stats.fmri_est.spmmat = {[outputdir filesep 'SPM.mat']};
+matlabbatch{2}.spm.stats.fmri_est.write_residuals = 0;
+matlabbatch{2}.spm.stats.fmri_est.method.Classical = 1;
+
+%% Contrast
+%--------------------------------------------------------------------------
+matlabbatch{3}.spm.stats.con.spmmat = {[outputdir filesep 'SPM.mat']};
+matlabbatch{3}.spm.stats.con.consess{1}.tcon.name = contrast_name;
+matlabbatch{3}.spm.stats.con.consess{1}.tcon.weights = 1;
+matlabbatch{3}.spm.stats.con.consess{1}.tcon.sessrep = 'none';
+matlabbatch{3}.spm.stats.con.delete = 0;
+
+%% Results
+%--------------------------------------------------------------------------
+matlabbatch{4}.spm.stats.results.spmmat = {[outputdir filesep 'SPM.mat']};
+matlabbatch{4}.spm.stats.results.conspec.titlestr = '';
+matlabbatch{4}.spm.stats.results.conspec.contrasts = 1;
+matlabbatch{4}.spm.stats.results.conspec.threshdesc = 'none';
+matlabbatch{4}.spm.stats.results.conspec.thresh = 0.001;
+matlabbatch{4}.spm.stats.results.conspec.extent = 5;
+matlabbatch{4}.spm.stats.results.conspec.conjunction = 1;
+matlabbatch{4}.spm.stats.results.conspec.mask.image.name = {'/Volumes/Project0255/dataset_3/derivatives/fmriprep/dataset3_averageGM.nii,1'};
+matlabbatch{4}.spm.stats.results.conspec.mask.image.mtype = 0;
+matlabbatch{4}.spm.stats.results.units = 1;
+matlabbatch{4}.spm.stats.results.export{1}.pdf = true;
+matlabbatch{4}.spm.stats.results.export{2}.jpg = true;
+matlabbatch{4}.spm.stats.results.export{3}.csv = true;
+matlabbatch{4}.spm.stats.results.export{4}.tspm.basename = contrast_name;
+
+%% Run matlabbatch jobs
+spm_jobman('run',matlabbatch);
+
+```
+
 
 Run it seperately for the datasets:
 ```{bash}
