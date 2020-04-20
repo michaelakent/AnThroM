@@ -847,13 +847,16 @@ p <- DF.idaq %>%
   group_by(sub,dataset, scale) %>%
   summarise(score = sum(score)) %>%
   ggplot(.,aes(x=dataset,y=score,fill=dataset, group = dataset))+
-  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
-  geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 20)+
-  geom_boxplot(aes(x=dataset,y=score),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ scale_fill_brewer(palette = "Blues") +
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
+  geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
+  geom_boxplot(aes(x=dataset,y=score),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
+  scale_fill_brewer(palette = "Blues") +
   scale_colour_brewer(palette = "Blues") +
-  theme_classic() + ylab(paste("score (0-150)"))  + ggtitle(paste("Comparison of IDAQ scores between datasets")) +
+  theme_classic() + 
+  ylab(paste("score (0-150)")) + 
+  ggtitle(paste("Comparison of IDAQ scores between datasets")) +
+  theme(legend.position="none") +
   facet_wrap(~scale)
-
 p
 ```
 
@@ -861,7 +864,7 @@ p
 Calculate the median IQR per dataset (table S2)
 ```{r}
 DF.idaq %>%
-  filter(!sub %in%  sub_ex) %>% 
+  #filter(!sub %in%  sub_ex) %>% 
   group_by(sub,dataset, scale) %>%
   summarise(score = sum(score)) %>%
   group_by(dataset, scale) %>%
@@ -881,7 +884,7 @@ library("fs")
 #create function to load roi datasets for the different networks
 roi_extract <- function(datasetno, substart, subend, network, nroi) {
   
-  dir_ls(paste("/Volumes/Project0255/dataset_", datasetno, "/derivatives/roi/", network, sep = ""), regexp = "\\.tsv$") %>% 
+  dir_ls(paste("dataset_", datasetno, "/derivatives/roi/", network, sep = ""), regexp = "\\.tsv$") %>% 
     map_dfr(read.delim, sep = "\t", .id = "id", header = FALSE)  %>%
     mutate(dataset = datasetno) %>%
     mutate(network = network) %>%
@@ -917,36 +920,56 @@ DF.roi <- bind_rows(DF.temp, DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4)
 rm(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4, DF.temp)
 ```
 
+```{r}
+DF.roi <- DF.roi %>%
+  mutate_at(vars(-contrast),as.factor)
+  
+order <- c("rtpj", "ltpj", "prec", "vmpfc","mmpfc","dmpfc", "rs2", "ls2", "rinsula", "linsula", "rmfg", "lmfg", "amcc")  
+
+DF.roi <- DF.roi %>%
+  group_by(sub, dataset) %>%
+  mutate(roi = fct_relevel(roi, order))
+```
+
+
+
 ## 6.2 Theory-of-Mind network activation across datasets:
 Plot the TOM activity across regions and datasets:
 ```{r}
-source("/Volumes/Project0255/code/R_rainclouds.R")
+source("R_rainclouds.R")
 
 p <- DF.roi %>%
   filter(network == "tom") %>%
   ggplot(.,aes(x=roi,y=contrast,fill=roi))+
-  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
-  geom_point(aes(colour = roi), position=position_jitter(width = .05), size = .5, shape = 20)+
-  geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
-  theme_classic() + ylab(paste("contrast (mental vs pain)")) + scale_fill_brewer(palette = "Blues") +
-  scale_colour_brewer(palette = "Blues") + ggtitle(paste("Comparison of ToM network contrasts values between datasets")) + theme(legend.position="none") +
-  facet_wrap(~dataset)
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
+  geom_point(aes(colour = roi, fill = roi), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
+  geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
+  theme_classic() + 
+  ylab(paste("contrast estimates (mental > pain)")) + 
+  scale_fill_brewer(palette = "Blues") +
+  scale_colour_brewer(palette = "Blues") + 
+  ggtitle(paste("ToM network contrasts estimates across datasets")) + 
+  theme(legend.position="none") +
+  facet_wrap(~dataset) 
 p
 ```
 
 ## 6.4 Pain Matrix activation across datasets
 Plot the Pain Matrix activity across regions and datasets:
 ```{r}
-source("/Volumes/Project0255/code/R_rainclouds.R")
+#source("/Volumes/Project0255/code/R_rainclouds.R")
 
 p <- DF.roi %>%
   filter(network == "pain") %>%
   ggplot(.,aes(x=roi,y=contrast,fill=roi))+
-  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = NA)+
-  geom_point(aes(colour = roi), position=position_jitter(width = .05), size = .5, shape = 20)+
-  geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
-  theme_classic() + ylab(paste("contrast (mental vs pain)")) + scale_fill_brewer(palette = "Reds") +
-  scale_colour_brewer(palette = "Reds") + ggtitle(paste("Comparison of ToM network contrasts values between datasets")) + theme(legend.position="none") +
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
+  geom_point(aes(colour = roi, fill = roi), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
+  geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
+  theme_classic() + 
+  ylab(paste("contrast estimates (pain > mental)")) + 
+  scale_fill_brewer(palette = "Reds") +
+  scale_colour_brewer(palette = "Reds") + 
+  ggtitle(paste("Pain matrix contrasts estimates across datasets")) + theme(legend.position="none") +
   facet_wrap(~dataset)
 p
 ```
@@ -979,27 +1002,40 @@ DF.roi2 <- DF.idaq %>%
 ```{r}
 DF.roi$cent_IDAQNA <- scale(DF.roi$IDAQNA, scale = FALSE)
 DF.roi$cent_IDAQ <- scale(DF.roi$IDAQ, scale = FALSE)
-
 DF.roi <- DF.roi %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, scale =FALSE))
 ```
 
 ## 7.3 Plot ToM and IDAQ
-
 ```{r}
-plot1 <- DF.roi %>%
+library(patchwork)
+
+p1 <- DF.roi %>%
   filter(network == "tom") %>%
-  ggplot(aes(x=cent_IDAQ, y=cent_contrast, colour=roi)) +
+  ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
   geom_point(alpha=0.5,show.legend = FALSE) +
-  geom_smooth(method="lm", se=TRUE, show.legend = FALSE) +
-  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE) +
+  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
   labs(
     x="IDAQ score",
-    y="Contrast"
+    y="contrast (mental vs pain)"
+  ) + theme_classic()
+
+p2 <- DF.roi %>%
+  filter(network == "tom") %>%
+  ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
+  labs(
+    x="IDAQ score",
+    y="contrast (mental vs pain)"
   ) + theme_classic() +
   facet_grid(~roi)
 
-plot1
+p1 & p2
 ```
+
+
 
 
 
