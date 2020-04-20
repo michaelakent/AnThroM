@@ -810,7 +810,7 @@ library("psych")
 #IDAQ
 DF.idaq %>% 
   filter(scale == "IDAQ") %>%
-  #filter(sub != sub_ex) %>% 
+  #filter(!sub %in% sub_ex) %>% 
   select(-scale, -subscale)  %>%
   spread(itemnr, value) %>%
   select(-sub, -dataset) %>%
@@ -823,7 +823,7 @@ Check the reliability of the IDAQ-NA scale:
 #IDAQ-NA
 DF.idaq %>% 
   filter(scale == "IDAQNA") %>%
-  #filter(sub != sub_ex) %>% 
+  #filter(!sub %in% sub_ex) %>% 
   select(-scale, -subscale)  %>%
   spread(itemnr, value) %>%
   select(-sub, -dataset) %>%
@@ -861,6 +861,7 @@ p
 Calculate the median IQR per dataset (table S2)
 ```{r}
 DF.idaq %>%
+  #filter(!sub %in% sub_ex) %>%
   group_by(sub,dataset, scale) %>%
   summarise(score = sum(score)) %>%
   group_by(dataset, scale) %>%
