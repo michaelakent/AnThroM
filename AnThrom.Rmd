@@ -972,9 +972,10 @@ p2 <- DF.roi %>%
 p2
 ```
 
-# 7. IDAQ and ROI Analysis 
+# 7. IDAQ and ROI Analysis {.tabset}
 
 ## 7.1 Combine IDAQ scores and ROI data
+Create one DF:
 ```{r}
 DF.roi <- DF.idaq %>% 
   group_by(sub,dataset, scale) %>%
@@ -982,18 +983,10 @@ DF.roi <- DF.idaq %>%
   ungroup() %>% 
   left_join(DF.roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
   spread(key=scale, value=score) #change this
-
-# Try for other rois (Waytz_mpfc and Cullen_ltpj)
-DF.roi2 <- DF.idaq %>% 
-  group_by(sub,dataset, scale) %>%
-  summarise(score = sum(score)) %>%
-  ungroup() %>% 
-  left_join(DF.other_roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
-  spread(key=scale, value=score)
 ```
 
 ## 7.2 Center the variables
-
+Center the variables for the formal analysis:
 ```{r}
 DF.roi$cent_IDAQNA <- scale(DF.roi$IDAQNA, scale = FALSE)
 DF.roi$cent_IDAQ <- scale(DF.roi$IDAQ, scale = FALSE)
@@ -1001,6 +994,7 @@ DF.roi <- DF.roi %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, sc
 ```
 
 ## 7.3 Plot ToM and IDAQ
+Create scatterplots with linear and non-linear lines: 
 ```{r}
 library(patchwork)
 
@@ -1030,6 +1024,13 @@ p2 <- DF.roi %>%
   facet_grid(~roi)
 
 p1 + p2
+```
+
+## 7.3 Bayesian analysis
+```{r}
+library(brms)
+
+
 ```
 
 
