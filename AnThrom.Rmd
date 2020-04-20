@@ -807,7 +807,6 @@ Check the reliability of the IDAQ scale:
 ```{r}
 library("psych")
 
-#IDAQ
 DF.idaq %>% 
   filter(scale == "IDAQ") %>%
   filter(!sub %in%  sub_ex) %>% 
@@ -820,7 +819,6 @@ DF.idaq %>%
 ## 5.3 Reliability of IDAQ-NA
 Check the reliability of the IDAQ-NA scale:
 ```{r}
-#IDAQ-NA
 DF.idaq %>% 
   filter(scale == "IDAQNA") %>%
   filter(!sub %in%  sub_ex) %>% 
@@ -835,7 +833,10 @@ Calculate the IDAQ per subject:
 ```{r}
 DF.idaq <- DF.idaq %>%
   group_by(sub,dataset, scale, subscale) %>%
-  summarise(score = sum(value, na.rm = TRUE)) 
+  summarise(score = sum(value, na.rm = TRUE)) %>%
+  ungroup()%>%
+  mutate_at(vars(-score),as.factor)
+
 ```
 
 ## 5.5 Visualise the scores
@@ -920,25 +921,22 @@ DF.roi <- bind_rows(DF.temp, DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4)
 rm(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4, DF.temp)
 ```
 
+Reorder ROI names for plots:
 ```{r}
-DF.roi <- DF.roi %>%
-  mutate_at(vars(-contrast),as.factor)
-  
 order <- c("rtpj", "ltpj", "prec", "vmpfc","mmpfc","dmpfc", "rs2", "ls2", "rinsula", "linsula", "rmfg", "lmfg", "amcc")  
 
 DF.roi <- DF.roi %>%
+  mutate_at(vars(-contrast),as.factor) %>%
   group_by(sub, dataset) %>%
   mutate(roi = fct_relevel(roi, order))
 ```
-
-
 
 ## 6.2 Theory-of-Mind network activation across datasets:
 Plot the TOM activity across regions and datasets:
 ```{r}
 source("R_rainclouds.R")
 
-p <- DF.roi %>%
+p1 <- DF.roi %>%
   filter(network == "tom") %>%
   ggplot(.,aes(x=roi,y=contrast,fill=roi))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
@@ -951,7 +949,7 @@ p <- DF.roi %>%
   ggtitle(paste("ToM network contrasts estimates across datasets")) + 
   theme(legend.position="none") +
   facet_wrap(~dataset) 
-p
+p1
 ```
 
 ## 6.4 Pain Matrix activation across datasets
@@ -959,7 +957,7 @@ Plot the Pain Matrix activity across regions and datasets:
 ```{r}
 #source("/Volumes/Project0255/code/R_rainclouds.R")
 
-p <- DF.roi %>%
+p2 <- DF.roi %>%
   filter(network == "pain") %>%
   ggplot(.,aes(x=roi,y=contrast,fill=roi))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
@@ -971,7 +969,7 @@ p <- DF.roi %>%
   scale_colour_brewer(palette = "Reds") + 
   ggtitle(paste("Pain matrix contrasts estimates across datasets")) + theme(legend.position="none") +
   facet_wrap(~dataset)
-p
+p2
 ```
 
 # 7. IDAQ and ROI Analysis 
@@ -982,17 +980,14 @@ DF.roi <- DF.idaq %>%
   group_by(sub,dataset, scale) %>%
   summarise(score = sum(score)) %>%
   ungroup() %>% 
-  mutate(dataset = as.numeric(dataset)) %>% 
   left_join(DF.roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
   spread(key=scale, value=score) #change this
-
 
 # Try for other rois (Waytz_mpfc and Cullen_ltpj)
 DF.roi2 <- DF.idaq %>% 
   group_by(sub,dataset, scale) %>%
   summarise(score = sum(score)) %>%
   ungroup() %>% 
-  mutate(dataset = as.numeric(dataset)) %>% 
   left_join(DF.other_roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
   spread(key=scale, value=score)
 ```
@@ -1032,7 +1027,7 @@ p2 <- DF.roi %>%
   ) + theme_classic() +
   facet_grid(~roi)
 
-p1 & p2
+p1 + p2
 ```
 
 
