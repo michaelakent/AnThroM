@@ -828,18 +828,7 @@ DF.idaq %>%
   alpha(na.rm = TRUE)
 ```
 
-## 5.4 IDAQ per subject
-Calculate the IDAQ per subject:
-```{r}
-DF.idaq <- DF.idaq %>%
-  group_by(sub,dataset, scale, subscale) %>%
-  summarise(score = sum(value, na.rm = TRUE)) %>%
-  ungroup()%>%
-  mutate_at(vars(-score),as.factor)
-
-```
-
-## 5.5 Visualise the scores
+## 5.4 Visualise the scores
 Visualise the scores across the datasets and scales:
 ```{r}
 source("R_rainclouds.R") #/Volumes/Project0255/code
@@ -861,7 +850,39 @@ p <- DF.idaq %>%
 p
 ```
 
-## 5.6 Median and interquartile range per dataset
+## 5.5 Differences between datasets
+Test if there are differences in IDAQ and IDAQ-NA scores between datasets:
+```{r}
+library(lme4)
+
+DF.test = DF.idaq %>% 
+  filter(scale == "IDAQ") 
+
+mod0 = lmer(value ~ dataset + (1|itemnr) + (1|sub), DF.test)
+summary(mod0)
+drop1(mod0, test='Chisq')
+
+library(brms)
+fit1 <- brm(value ~ dataset + (1|itemnr) + (1|sub), 
+            data = DF.test, family = poisson(), chains = 4)
+summary(fit1) 
+plot(fit1) 
+pp = brms::pp_check(fit1)
+pp + theme_bw()
+```
+
+## 5.6 IDAQ per subject
+Calculate the IDAQ per subject:
+```{r}
+DF.idaq <- DF.idaq %>%
+  group_by(sub,dataset, scale, subscale) %>%
+  summarise(score = sum(value, na.rm = TRUE)) %>%
+  ungroup()%>%
+  mutate_at(vars(-score),as.factor)
+
+```
+
+## 5.7 Median and interquartile range per dataset
 Calculate the median IQR per dataset (table S2):
 ```{r}
 DF.idaq %>%
@@ -872,25 +893,6 @@ DF.idaq %>%
   summarise(median = median(score),
             iqr = IQR(score))
 ```
-
-## 5.7 Differences between datasets
-Test if there are differences in IDAQ and IDAQ-NA scores between datasets:
-```{r}
-library(lme4)
-mod0 = lmer(value ~ scale + dataset + (1|itemnr) + (1|sub), DF.idaq, family = 'gaussian')
-summary(mod0)
-drop1(mod0, test='Chisq')
-
-library(brms)
-fit1 <- brm(value ~ scale + dataset + (1|itemnr) + (1|sub), 
-            data = DF.idaq, family = poisson())
-summary(fit1) 
-plot(fit1) 
-pp = brms::pp_check(fit1)
-pp + theme_bw()
-```
-
-
 
 # 6. fROI results {.tabset}
 
