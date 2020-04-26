@@ -877,10 +877,9 @@ DF.idaq %>%
 Test if there are differences in IDAQ and IDAQ-NA scores between datasets:
 ```{r}
 library(lme4)
-mod0 = lme4::glmer(value ~ scale + dataset + (1|itemnr) + (1|sub) + (itemnr|sub), DF.idaq, family = 'gaussian')
+mod0 = lmer(value ~ scale + dataset + (1|itemnr) + (1|sub), DF.idaq, family = 'gaussian')
 summary(mod0)
 drop1(mod0, test='Chisq')
-
 
 library(brms)
 fit1 <- brm(value ~ scale + dataset + (1|itemnr) + (1|sub), 
