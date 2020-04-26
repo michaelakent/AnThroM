@@ -864,7 +864,10 @@ drop1(mod0, test='Chisq')
 
 library(brms)
 fit1 <- brm(value ~ dataset + (1|itemnr) + (1|sub), 
-            data = DF.test, family = poisson(), chains = 4)
+            data = DF.test, family = "poisson", 
+            prior = set_prior('normal(0, 3)'),
+            iter = 1000, chains = 4, cores = 2)
+
 summary(fit1) 
 plot(fit1) 
 pp = brms::pp_check(fit1)
