@@ -898,6 +898,7 @@ pp + theme_bw()
 Create function to load the data:
 ```{r}
 #create function to load roi datasets for the different networks
+library(fs)
 roi_extract <- function(datasetno, substart, subend, network, nroi) {
   
   dir_ls(paste("dataset_", datasetno, "/derivatives/roi/", network, sep = ""), regexp = "\\.tsv$") %>% 
@@ -953,7 +954,7 @@ p1 <- DF.roi %>%
   filter(network == "tom") %>%
   ggplot(.,aes(x=roi,y=contrast,fill=roi))+
   geom_hline(yintercept = 0, color = "grey", linetype = 2) +
-  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, colour = "Black") +
   geom_point(aes(colour = roi, fill = roi), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
   geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
   theme_classic() + 
@@ -1041,7 +1042,31 @@ p1 + p2
 
 ## 7.3 Bayesian analysis
 ```{r}
+# install.packages("rstanarm") #do not selet the one that needs complilation 
+library(rstan)
+library(rstanarm)
+library(ggplot2)
+library(bayesplot)
 
+# this option uses multiple cores if they're available
+options(mc.cores = parallel::detectCores()) 
+
+DF.test <- DF.roi %>%
+  filter(roi == "rtpj")
+qplot(cent_IDAQ, cent_contrast, data=DF.test)
+glm_post1 <- stan_glm(cent_IDAQ~cent_contrast, data=DF.roi, family=gaussian)
+glm_post1 <- stan_glm(cent_IDAQ~cent_contrast + I(cent_IDAQ^2), data=DF.roi, family=gaussian)
+
+stan_trace(glm_post1, pars=c("(Intercept)","cent_contrast","sigma"))
+summary(glm_post1)
+pp_check(glm_post1)
+
+glm_fit <- glm(cent_IDAQ~cent_contrast +I(cent_IDAQ^2), data=DF.test, family=gaussian)
+summary(glm_fit)
+
+
+posterior_vs_prior(glm_post1, group_by_parameter = TRUE, pars=c("(Intercept)"))
+posterior_vs_prior(glm_post1, group_by_parameter = TRUE, pars=c("cent_IDAQ","sigma"))
 ```
 
 
