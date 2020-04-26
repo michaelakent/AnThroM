@@ -872,6 +872,26 @@ summary(fit1)
 plot(fit1) 
 pp = brms::pp_check(fit1)
 pp + theme_bw()
+
+
+brms::conditional_effects(fit1)
+# get fitted values
+newdata = data.frame(dataset = levels(as.factor(DF.test$dataset)), itemnr = as.factor(DF.test$itemnr))
+fit = fitted(fit1, newdata = newdata,, re_formula = NA)
+colnames(fit) = c('fit', 'se', 'lwr', 'upr')
+df_plot = cbind(newdata, fit)
+df_plot
+
+obs = aggregate(value ~ dataset, DF.test, mean) 
+
+ggplot(df_plot, aes(x = dataset, y = fit)) +
+  geom_violin(data=DF.test, aes(x=dataset, y=value), alpha=0.5, color="gray70", fill='gray95') +
+  geom_jitter(data=obs, aes(x=dataset, y=value), alpha=0.3, position = position_jitter(width = 0.07)) +
+  geom_errorbar(aes(ymin=lwr, ymax=upr), position=position_dodge(), size=1, width=.5) +
+  geom_point(shape=21, size=4, fill='red') +
+  xlab("") +
+  theme_bw () +
+  theme(panel.grid = element_blank())
 ```
 
 ## 5.6 IDAQ per subject
