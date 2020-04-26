@@ -862,7 +862,7 @@ p
 ```
 
 ## 5.6 Median and interquartile range per dataset
-Calculate the median IQR per dataset (table S2)
+Calculate the median IQR per dataset (table S2):
 ```{r}
 DF.idaq %>%
   #filter(!sub %in%  sub_ex) %>% 
@@ -873,15 +873,31 @@ DF.idaq %>%
             iqr = IQR(score))
 ```
 
+## 5.7 Differences between datasets
+Test if there are differences in IDAQ and IDAQ-NA scores between datasets:
+```{r}
+library(lme4)
+mod0 = lme4::glmer(value ~ scale + dataset + (1|itemnr) + (1|sub) + (itemnr|sub), DF.idaq, family = 'gaussian')
+summary(mod0)
+drop1(mod0, test='Chisq')
+
+
+library(brms)
+fit1 <- brm(value ~ scale + dataset + (1|itemnr) + (1|sub), 
+            data = DF.idaq, family = poisson())
+summary(fit1) 
+plot(fit1) 
+pp = brms::pp_check(fit1)
+pp + theme_bw()
+```
+
+
+
 # 6. fROI results {.tabset}
 
 ## 6.1 Data wrangling
 Create function to load the data:
 ```{r}
-#load necessary libraries
-library("tidyverse")
-library("fs")
-
 #create function to load roi datasets for the different networks
 roi_extract <- function(datasetno, substart, subend, network, nroi) {
   
@@ -934,8 +950,6 @@ DF.roi <- DF.roi %>%
 ## 6.2 Theory-of-Mind network activation across datasets:
 Plot the TOM activity across regions and datasets:
 ```{r}
-source("R_rainclouds.R")
-
 p1 <- DF.roi %>%
   filter(network == "tom") %>%
   ggplot(.,aes(x=roi,y=contrast,fill=roi))+
@@ -956,8 +970,6 @@ p1
 ## 6.4 Pain Matrix activation across datasets
 Plot the Pain Matrix activity across regions and datasets:
 ```{r}
-#source("/Volumes/Project0255/code/R_rainclouds.R")
-
 p2 <- DF.roi %>%
   filter(network == "pain") %>%
   ggplot(.,aes(x=roi,y=contrast,fill=roi))+
@@ -1030,7 +1042,6 @@ p1 + p2
 
 ## 7.3 Bayesian analysis
 ```{r}
-library(brms)
 
 ```
 
