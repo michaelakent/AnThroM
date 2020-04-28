@@ -809,7 +809,7 @@ library("psych")
 
 DF.idaq %>% 
   filter(scale == "IDAQ") %>%
-  filter(!sub %in%  sub_ex) %>% 
+  #filter(!sub %in% sub_ex) %>% 
   select(-scale, -subscale)  %>%
   spread(itemnr, value) %>%
   select(-sub, -dataset) %>%
@@ -821,14 +821,102 @@ Check the reliability of the IDAQ-NA scale:
 ```{r}
 DF.idaq %>% 
   filter(scale == "IDAQNA") %>%
-  filter(!sub %in%  sub_ex) %>% 
+  #filter(!sub %in%  sub_ex) %>% 
   select(-scale, -subscale)  %>%
   spread(itemnr, value) %>%
   select(-sub, -dataset) %>%
   alpha(na.rm = TRUE)
 ```
 
-## 5.4 Visualise the scores
+## 5.4 Differences between datasets
+Test if there are differences in IDAQ and IDAQ-NA scores between datasets:
+```{r}
+library(lme4)
+
+DF.test = DF.idaq %>% 
+  #filter(!sub %in% sub_ex) %>% 
+  filter(scale == "IDAQ") %>% 
+  mutate(value = factor(value, levels=c(0:10), ordered=TRUE)) %>%
+  mutate_all(as.factor) 
+
+
+mod0 = lmer(value ~ dataset + (1|itemnr) + (1|sub), DF.test)
+summary(mod0)
+drop1(mod0, test='Chisq')
+plot(mod0)
+
+library(ordinal)
+DF.test$value <- factor(DF.test$value)
+
+ord.1 <- clmm(value ~ dataset + 
+                (1|itemnr) + (1|sub), 
+              data = DF.test)
+summary(ord.1)
+
+ord.2 <- clm(value ~ dataset, nominal= ~dataset, data = DF.test)
+summary(ord.2)
+
+library(brms)
+options(mc.cores = parallel::detectCores()) #run on multiple cores
+
+ord.3 <- brm(formula  = value ~ dataset + (1|sub),  
+             data  = DF.test,  
+             family  = cumulative("probit"))
+summary(ord.3)
+
+
+
+#Bulk Effective Samples Size (ESS) is too low, indicating posterior means and medians may be unreliable.
+#Running the chains for more iterations may help. See
+#http://mc-stan.org/misc/warnings.html#bulk-essTail Effective Samples Size (ESS) is too low, indicating posterior variances and tail quantiles may be unreliable.
+#Running the chains for more iterations may help. See
+#http://mc-stan.org/misc/warnings.html#tail-ess
+
+mod1 <- brm(value ~ dataset + (1|itemnr) + (1|sub), 
+            prior = set_prior('normal(0, 3)'), #<---things to look into
+            family = "poisson", #<---things to look into (ordinal)
+            data = DF.test, 
+            iter = 1000, chains = 4)
+
+
+summary(mod1) 
+plot(mod1) 
+pp = brms::pp_check(mod1)
+pp + theme_bw()
+
+
+brms::conditional_effects(mod1)
+# get fitted values
+newdata = data.frame(dataset = levels(as.factor(DF.test$dataset)), itemnr = as.factor(DF.test$itemnr))
+fit = fitted(mod1, newdata = newdata, re_formula = NA)
+colnames(fit) = c('fit', 'se', 'lwr', 'upr')
+df_plot = cbind(newdata, fit)
+df_plot
+
+obs = aggregate(value ~ dataset, DF.test, mean) 
+
+ggplot(df_plot, aes(x = dataset, y = fit)) +
+  geom_violin(data=DF.test, aes(x=dataset, y=value), alpha=0.5, color="gray70", fill='gray95') +
+  geom_jitter(data=obs, aes(x=dataset, y=value), alpha=0.3, position = position_jitter(width = 0.07)) +
+  geom_errorbar(aes(ymin=lwr, ymax=upr), position=position_dodge(), size=1, width=.5) +
+  geom_point(shape=21, size=4, fill='red') +
+  xlab("") +
+  theme_bw () +
+  theme(panel.grid = element_blank())
+```
+
+## 5.5 IDAQ per subject
+Calculate the IDAQ per subject:
+```{r}
+DF.idaq <- DF.idaq %>%
+  group_by(sub,dataset, scale, subscale) %>%
+  summarise(score = sum(value, na.rm = TRUE)) %>%
+  ungroup()%>%
+  mutate_at(vars(-score),as.factor)
+
+```
+
+## 5.6 Visualise the scores
 Visualise the scores across the datasets and scales:
 ```{r}
 source("R_rainclouds.R") #/Volumes/Project0255/code
@@ -848,61 +936,6 @@ p <- DF.idaq %>%
   theme(legend.position="none") +
   facet_wrap(~scale)
 p
-```
-
-## 5.5 Differences between datasets
-Test if there are differences in IDAQ and IDAQ-NA scores between datasets:
-```{r}
-library(lme4)
-
-DF.test = DF.idaq %>% 
-  filter(scale == "IDAQ") 
-
-mod0 = lmer(value ~ dataset + (1|itemnr) + (1|sub), DF.test)
-summary(mod0)
-drop1(mod0, test='Chisq')
-
-library(brms)
-fit1 <- brm(value ~ dataset + (1|itemnr) + (1|sub), 
-            data = DF.test, family = "poisson", 
-            prior = set_prior('normal(0, 3)'),
-            iter = 1000, chains = 4, cores = 2)
-
-summary(fit1) 
-plot(fit1) 
-pp = brms::pp_check(fit1)
-pp + theme_bw()
-
-
-brms::conditional_effects(fit1)
-# get fitted values
-newdata = data.frame(dataset = levels(as.factor(DF.test$dataset)), itemnr = as.factor(DF.test$itemnr))
-fit = fitted(fit1, newdata = newdata,, re_formula = NA)
-colnames(fit) = c('fit', 'se', 'lwr', 'upr')
-df_plot = cbind(newdata, fit)
-df_plot
-
-obs = aggregate(value ~ dataset, DF.test, mean) 
-
-ggplot(df_plot, aes(x = dataset, y = fit)) +
-  geom_violin(data=DF.test, aes(x=dataset, y=value), alpha=0.5, color="gray70", fill='gray95') +
-  geom_jitter(data=obs, aes(x=dataset, y=value), alpha=0.3, position = position_jitter(width = 0.07)) +
-  geom_errorbar(aes(ymin=lwr, ymax=upr), position=position_dodge(), size=1, width=.5) +
-  geom_point(shape=21, size=4, fill='red') +
-  xlab("") +
-  theme_bw () +
-  theme(panel.grid = element_blank())
-```
-
-## 5.6 IDAQ per subject
-Calculate the IDAQ per subject:
-```{r}
-DF.idaq <- DF.idaq %>%
-  group_by(sub,dataset, scale, subscale) %>%
-  summarise(score = sum(value, na.rm = TRUE)) %>%
-  ungroup()%>%
-  mutate_at(vars(-score),as.factor)
-
 ```
 
 ## 5.7 Median and interquartile range per dataset
@@ -1021,7 +1054,7 @@ DF.roi <- DF.idaq %>%
   summarise(score = sum(score)) %>%
   ungroup() %>% 
   left_join(DF.roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
-  spread(key=scale, value=score) #change this
+  spread(key=scale, value=score) #change this (pivot_wider)
 ```
 
 ## 7.2 Center the variables
@@ -1066,6 +1099,15 @@ p1 + p2
 ```
 
 ## 7.3 Bayesian analysis
+1. Across all ToM ROIs
+  - Compare linear model vs. quadratic model; is there evidence for one, or for Null?
+  - Fit the model, predict values, test sensitivity/fit
+2. For each ToM ROI
+  - Compare linear model vs. quadratic model; is there evidence for one, or for Null?
+  - Fit the model, predict values, test sensitivity/fit
+
+(3. control across all ROIs - pain)
+(4. control for each pain ROI)
 ```{r}
 # install.packages("rstanarm") #do not selet the one that needs complilation 
 library(rstan)
@@ -1073,25 +1115,43 @@ library(rstanarm)
 library(ggplot2)
 library(bayesplot)
 
+
 # this option uses multiple cores if they're available
 options(mc.cores = parallel::detectCores()) 
 
 DF.test <- DF.roi %>%
   filter(roi == "rtpj")
-qplot(cent_IDAQ, cent_contrast, data=DF.test)
-glm_post1 <- stan_glm(cent_IDAQ~cent_contrast, data=DF.roi, family=gaussian)
-glm_post1 <- stan_glm(cent_IDAQ~cent_contrast + I(cent_IDAQ^2), data=DF.roi, family=gaussian)
 
-stan_trace(glm_post1, pars=c("(Intercept)","cent_contrast","sigma"))
+glm_post1 <- stan_glm(cent_contrast~cent_IDAQ, data=DF.test, family=gaussian) #which family?
+glm_post1 <- stan_glm(contrast~IDAQ + I(IDAQ^2), data=DF.test, family=gaussian) #does it need to be centered?
+
+stan_trace(glm_post1, pars=c("(Intercept)","IDAQ","sigma"))
 summary(glm_post1)
 pp_check(glm_post1)
 
-glm_fit <- glm(cent_IDAQ~cent_contrast +I(cent_IDAQ^2), data=DF.test, family=gaussian)
-summary(glm_fit)
-
-
 posterior_vs_prior(glm_post1, group_by_parameter = TRUE, pars=c("(Intercept)"))
 posterior_vs_prior(glm_post1, group_by_parameter = TRUE, pars=c("cent_IDAQ","sigma"))
+
+
+linear.model <-lm(DF.test$cent_contrast ~ DF.test$cent_IDAQ +I(DF.test$cent_IDAQ^2))
+glm_fit <- glm(cent_contrast~cent_IDAQ +I(cent_IDAQ^2), data=DF.test, family=gaussian)
+glm_fit <- glm(cent_contrast~cent_IDAQ, data=DF.test, family=gaussian)
+
+summary(glm_fit)
+summary(linear.model)
+
+plot(DF.test$cent_contrast ~ DF.test$cent_IDAQ, pch=16, ylab = "Counts ", cex.lab = 1.3, col = "red")
+abline(lm(DF.test$cent_contrast ~ DF.test$cent_IDAQ), col = "blue")
+
+
+DF.test$cent_IDAQ2 <- DF.test$cent_IDAQ^2
+quadratic.model <-lm(DF.test$cent_contrast ~ DF.test$cent_IDAQ + DF.test$cent_IDAQ2)
+summary(quadratic.model)
+
+idaqvalues <- seq(-40, 51, .1)
+predictedcounts <- predict(quadratic.model,list(IDAQ=idaqvalues, IDAQ2=idaqvalues^2))
+plot(DF.test$cent_contrast ~ DF.test$cent_IDAQ, pch=16, ylab = "Counts ", cex.lab = 1.3, col = "red")
+lines(idaqvalues, predictedcounts, col = "darkgreen", lwd = 3)
 ```
 
 
