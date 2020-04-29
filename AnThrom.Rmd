@@ -821,7 +821,7 @@ Check the reliability of the IDAQ-NA scale:
 ```{r}
 DF.idaq %>% 
   filter(scale == "IDAQNA") %>%
-  #filter(!sub %in%  sub_ex) %>% 
+  filter(!sub %in%  sub_ex) %>% 
   select(-scale, -subscale)  %>%
   spread(itemnr, value) %>%
   select(-sub, -dataset) %>%
@@ -829,8 +829,30 @@ DF.idaq %>%
 ```
 
 ## 5.4 Differences between datasets
-Test if there are differences in IDAQ and IDAQ-NA scores between datasets:
+Test if there are differences in IDAQ and IDAQ-NA scores between datasets. 
 
+Before fitting any model we establish which link function we need to use? This code taken from [Kevin Stadler's github]( https://kevinstadler.github.io/blog/bayesian-ordinal-regression-with-random-effects-using-brms/). In short, it uses the ordinal packadge to find the link function that fits the data:
+```{r}
+library(ordinal)
+cumulativemodelfit <- function(formula, data, links=c("logit", "probit", "cloglog", "cauchit"),
+    thresholds=c("flexible", "equidistant"), verbose=TRUE) {
+  names(links) <- links
+  names(thresholds) <- thresholds
+  llks <- outer(links, thresholds,
+    Vectorize(function(link, threshold)
+      # catch error for responses with 2 levels
+      tryCatch(ordinal::clm(formula, data=data, link=link, threshold=threshold)$logLik,
+        error = function(e) NA)))
+  print(llks)
+  if (verbose) {
+    bestfit <- which.max(llks)
+    cat("\nThe best link function is ", links[bestfit %% length(links)], " with a ",
+    thresholds[1 + bestfit %/% length(thresholds)], " threshold (logLik ", llks[bestfit],
+    ")\n", sep="")
+  }
+  invisible(llks)
+}
+```
 For the anthropomorphism subscale first:
 ```{r}
 DF.test = DF.idaq %>% 
@@ -840,6 +862,12 @@ DF.test = DF.idaq %>%
   mutate(value = factor(value, levels=c(0:10), ordered=TRUE)) #add contrast coding?
 ```
 
+Get the link function:
+```{r}
+cumulativemodelfit(value ~ 1, data=DF.test)
+```
+
+
 1. First cumulative ordinal model with dataset as fixed factor:
 ```{r}
 library(brms)
@@ -848,7 +876,7 @@ options(mc.cores = parallel::detectCores()) #run once (run on multiple cores)
 ord.1 <- brm(
   value ~ 1 + dataset,  
   data  = DF.test,  
-  family  = cumulative("probit")
+  family  = cumulative("probit") # or "logit"
 ) 
 
 summary(ord.1) #prob = .99  for 99 credible intervals
@@ -869,7 +897,7 @@ ord.2 <- brm(
   value ~ 1 + dataset +
     (1|sub) + (1|itemnr),   
   data  = DF.test,  
-  family  = cumulative("probit")
+  family  = cumulative("probit") # or "logit"
 ) 
 
 summary(ord.2) #prob = .99  for 99 credible intervals
@@ -889,21 +917,22 @@ ord.3 <- brm(
   value ~ 1 + cs(dataset) +
     (1|sub) + (1|itemnr),
   data  = DF.test,  
-  family = acat("probit")
-) 
+  family = acat("probit") # or "logit"
+)  
 
 saveRDS(ord.3, 'ord.3~category.RDS')  
 ord.3 = readRDS('ord.3~category.RDS')
 conditional_effects(ord.3, "dataset", categorical = TRUE)
 
 ```
+
 4. Category-specific model with unequal variances:
 ```{r}
 ord.4 <- brm(
   value ~ 1 + dataset +
     (1|sub) + (1|itemnr),
   data  = DF.test,  
-  family = acat("probit")
+  family = acat("probit") # or "logit"
 ) 
 
 saveRDS(ord.4, 'ord.4~category2.RDS')  
@@ -911,34 +940,44 @@ ord.4 = readRDS('ord.4~category2.RDS')
 
 conditional_effects(ord.4, "dataset", categorical = TRUE)
 ```
+
 5. Control model:
 ```{r}
 ord.5 <- brm(
   formula = bf(value ~ 1 + dataset) +
     lf(disc ~ 0 + dataset, cmc = FALSE),
   data = DF.test,
-  family  = cumulative("probit")
+  family  = cumulative("probit") # or "logit"
 ) 
 
 saveRDS(ord.5, 'ord.5~control.RDS')  
 ord.5 = readRDS('ord.5~control.RDS')
 conditional_effects(ord.5, "dataset", categorical = TRUE)
 ```
+
 Model comparison: 
 ```{r}
 modelC1 <- LOO(ord.1, ord.2, ord.3, ord.4, ord.5)
 save(modelC1, file="modelC1.RData")
+modelC1 = load('modelC1.RData')
 ```
+
 Rerun winning model excluding the participants that completed the incorrect version: 
 ```{r}
 DF.test = DF.test %>% 
   filter(!sub %in% sub_ex) 
 
+cumulativemodelfit(value ~ 1, data=DF.test)
+```
+
+
+
+```{r}
 ord.2E <- brm(
   value ~ 1 + dataset +
     (1|sub) + (1|itemnr),   
   data  = DF.test,  
-  family  = cumulative("probit")
+  family  = cumulative("probit", threshold="equidistant")
 ) 
 
 summary(ord.2E) #prob = .99  for 99 credible intervals
@@ -952,9 +991,8 @@ ord.2E = readRDS('ord.2E~random.RDS')
 ```
 
 
-
 ```{r}
-# get fitted values
+# OLD code: get fitted values
 newdata = data.frame(dataset = levels(as.factor(DF.test$dataset)), itemnr = as.factor(DF.test$itemnr))
 fit = fitted(mod1, newdata = newdata, re_formula = NA)
 colnames(fit) = c('fit', 'se', 'lwr', 'upr')
