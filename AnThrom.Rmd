@@ -863,7 +863,7 @@ ord.1 = readRDS('ord.1~simple.RDS')
 ```
 
 
-1. Second cumulative ordinal model with dataset as fixed factor and random intercepts for participant and itemnr:
+2. Second cumulative ordinal model with dataset as fixed factor and random intercepts for participant and itemnr:
 ```{r}
 ord.2 <- brm(
   value ~ 1 + dataset +
@@ -884,7 +884,6 @@ ord.2 = readRDS('ord.2~random.RDS')
 
 
 3. Category-specific model:
-
 ```{r}
 ord.3 <- brm(
   value ~ 1 + cs(dataset),
@@ -897,7 +896,7 @@ ord.3 = readRDS('ord.3~category.RDS')
 conditional_effects(ord.3, "dataset", categorical = TRUE)
 
 ```
-
+4. Category-specific model with unequal variances:
 ```{r}
 ord.4 <- brm(
   value ~ 1 + dataset,
@@ -909,64 +908,28 @@ saveRDS(ord.4, 'ord.4~category2.RDS')
 ord.4 = readRDS('ord.4~category2.RDS')
 
 conditional_effects(ord.4, "dataset", categorical = TRUE)
-
 ```
-
+5. Control model:
 ```{r}
 
 ord.5 <- brm(
   formula = bf(value ~ 1 + dataset) +
-    lf(disc ~ 0 + dataset, cnc = FALSE),
+    lf(disc ~ 0 + dataset, cmc = FALSE),
   data = DF.test,
   family  = cumulative("probit")
 ) 
 
 saveRDS(ord.5, 'ord.5~control.RDS')  
 ord.5 = readRDS('ord.5~control.RDS')
-
+conditional_effects(ord.5, "dataset", categorical = TRUE)
 ```
-
-fit_sc4 <- brm(
-formula = bf(rating ~ 1 + belief) +
-lf(disc ~ 0 + belief, cmc = FALSE), data = stemcell,
-family = cumulative("probit")
-
-
+Model comparison: 
 ```{r}
 LOO(ord.1, ord.2, ord.3, ord.4)
 ```
 
 
 ```{r}
-
-ord.2 <- brm(
-  value ~ 1 + dataset + 
-    (1|sub) + (1|itemnr),  
-  data  = DF.test,  
-  family  = cumulative("probit")
-) 
-
-#Bulk Effective Samples Size (ESS) is too low, indicating posterior means and medians may be unreliable.
-#Running the chains for more iterations may help. See
-#http://mc-stan.org/misc/warnings.html#bulk-essTail Effective Samples Size (ESS) is too low, indicating posterior variances and tail quantiles may be unreliable.
-#Running the chains for more iterations may help. See
-#http://mc-stan.org/misc/warnings.html#tail-ess
-
-mod1 <- brm(value ~ dataset + (1|itemnr) + (1|sub), 
-            prior = set_prior('normal(0, 3)'), #<---things to look into
-            family = "poisson", #<---things to look into (ordinal)
-            data = DF.test, 
-            iter = 1000, chains = 4)
-
-
-summary(mod1) 
-
-plot(mod1) 
-pp = brms::pp_check(mod1)
-pp + theme_bw()
-
-
-brms::conditional_effects(mod1)
 # get fitted values
 newdata = data.frame(dataset = levels(as.factor(DF.test$dataset)), itemnr = as.factor(DF.test$itemnr))
 fit = fitted(mod1, newdata = newdata, re_formula = NA)
@@ -984,26 +947,6 @@ ggplot(df_plot, aes(x = dataset, y = fit)) +
   xlab("") +
   theme_bw () +
   theme(panel.grid = element_blank())
-
-
-#### old tests
-library(lme4)
-
-mod0 = lmer(value ~ dataset + (1|itemnr) + (1|sub), DF.test)
-summary(mod0)
-drop1(mod0, test='Chisq')
-plot(mod0)
-
-
-#ordinal using clmm 
-library(ordinal)
-
-ord.1 <- clmm(value ~ dataset + 
-                (1|itemnr) + (1|sub), 
-              data = DF.test)
-summary(ord.1)
-plot(ord.1) 
-
 ```
 
 ## 5.5 IDAQ per subject
