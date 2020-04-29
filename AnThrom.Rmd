@@ -844,25 +844,20 @@ ord.1 <- clmm(value ~ dataset +
                 (1|itemnr) + (1|sub), 
               data = DF.test)
 summary(ord.1)
+plot(ord.1) 
 
 #ordinal using brms
 library(brms)
 # options(mc.cores = parallel::detectCores()) #run once (run on multiple cores)
 
-ord.2 <- brm(formula  = value ~ dataset + (1|sub),  
+ord.2 <- brm(formula  = value ~ 1 + dataset + (1|sub),  
              data  = DF.test,  
-             family  = cumulative("probit"))
+             family  = cumulative("probit")) #data is comulative
 summary(ord.2)
 plot(ord.2) 
 
-
-ord.3 <- brm(formula  = value ~ dataset + (1|sub),  
-             data  = DF.test,  
-             family  = sratio())
-summary(ord.3)
-plot(ord.3) 
-
-
+pp = brms::pp_check(ord.2)
+pp + theme_bw()
 
 
 
