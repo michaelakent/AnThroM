@@ -843,7 +843,7 @@ DF.test = DF.idaq %>%
 1. First cumulative ordinal model with dataset as fixed factor:
 ```{r}
 library(brms)
-# options(mc.cores = parallel::detectCores()) #run once (run on multiple cores)
+options(mc.cores = parallel::detectCores()) #run once (run on multiple cores)
 
 ord.1 <- brm(
   value ~ 1 + dataset,  
@@ -857,6 +857,9 @@ pp = brms::pp_check(ord.1)
 pp + theme_bw()
 conditional_effects(ord.1, "dataset", categorical = TRUE)
 pp + theme_bw()
+
+saveRDS(ord.1, 'ord.1~simple.RDS')  
+ord.1 = readRDS('ord.1~simple.RDS')
 ```
 
 
@@ -874,6 +877,9 @@ plot(ord.2)
 pp = brms::pp_check(ord.2)
 pp + theme_bw()
 conditional_effects(ord.2, "dataset", categorical = TRUE)
+
+saveRDS(ord.2, 'ord.2~random.RDS')  
+ord.2 = readRDS('ord.2~random.RDS')
 ```
 
 
@@ -886,8 +892,35 @@ ord.3 <- brm(
   family = acat("probit")
 ) 
 
+saveRDS(ord.3, 'ord.3~category.RDS')  
+ord.3 = readRDS('ord.3~category.RDS')
+
 ```
 
+```{r}
+ord.4 <- brm(
+  value ~ 1 + dataset,
+  data  = DF.test,  
+  family = acat("probit")
+) 
+
+saveRDS(ord.4, 'ord.4~category2.RDS')  
+ord.4 = readRDS('ord.4~category2.RDS')
+```
+
+```{r}
+
+ord.2 <- brm(
+  bf(value ~ 1 + dataset) +
+    lf(disc ~ 0 + dataset, cnc = FALSE),
+  data = DF.test,
+  family  = cumulative("probit")
+) 
+
+saveRDS(ord.5, 'ord.5~control.RDS')  
+ord.5 = readRDS('ord.5~control.RDS')
+
+```
 
 fit_sc4 <- brm(
 formula = bf(rating ~ 1 + belief) +
