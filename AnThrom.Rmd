@@ -897,7 +897,7 @@ ord.2 <- brm(
   value ~ 1 + dataset +
     (1|sub) + (1|itemnr),   
   data  = DF.test,  
-  family  = cumulative("probit") # or "logit"
+  family  = cumulative("logit") # or "logit"
 ) 
 
 summary(ord.2) #prob = .99  for 99 credible intervals
@@ -917,7 +917,7 @@ ord.3 <- brm(
   value ~ 1 + cs(dataset) +
     (1|sub) + (1|itemnr),
   data  = DF.test,  
-  family = acat("probit") # or "logit"
+  family = acat("logit") # or "logit"
 )  
 
 saveRDS(ord.3, 'ord.3~category.RDS')  
@@ -932,7 +932,7 @@ ord.4 <- brm(
   value ~ 1 + dataset +
     (1|sub) + (1|itemnr),
   data  = DF.test,  
-  family = acat("probit") # or "logit"
+  family = acat("logit") # or "logit"
 ) 
 
 saveRDS(ord.4, 'ord.4~category2.RDS')  
@@ -947,7 +947,7 @@ ord.5 <- brm(
   formula = bf(value ~ 1 + dataset) +
     lf(disc ~ 0 + dataset, cmc = FALSE),
   data = DF.test,
-  family  = cumulative("probit") # or "logit"
+  family  = cumulative("logit") # or "logit"
 ) 
 
 saveRDS(ord.5, 'ord.5~control.RDS')  
