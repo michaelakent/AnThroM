@@ -876,14 +876,14 @@ options(mc.cores = parallel::detectCores()) #run once (run on multiple cores)
 ord.1 <- brm(
   value ~ 1 + dataset,  
   data  = DF.test,  
-  family  = cumulative("probit") # or "logit"
+  family  = cumulative("logit")
 ) 
 
 summary(ord.1) #prob = .99  for 99 credible intervals
 plot(ord.1) 
 pp = brms::pp_check(ord.1)
 pp + theme_bw()
-conditional_effects(ord.1, "dataset", categorical = TRUE)
+conditional_effects(ord.1t, "dataset", categorical = TRUE)
 pp + theme_bw()
 
 saveRDS(ord.1, 'ord.1~simple.RDS')  
