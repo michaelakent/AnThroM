@@ -830,36 +830,62 @@ DF.idaq %>%
 
 ## 5.4 Differences between datasets
 Test if there are differences in IDAQ and IDAQ-NA scores between datasets:
+
+For the anthropomorphism subscale first:
 ```{r}
 DF.test = DF.idaq %>% 
   #filter(!sub %in% sub_ex) %>% 
   filter(scale == "IDAQ") %>% 
   mutate_all(as.factor) %>%
-  mutate(value = factor(value, levels=c(0:10), ordered=TRUE)) 
+  mutate(value = factor(value, levels=c(0:10), ordered=TRUE)) #add contrast coding?
+```
 
-#ordinal using clmm 
-library(ordinal)
-
-ord.1 <- clmm(value ~ dataset + 
-                (1|itemnr) + (1|sub), 
-              data = DF.test)
-summary(ord.1)
-plot(ord.1) 
-
-#ordinal using brms
+1. First cumulative ordinal model with dataset as fixed factor:
+```{r}
 library(brms)
 # options(mc.cores = parallel::detectCores()) #run once (run on multiple cores)
 
-ord.2 <- brm(formula  = value ~ 1 + dataset + (1|sub),  
-             data  = DF.test,  
-             family  = cumulative("probit")) #data is comulative
-summary(ord.2)
-plot(ord.2) 
+ord.1 <- brm(
+  value ~ 1 + dataset,  
+  data  = DF.test,  
+  family  = cumulative("probit")
+) 
 
+summary(ord.1) #prob = .99  for 99 credible intervals
+plot(ord.1) 
+pp = brms::pp_check(ord.1)
+pp + theme_bw()
+conditional_effects(ord.1, "dataset", categorical = TRUE)
+pp + theme_bw()
+```
+
+
+1. Second cumulative ordinal model with dataset as fixed factor and random intercepts for participant and itemnr:
+```{r}
+ord.2 <- brm(
+  value ~ 1 + dataset +
+    (1|sub) + (1|itemnr),   
+  data  = DF.test,  
+  family  = cumulative("probit")
+) 
+
+summary(ord.2) #prob = .99  for 99 credible intervals
+plot(ord.2) 
 pp = brms::pp_check(ord.2)
 pp + theme_bw()
+conditional_effects(ord.2, "dataset", categorical = TRUE)
+```
 
 
+
+```{r}
+
+ord.2 <- brm(
+  value ~ 1 + dataset + 
+    (1|sub) + (1|itemnr),  
+  data  = DF.test,  
+  family  = cumulative("probit")
+) 
 
 #Bulk Effective Samples Size (ESS) is too low, indicating posterior means and medians may be unreliable.
 #Running the chains for more iterations may help. See
@@ -875,6 +901,7 @@ mod1 <- brm(value ~ dataset + (1|itemnr) + (1|sub),
 
 
 summary(mod1) 
+
 plot(mod1) 
 pp = brms::pp_check(mod1)
 pp + theme_bw()
@@ -907,6 +934,16 @@ mod0 = lmer(value ~ dataset + (1|itemnr) + (1|sub), DF.test)
 summary(mod0)
 drop1(mod0, test='Chisq')
 plot(mod0)
+
+
+#ordinal using clmm 
+library(ordinal)
+
+ord.1 <- clmm(value ~ dataset + 
+                (1|itemnr) + (1|sub), 
+              data = DF.test)
+summary(ord.1)
+plot(ord.1) 
 
 ```
 
