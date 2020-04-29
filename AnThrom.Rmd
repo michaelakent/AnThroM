@@ -910,8 +910,8 @@ ord.4 = readRDS('ord.4~category2.RDS')
 
 ```{r}
 
-ord.2 <- brm(
-  bf(value ~ 1 + dataset) +
+ord.5 <- brm(
+  formula = bf(value ~ 1 + dataset) +
     lf(disc ~ 0 + dataset, cnc = FALSE),
   data = DF.test,
   family  = cumulative("probit")
