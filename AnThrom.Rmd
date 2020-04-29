@@ -886,7 +886,8 @@ ord.2 = readRDS('ord.2~random.RDS')
 3. Category-specific model:
 ```{r}
 ord.3 <- brm(
-  value ~ 1 + cs(dataset),
+  value ~ 1 + cs(dataset) +
+    (1|sub) + (1|itemnr),
   data  = DF.test,  
   family = acat("probit")
 ) 
@@ -899,7 +900,8 @@ conditional_effects(ord.3, "dataset", categorical = TRUE)
 4. Category-specific model with unequal variances:
 ```{r}
 ord.4 <- brm(
-  value ~ 1 + dataset,
+  value ~ 1 + dataset +
+    (1|sub) + (1|itemnr),
   data  = DF.test,  
   family = acat("probit")
 ) 
@@ -911,7 +913,6 @@ conditional_effects(ord.4, "dataset", categorical = TRUE)
 ```
 5. Control model:
 ```{r}
-
 ord.5 <- brm(
   formula = bf(value ~ 1 + dataset) +
     lf(disc ~ 0 + dataset, cmc = FALSE),
@@ -925,8 +926,31 @@ conditional_effects(ord.5, "dataset", categorical = TRUE)
 ```
 Model comparison: 
 ```{r}
-LOO(ord.1, ord.2, ord.3, ord.4)
+modelC1 <- LOO(ord.1, ord.2, ord.3, ord.4, ord.5)
+save(modelC1, file="modelC1.RData")
 ```
+Rerun winning model excluding the participants that completed the incorrect version: 
+```{r}
+DF.test = DF.test %>% 
+  filter(!sub %in% sub_ex) 
+
+ord.2E <- brm(
+  value ~ 1 + dataset +
+    (1|sub) + (1|itemnr),   
+  data  = DF.test,  
+  family  = cumulative("probit")
+) 
+
+summary(ord.2E) #prob = .99  for 99 credible intervals
+plot(ord.2E) 
+pp = brms::pp_check(ord.2E)
+pp + theme_bw()
+conditional_effects(ord.2E, "dataset", categorical = TRUE)
+
+saveRDS(ord.2E, 'ord.2E~random.RDS')  
+ord.2E = readRDS('ord.2E~random.RDS')
+```
+
 
 
 ```{r}
