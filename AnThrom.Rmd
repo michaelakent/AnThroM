@@ -977,7 +977,7 @@ ord.2E <- brm(
   value ~ 1 + dataset +
     (1|sub) + (1|itemnr),   
   data  = DF.test,  
-  family  = cumulative("probit", threshold="equidistant")
+  family = cumulative(link = "probit", threshold="equidistant")
 ) 
 
 summary(ord.2E) #prob = .99  for 99 credible intervals
