@@ -894,6 +894,7 @@ ord.3 <- brm(
 
 saveRDS(ord.3, 'ord.3~category.RDS')  
 ord.3 = readRDS('ord.3~category.RDS')
+conditional_effects(ord.3, "dataset", categorical = TRUE)
 
 ```
 
@@ -906,6 +907,9 @@ ord.4 <- brm(
 
 saveRDS(ord.4, 'ord.4~category2.RDS')  
 ord.4 = readRDS('ord.4~category2.RDS')
+
+conditional_effects(ord.4, "dataset", categorical = TRUE)
+
 ```
 
 ```{r}
