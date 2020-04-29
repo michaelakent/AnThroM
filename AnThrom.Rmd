@@ -877,6 +877,28 @@ conditional_effects(ord.2, "dataset", categorical = TRUE)
 ```
 
 
+3. Category-specific model:
+
+```{r}
+ord.3 <- brm(
+  value ~ 1 + cs(dataset),
+  data  = DF.test,  
+  family = acat("probit")
+) 
+
+```
+
+
+fit_sc4 <- brm(
+formula = bf(rating ~ 1 + belief) +
+lf(disc ~ 0 + belief, cmc = FALSE), data = stemcell,
+family = cumulative("probit")
+
+
+```{r}
+LOO(ord.1, ord.2, ord.3, ord.4)
+```
+
 
 ```{r}
 
