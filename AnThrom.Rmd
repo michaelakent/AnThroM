@@ -1215,7 +1215,14 @@ p2 <- DF.roi %>%
 p1 + p2
 ```
 
-## 7.3 Bayesian analysis
+## 7.4 Create the quadratic predictor:
+```{r}
+DF.roi$cent_IDAQ2 <- DF.roi$cent_IDAQ^2
+```
+
+
+
+## 7.5 Bayesian analysis
 1. Across all ToM ROIs
   - Compare linear model vs. quadratic model; is there evidence for one, or for Null?
   - Fit the model, predict values, test sensitivity/fit
@@ -1225,6 +1232,21 @@ p1 + p2
 
 (3. control across all ROIs - pain)
 (4. control for each pain ROI)
+
+
+Add seed!
+
+
+```{r}
+reg.1 <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2, 
+             data    = DF.roi)
+
+summary(reg.1)
+plot(reg.1)
+```
+
+
+
 ```{r}
 # install.packages("rstanarm") #do not selet the one that needs complilation 
 library(rstan)
