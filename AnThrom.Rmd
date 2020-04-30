@@ -911,7 +911,7 @@ conditional_effects(ord.2, "dataset", categorical = TRUE)
 ```{r}
 ord.3 <- brm(
   value ~ 1 + cs(dataset) +
-    (1|sub) + (1|itemnr),
+    (cs(1)|sub) + (cs(1)|itemnr),
   data  = DF.test,  
   family = acat("logit") # or "logit"
 )  
