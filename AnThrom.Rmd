@@ -911,7 +911,7 @@ conditional_effects(ord.2, "dataset", categorical = TRUE)
 ```{r}
 ord.3 <- brm(
   value ~ 1 + cs(dataset) +
-    (1|sub) + (1|itemnr),
+    (cs(1)|sub) + (cs(1)|itemnr),
   data  = DF.test,  
   family = acat("logit") # or "logit"
 )  
@@ -948,8 +948,8 @@ conditional_effects(ord.4, "dataset", categorical = TRUE)
 5. Unequal variances model:
 ```{r}
 ord.5 <- brm(
-  formula = bf(value ~ 1 + dataset) +
-    lf(disc ~ 0 + dataset, cmc = FALSE),
+  formula = bf(value ~ 1 + dataset + (1|sub) + (1|itemnr)) +
+    lf(disc ~ 0 + dataset + (1|sub) + (1|itemnr), cmc = FALSE),
   data = DF.test,
   family  = cumulative("logit") # or "logit"
 ) 
