@@ -831,7 +831,7 @@ DF.idaq %>%
 ## 5.4 Differences between datasets
 Test if there are differences in IDAQ and IDAQ-NA scores between datasets. 
 
-Before fitting any model we establish which link function we need to use? This code taken from [Kevin Stadler's github]( https://kevinstadler.github.io/blog/bayesian-ordinal-regression-with-random-effects-using-brms/). In short, it uses the ordinal packadge to find the link function that fits the data:
+Before fitting any model we establish which link function we need to use. This code is taken from [Kevin Stadler's github]( https://kevinstadler.github.io/blog/bayesian-ordinal-regression-with-random-effects-using-brms/). In short, it uses the ordinal packadge to (quickly) find the link function that fits the data:
 ```{r}
 library(ordinal)
 cumulativemodelfit <- function(formula, data, links=c("logit", "probit", "cloglog", "cauchit"),
@@ -853,6 +853,7 @@ cumulativemodelfit <- function(formula, data, links=c("logit", "probit", "cloglo
   invisible(llks)
 }
 ```
+
 For the anthropomorphism subscale first:
 ```{r}
 DF.test = DF.idaq %>% 
@@ -884,7 +885,7 @@ ord.1 = readRDS('ord.1~simple.RDS')
 Get summary and marginal effects:
 ```{r}
 summary(ord.1) #prob = .99  for 99 credible intervals
-conditional_effects(ord.1t, "dataset", categorical = TRUE)
+conditional_effects(ord.1, "dataset", categorical = TRUE)
 ```
 
 2. Second cumulative ordinal model with dataset as fixed factor and random intercepts for participant and itemnr:
@@ -917,9 +918,6 @@ ord.3 <- brm(
 
 saveRDS(ord.3, 'ord.3~category.RDS')  
 ord.3 = readRDS('ord.3~category.RDS')
-plot(ord.2) 
-pp = brms::pp_check(ord.2)
-pp + theme_bw()
 ```
 
 Get summary and marginal effects:
@@ -928,7 +926,7 @@ summary(ord.3) #prob = .99  for 99 credible intervals
 conditional_effects(ord.3, "dataset", categorical = TRUE)
 ```
 
-4. Category-specific model with unequal variances:
+4. Adjecent-category model without category-specific effects (to check if differences between model 2 and 3 are not due to different classes of ordinal models): 
 ```{r}
 ord.4 <- brm(
   value ~ 1 + dataset +
@@ -947,7 +945,7 @@ summary(ord.4) #prob = .99  for 99 credible intervals
 conditional_effects(ord.4, "dataset", categorical = TRUE)
 ```
 
-5. Control model:
+5. Unequal variances model:
 ```{r}
 ord.5 <- brm(
   formula = bf(value ~ 1 + dataset) +
@@ -958,20 +956,20 @@ ord.5 <- brm(
 
 saveRDS(ord.5, 'ord.5~control.RDS')  
 ord.5 = readRDS('ord.5~control.RDS')
-conditional_effects(ord.5, "dataset", categorical = TRUE)
 ```
 
 Get summary and marginal effects:
 ```{r}
-summary(ord.4) #prob = .99  for 99 credible intervals
-conditional_effects(ord.4, "dataset", categorical = TRUE)
+summary(ord.5) #prob = .99  for 99 credible intervals
+conditional_effects(ord.5, "dataset", categorical = TRUE)
 ```
 
 6. Model comparison: 
 ```{r}
 modelC1 <- LOO(ord.1, ord.2, ord.3, ord.4, ord.5)
 save(modelC1, file="modelC1.RData")
-modelC1 = load('modelC1.RData')
+load('modelC1.RData')
+modelC1
 ```
 
 7. Rerun winning model excluding the participants that completed the incorrect IDAQ version: 
