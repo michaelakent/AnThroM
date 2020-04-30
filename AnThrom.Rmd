@@ -856,7 +856,6 @@ cumulativemodelfit <- function(formula, data, links=c("logit", "probit", "cloglo
 For the anthropomorphism subscale first:
 ```{r}
 DF.test = DF.idaq %>% 
-  #filter(!sub %in% sub_ex) %>% 
   filter(scale == "IDAQ") %>% 
   mutate_all(as.factor) %>%
   mutate(value = factor(value, levels=c(0:10), ordered=TRUE)) #add contrast coding?
@@ -866,7 +865,6 @@ Get the link function:
 ```{r}
 cumulativemodelfit(value ~ 1, data=DF.test)
 ```
-
 
 1. First cumulative ordinal model with dataset as fixed factor:
 ```{r}
@@ -879,17 +877,15 @@ ord.1 <- brm(
   family  = cumulative("logit")
 ) 
 
-summary(ord.1) #prob = .99  for 99 credible intervals
-plot(ord.1) 
-pp = brms::pp_check(ord.1)
-pp + theme_bw()
-conditional_effects(ord.1t, "dataset", categorical = TRUE)
-pp + theme_bw()
-
-saveRDS(ord.1, 'ord.1~simple.RDS')  
+saveRDS(ord.1, 'ord.1~simple.RDS') #save it to save time   
 ord.1 = readRDS('ord.1~simple.RDS')
 ```
 
+Get summary and marginal effects:
+```{r}
+summary(ord.1) #prob = .99  for 99 credible intervals
+conditional_effects(ord.1t, "dataset", categorical = TRUE)
+```
 
 2. Second cumulative ordinal model with dataset as fixed factor and random intercepts for participant and itemnr:
 ```{r}
@@ -900,16 +896,15 @@ ord.2 <- brm(
   family  = cumulative("logit") # or "logit"
 ) 
 
-summary(ord.2) #prob = .99  for 99 credible intervals
-plot(ord.2) 
-pp = brms::pp_check(ord.2)
-pp + theme_bw()
-conditional_effects(ord.2, "dataset", categorical = TRUE)
-
 saveRDS(ord.2, 'ord.2~random.RDS')  
 ord.2 = readRDS('ord.2~random.RDS')
 ```
 
+Get summary and marginal effects:
+```{r}
+summary(ord.2) #prob = .99  for 99 credible intervals
+conditional_effects(ord.2, "dataset", categorical = TRUE)
+```
 
 3. Category-specific model:
 ```{r}
@@ -922,8 +917,15 @@ ord.3 <- brm(
 
 saveRDS(ord.3, 'ord.3~category.RDS')  
 ord.3 = readRDS('ord.3~category.RDS')
-conditional_effects(ord.3, "dataset", categorical = TRUE)
+plot(ord.2) 
+pp = brms::pp_check(ord.2)
+pp + theme_bw()
+```
 
+Get summary and marginal effects:
+```{r}
+summary(ord.3) #prob = .99  for 99 credible intervals
+conditional_effects(ord.3, "dataset", categorical = TRUE)
 ```
 
 4. Category-specific model with unequal variances:
@@ -937,7 +939,11 @@ ord.4 <- brm(
 
 saveRDS(ord.4, 'ord.4~category2.RDS')  
 ord.4 = readRDS('ord.4~category2.RDS')
+```
 
+Get summary and marginal effects:
+```{r}
+summary(ord.4) #prob = .99  for 99 credible intervals
 conditional_effects(ord.4, "dataset", categorical = TRUE)
 ```
 
@@ -955,14 +961,20 @@ ord.5 = readRDS('ord.5~control.RDS')
 conditional_effects(ord.5, "dataset", categorical = TRUE)
 ```
 
-Model comparison: 
+Get summary and marginal effects:
+```{r}
+summary(ord.4) #prob = .99  for 99 credible intervals
+conditional_effects(ord.4, "dataset", categorical = TRUE)
+```
+
+6. Model comparison: 
 ```{r}
 modelC1 <- LOO(ord.1, ord.2, ord.3, ord.4, ord.5)
 save(modelC1, file="modelC1.RData")
 modelC1 = load('modelC1.RData')
 ```
 
-Rerun winning model excluding the participants that completed the incorrect version: 
+7. Rerun winning model excluding the participants that completed the incorrect IDAQ version: 
 ```{r}
 DF.test = DF.test %>% 
   filter(!sub %in% sub_ex) 
@@ -970,8 +982,7 @@ DF.test = DF.test %>%
 cumulativemodelfit(value ~ 1, data=DF.test)
 ```
 
-
-
+8. Model 2 while excluding these participants: 
 ```{r}
 ord.2E <- brm(
   value ~ 1 + dataset +
@@ -980,14 +991,14 @@ ord.2E <- brm(
   family = cumulative(link = "probit", threshold="equidistant")
 ) 
 
-summary(ord.2E) #prob = .99  for 99 credible intervals
-plot(ord.2E) 
-pp = brms::pp_check(ord.2E)
-pp + theme_bw()
-conditional_effects(ord.2E, "dataset", categorical = TRUE)
-
 saveRDS(ord.2E, 'ord.2E~random.RDS')  
 ord.2E = readRDS('ord.2E~random.RDS')
+```
+
+Get summary and marginal effects:
+```{r}
+summary(ord.2E) #prob = .99  for 99 credible intervals
+conditional_effects(ord.2E, "dataset", categorical = TRUE)
 ```
 
 
@@ -1086,6 +1097,8 @@ DF.d3 <- roi_extract(3, 301, 322, "tom", 6)
 DF.d4 <- roi_extract(4, 401, 422, "tom", 6)
 
 DF.temp <- bind_rows(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4) 
+
+test <- DF.temp %>% pivot_wider(names_from = c(network, roi), values_from = contrast) %>% write_csv("test.csv")
 ```
 
 Load the data for the Pain Matrix:
