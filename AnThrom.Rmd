@@ -939,7 +939,7 @@ saveRDS(ord.4, 'ord.4~category2.RDS')
 ord.4 = readRDS('ord.4~category2.RDS')
 ```
 
-Get summary and marginal effects:
+Get summary and marginal effects: #should add 1|itemnr and 1|sub
 ```{r}
 summary(ord.4) #prob = .99  for 99 credible intervals
 conditional_effects(ord.4, "dataset", categorical = TRUE)
@@ -966,7 +966,7 @@ conditional_effects(ord.5, "dataset", categorical = TRUE)
 
 6. Model comparison: 
 ```{r}
-modelC1 <- LOO(ord.1, ord.2, ord.3, ord.4, ord.5)
+modelC1 <- LOO(ord.1, ord.2, ord.3, ord.4, ord.5, reloo = TRUE)
 save(modelC1, file="modelC1.RData")
 load('modelC1.RData')
 modelC1
