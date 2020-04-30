@@ -1238,11 +1238,15 @@ Add seed!
 
 
 ```{r}
+DF.test <- DF.roi %>%
+  filter(roi == "ltpj")
+
 reg.1 <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2, 
-             data    = DF.roi)
+             data = DF.test)
 
 summary(reg.1)
-plot(reg.1)
+plot(reg.1) 
+prior_summary(reg.1)
 ```
 
 
