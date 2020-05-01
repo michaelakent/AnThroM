@@ -1238,8 +1238,10 @@ Add seed!
 
 
 ```{r}
+
+
 DF.test <- DF.roi %>%
-  filter(roi == "ltpj")
+  filter(roi == "rtpj")
 
 reg.1 <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2, 
              data = DF.test)
@@ -1247,6 +1249,9 @@ reg.1 <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
 summary(reg.1)
 plot(reg.1) 
 prior_summary(reg.1)
+library("shinystan")
+launch_shinystan(reg.1)
+
 ```
 
 
