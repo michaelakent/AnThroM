@@ -686,24 +686,41 @@ roi_extract <- function(datasetno, substart, subend, network, nroi) {
 } 
 ```
 
+Function loading data from local project folder
+```{r}
+#create function to load roi datasets for the different networks
+roi_extract2 <- function(datasetno, substart, subend, network, nroi) {
+  
+  dir_ls(paste("dataset_", datasetno, "/derivatives/roi/", network, sep = ""), regexp = "\\.tsv$") %>% 
+    map_dfr(read.delim, sep = "\t", .id = "id", header = FALSE)  %>%
+    mutate(dataset = datasetno) %>%
+    mutate(network = network) %>%
+    mutate(network = str_extract(network, "tom|pain|other")) %>%
+    mutate(id = str_extract(id, "dmpfc|mmpfc|vmpfc|ltpj|rtpj|prec|amcc|lmfg|rmfg|ls2|rs2|linsula|rinsula|Cullen_ltpj|Waytz_mpfc")) %>%
+    rename(roi = id, contrast = V1) %>%
+    mutate(sub = rep(substart:subend, times=nroi, each=1)) %>%
+    select(5,3,4,1:2)
+}
+```
+
 Load the data for the Theory-of-Mind network
 ```{r}
-DF.d1 <- roi_extract(1, 101, 129, "tom", 6)
-DF.d2.a <- roi_extract(2, 201, 202, "tom/201_202", 6)
-DF.d2.b <- roi_extract(2, 203, 235, "tom", 6)
-DF.d3 <- roi_extract(3, 301, 322, "tom", 6)
-DF.d4 <- roi_extract(4, 401, 422, "tom", 6)
+DF.d1 <- roi_extract2(1, 101, 129, "tom", 6)
+DF.d2.a <- roi_extract2(2, 201, 202, "tom/201_202", 6)
+DF.d2.b <- roi_extract2(2, 203, 235, "tom", 6)
+DF.d3 <- roi_extract2(3, 301, 322, "tom", 6)
+DF.d4 <- roi_extract2(4, 401, 422, "tom", 6)
 
 DF.temp <- bind_rows(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4) 
 ```
 
 Load the data for the Pain Matrix network
 ```{r}
-DF.d1 <- roi_extract(1, 101, 129, "pain", 7)
-DF.d2.a <- roi_extract(2, 201, 202, "pain/201_202/", 7)
-DF.d2.b <- roi_extract(2, 203, 235, "pain", 7)
-DF.d3 <- roi_extract(3, 301, 322, "pain", 7)
-DF.d4 <- roi_extract(4, 401, 422, "pain", 7)
+DF.d1 <- roi_extract2(1, 101, 129, "pain", 7)
+DF.d2.a <- roi_extract2(2, 201, 202, "pain/201_202/", 7)
+DF.d2.b <- roi_extract2(2, 203, 235, "pain", 7)
+DF.d3 <- roi_extract2(3, 301, 322, "pain", 7)
+DF.d4 <- roi_extract2(4, 401, 422, "pain", 7)
 
 DF.roi <- bind_rows(DF.temp, DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4)
 
@@ -981,6 +998,140 @@ other_roi_plot2
 ```
 
 
+
+# Load data for Bayesian analysis:
+Load data from repository:
+```{r}
+#library("tidyverse") - if not already loaded
+
+DF.d1  <- read_csv(file = paste("IDAQ_dataset1.csv", sep ="")) %>%
+  gather("sub", "value", 4:32)
+
+DF.d2  <- read_csv(file = paste("IDAQ_dataset2.csv", sep ="")) %>%
+  gather("sub", "value", 4:38) 
+
+DF.d3  <- read_csv(file = paste("IDAQ_dataset3.csv", sep ="")) %>%
+  gather("sub", "value", 4:25) 
+
+DF.d4  <- read_csv(file = paste("IDAQ_dataset4.csv", sep ="")) %>%
+  gather("sub", "value", 4:25) 
+
+DF.idaq <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
+  mutate(sub=gsub('sub-','',sub))%>%
+  transform(sub=as.integer(sub)) %>%
+  mutate(scale = as.factor(ifelse(scale == "IDAQ-NA", "IDAQNA", "IDAQ")))
+
+#rm(DF.d1, DF.d2, DF.d3, DF.d4)
+
+DF.idaq <- DF.idaq %>%
+  group_by(sub,dataset, scale, subscale) %>%
+  summarise(score = sum(value, na.rm = TRUE)) 
+
+DF.idaq %>%
+  group_by(sub,dataset, scale) %>%
+  summarise(score = sum(score)) %>%
+  group_by(dataset, scale) %>%
+  summarise(median = median(score),
+            iqr = IQR(score))
+
+# roi data loaded as above (section 6.1) using roi extract function 2
+```
+
+Load ROI data:
+```{r}
+#Function loading data from local project folder
+#create function to load roi datasets for the different networks
+roi_extract2 <- function(datasetno, substart, subend, network, nroi) {
+  
+  dir_ls(paste("dataset_", datasetno, "/derivatives/roi/", network, sep = ""), regexp = "\\.tsv$") %>% 
+    map_dfr(read.delim, sep = "\t", .id = "id", header = FALSE)  %>%
+    mutate(dataset = datasetno) %>%
+    mutate(network = network) %>%
+    mutate(network = str_extract(network, "tom|pain|other")) %>%
+    mutate(id = str_extract(id, "dmpfc|mmpfc|vmpfc|ltpj|rtpj|prec|amcc|lmfg|rmfg|ls2|rs2|linsula|rinsula|Cullen_ltpj|Waytz_mpfc")) %>%
+    rename(roi = id, contrast = V1) %>%
+    mutate(sub = rep(substart:subend, times=nroi, each=1)) %>%
+    select(5,3,4,1:2)
+}
+```
+
+Load ROIs:
+```{r}
+library("fs")
+DF.d1 <- roi_extract2(1, 101, 129, "tom", 6)
+DF.d2.a <- roi_extract2(2, 201, 202, "tom/201_202", 6)
+DF.d2.b <- roi_extract2(2, 203, 235, "tom", 6)
+DF.d3 <- roi_extract2(3, 301, 322, "tom", 6)
+DF.d4 <- roi_extract2(4, 401, 422, "tom", 6)
+
+DF.roi <- bind_rows(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4) 
+```
+
+Combine IDAQ and ROI:
+```{r}
+DF.roi <- DF.idaq %>% 
+  group_by(sub,dataset, scale) %>%
+  summarise(score = sum(score)) %>%
+  ungroup() %>% 
+  mutate(dataset = as.numeric(dataset)) %>% 
+  left_join(DF.roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
+  spread(key=scale, value=score)
+```
+
+```{r}
+library(brms)
+library(rstan)
+library(psych)
+
+
+# idea of brms: fitting all kinds of regression models within one framework 
+# can use brm in the same way as lme4
+#fit <- brm(Reaction ~ 1 + Days + (1 + Days|Subject),
+#           data = sleepstudy,
+#           family = x())
+
+# for complex non-linear relationships something like this:
+#  fitgp <- brm(y ~ s(x), bdata)
+# marginal_effects(fitgp, nsamples = 100, spaghetti = TRUE)
+
+#at1 <- brm(contrast ~ s(IDAQ), 
+#           data = )
+```
+
+Plot:
+```{r}
+DF.roi %>%
+  ggplot(aes(x = IDAQ,
+             y = contrast)) +
+  geom_point(position = "jitter",
+             alpha    = 0.5)+ #to add some random noise for plotting purposes
+  theme_minimal()+
+  geom_smooth(method = "lm",  # to add  the linear relationship
+              aes(color = "linear"),
+              se = FALSE) +
+  geom_smooth(method = "lm",
+              formula = y ~ x + I(x^2),# to add  the quadratic relationship
+              aes(color = "quadratic"),
+              se = FALSE) +
+  labs(title    = "test1",
+       subtitle = "blank",
+       x        = "IDAQ",
+       y        = "Contrast",
+       color    = "Type of relationship" ) +
+  theme(legend.position = "bottom")
+```
+Model:
+```{r}
+model <- brm(formula = contrast ~ IDAQ, 
+             data    = DF.roi,
+             seed    = 123)
+```
+
+Look at model summary:
+```{r}
+summary(model)
+posterior_summary(model)
+```
 
 
 
