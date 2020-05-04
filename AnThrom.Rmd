@@ -1118,7 +1118,8 @@ DF.roi %>%
        x        = "IDAQ",
        y        = "Contrast",
        color    = "Type of relationship" ) +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") +
+  facet_wrap(~roi)
 ```
 Model:
 ```{r}
@@ -1133,5 +1134,56 @@ summary(model)
 posterior_summary(model)
 ```
 
+Model for seperate ROIs:
+```{r}
+DF.roi.sep <- DF.idaq %>% 
+  group_by(sub, dataset, scale) %>%
+  summarise(score = sum(score)) %>%
+  ungroup() %>% 
+  mutate(dataset = as.numeric(dataset)) %>% 
+  left_join(DF.roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
+  spread(key=scale, value=score) %>%
+  spread(roi, contrast)
+```
 
+LTPJ:
+```{r}
+model <- brm(formula = ltpj ~ IDAQ, 
+             data    = DF.roi.sep,
+             seed    = 123)
+```
 
+RTPJ:
+```{r}
+model <- brm(formula = rtpj ~ IDAQ, 
+             data    = DF.roi.sep,
+             seed    = 123)
+```
+
+DMPFC:
+```{r}
+model <- brm(formula = dmpfc ~ IDAQ, 
+             data    = DF.roi.sep,
+             seed    = 123)
+```
+
+MMPFC:
+```{r}
+model <- brm(formula = mmpfc ~ IDAQ, 
+             data    = DF.roi.sep,
+             seed    = 123)
+```
+
+VMPFC:
+```{r}
+model <- brm(formula = vmpfc ~ IDAQ, 
+             data    = DF.roi.sep,
+             seed    = 123)
+```
+
+PREC:
+```{r}
+model <- brm(formula = prec ~ IDAQ, 
+             data    = DF.roi.sep,
+             seed    = 123)
+```
