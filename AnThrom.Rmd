@@ -831,7 +831,7 @@ DF.idaq %>%
 ## 5.4 Differences between datasets
 Test if there are differences in IDAQ and IDAQ-NA scores between datasets. 
 
-Before fitting any model we establish which link function we need to use. This code is taken from [Kevin Stadler's github]( https://kevinstadler.github.io/blog/bayesian-ordinal-regression-with-random-effects-using-brms/). In short, it uses the ordinal packadge to (quickly) find the link function that fits the data:
+Before fitting any model we establish which link function we need to use. This code is taken from [Kevin Stadler's github]( https://kevinstadler.github.io/blog/bayesian-ordinal-regression-with-random-effects-using-brms/). In short, it uses the ordinal package to (quickly) find the link function that fits the data:
 ```{r}
 library(ordinal)
 cumulativemodelfit <- function(formula, data, links=c("logit", "probit", "cloglog", "cauchit"),
@@ -966,7 +966,7 @@ conditional_effects(ord.5, "dataset", categorical = TRUE)
 
 6. Model comparison: 
 ```{r}
-modelC1 <- LOO(ord.1, ord.2, ord.3, ord.4, ord.5, reloo = TRUE)
+modelC1 <- LOO(ord.1, ord.2, ord.3, ord.4, ord.5)
 save(modelC1, file="modelC1.RData")
 load('modelC1.RData')
 modelC1
@@ -1218,6 +1218,10 @@ p1 + p2
 ## 7.4 Create the quadratic predictor:
 ```{r}
 DF.roi$cent_IDAQ2 <- DF.roi$cent_IDAQ^2
+
+
+DF.roi <- DF.roi %>% 
+  mutate(IDAQ2 = IDAQ^2)
 ```
 
 
@@ -1236,22 +1240,77 @@ DF.roi$cent_IDAQ2 <- DF.roi$cent_IDAQ^2
 
 Add seed!
 
+what is sigma
 
 ```{r}
+DF.test <- DF.roi %>% 
+  select(sub, dataset, network, cent_contrast, cent_IDAQ, cent_IDAQ2) %>%
+  filter(roi == "rtpj" | roi == "ltpj") %>%
+  pivot_wider(names_from = roi, values_from = cent_contrast)
 
-
-DF.test <- DF.roi %>%
+DF.test <- DF.roi %>% 
   filter(roi == "rtpj")
 
-reg.1 <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2, 
+test <- brm(formula = ltpj ~ rtpj + cent_IDAQ2, 
              data = DF.test)
+
+
+reg.1 <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2 + dataset, 
+             data = DF.test, family = gaussian())
+
+reg.2 <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2, 
+             data = DF.test, family = gaussian())
 
 summary(reg.1)
 plot(reg.1) 
 prior_summary(reg.1)
+
+
+pairs(reg.1) #look into this
+
+plot(conditional_effects(reg.1), points = TRUE)
+
 library("shinystan")
+
 launch_shinystan(reg.1)
 
+```
+
+```{r}
+# linear model
+    fit_lin <- run_model(
+      brm(
+        rating ~ time + Age + Geschlecht + Erstbehandlung + diag + 
+          (time | PATNR) + (1 | item), 
+        data = dat_tmp, family = fam, 
+        cores = cores, chains = chains
+      ),
+      path = paste0("models/fit_hyp1_", meas, "_", fam, "_lin")
+    )
+    print(summary(fit_lin))
+    me <- marginal_effects(fit_lin, "time") %>%
+      plot(plot = FALSE) %>%
+      getElement(1) + 
+      ylim(range(dat_tmp$rating, na.rm = TRUE) + c(-0.5, 0.5))
+    plot(me)
+    
+    # quadratic model
+    fit_quad <- run_model(
+      brm(
+        rating ~ (time + I(time^2)) + 
+          Age + Geschlecht + Erstbehandlung + diag + 
+          ((time + I(time^2)) | PATNR) + (1 | item), 
+        data = dat_tmp, family = fam, 
+        cores = cores, chains = chains
+      ),
+      path = paste0("models/fit_hyp1_", meas, "_", fam, "_quad")
+    )
+    print(summary(fit_quad))
+    me <- marginal_effects(fit_quad, "time") %>%
+      plot(plot = FALSE) %>%
+      getElement(1) + 
+      ylim(range(dat_tmp$rating, na.rm = TRUE) + c(-0.5, 0.5))
+    plot(me)
 ```
 
 
