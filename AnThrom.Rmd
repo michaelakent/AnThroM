@@ -1251,42 +1251,32 @@ DF.test <- DF.roi %>%
 DF.test <- DF.roi %>% 
   filter(roi == "rtpj")
 
-test <- brm(formula = ltpj ~ rtpj + cent_IDAQ2, 
+
+reg.1 <- brm(formula = cent_contrast ~ cent_IDAQ + 
+               dataset, 
              data = DF.test)
 
-
-reg.1 <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2 + dataset, 
-             data = DF.test, family = gaussian())
-
-reg.2 <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2, 
-             data = DF.test, family = gaussian())
+reg.2 <- brm(formula = cent_contrast ~ (cent_IDAQ + I(cent_IDAQ^2)), 
+             data = DF.test)
 
 summary(reg.1)
 plot(reg.1) 
 prior_summary(reg.1)
 
-
 pairs(reg.1) #look into this
 
-plot(conditional_effects(reg.1), points = TRUE)
+plot(conditional_effects(reg.2), points = TRUE)
 
 library("shinystan")
 
 launch_shinystan(reg.1)
 
+
+summary(reg.2)
+plot(reg.2) 
 ```
 
 ```{r}
-# linear model
-    fit_lin <- run_model(
-      brm(
-        rating ~ time + Age + Geschlecht + Erstbehandlung + diag + 
-          (time | PATNR) + (1 | item), 
-        data = dat_tmp, family = fam, 
-        cores = cores, chains = chains
-      ),
-      path = paste0("models/fit_hyp1_", meas, "_", fam, "_lin")
-    )
     print(summary(fit_lin))
     me <- marginal_effects(fit_lin, "time") %>%
       plot(plot = FALSE) %>%
