@@ -999,7 +999,7 @@ other_roi_plot2
 
 
 
-# Load data for Bayesian analysis:
+# 8. Load data for Bayesian analysis:
 Load data from repository:
 ```{r}
 #library("tidyverse") - if not already loaded
@@ -1037,7 +1037,7 @@ DF.idaq %>%
 # roi data loaded as above (section 6.1) using roi extract function 2
 ```
 
-Load ROI data:
+## 8.1 Load ROI data:
 ```{r}
 #Function loading data from local project folder
 #create function to load roi datasets for the different networks
@@ -1067,7 +1067,7 @@ DF.d4 <- roi_extract2(4, 401, 422, "tom", 6)
 DF.roi <- bind_rows(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4) 
 ```
 
-Combine IDAQ and ROI:
+## 8.2 Combine IDAQ and ROI:
 ```{r}
 DF.roi <- DF.idaq %>% 
   group_by(sub,dataset, scale) %>%
@@ -1082,7 +1082,7 @@ DF.roi <- DF.idaq %>%
 library(brms)
 library(rstan)
 library(psych)
-
+library(shinystan)
 
 # idea of brms: fitting all kinds of regression models within one framework 
 # can use brm in the same way as lme4
@@ -1131,10 +1131,11 @@ model <- brm(formula = contrast ~ IDAQ,
 Look at model summary:
 ```{r}
 summary(model)
+plot(model)
 posterior_summary(model)
 ```
 
-Model for seperate ROIs:
+## 8.3 Model for seperate ROIs:
 ```{r}
 DF.roi.sep <- DF.idaq %>% 
   group_by(sub, dataset, scale) %>%
@@ -1144,46 +1145,91 @@ DF.roi.sep <- DF.idaq %>%
   left_join(DF.roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
   spread(key=scale, value=score) %>%
   spread(roi, contrast)
+
+DF.roi.sep <- DF.roi.sep %>%
+  mutate(IDAQ2 = IDAQ^2)
 ```
 
 LTPJ:
 ```{r}
-model <- brm(formula = ltpj ~ IDAQ, 
-             data    = DF.roi.sep,
-             seed    = 123)
+ltpjmodel <- brm(formula = ltpj ~ IDAQ + IDAQ2, 
+             data = DF.roi.sep,
+             seed = 123)
+
+summary(ltpjmodel)
+plot(ltpjmodel)
+posterior_summary(ltpjmodel)
+saveRDS(ltpjmodel, file = "ltpjmodel")
 ```
 
 RTPJ:
 ```{r}
-model <- brm(formula = rtpj ~ IDAQ, 
-             data    = DF.roi.sep,
-             seed    = 123)
+rtpjmodel <- brm(formula = rtpj ~ IDAQ + IDAQ2, 
+             data = DF.roi.sep,
+             seed = 123)
+
+summary(rtpjmodel)
+plot(rtpjmodel)
+posterior_summary(rtpjmodel)
+saveRDS(rtpjmodel,file = "rtpjmodel")
 ```
+
+Compare LTPJ and RTPJ:
+```{r}
+tpjmod <- brm(formula = rtpj ~ ltpj,
+              data = DF.roi.sep,
+              seed = 123)
+
+summary(tpjmod)
+plot(tpjmod)
+launch_shinystan(tpjmod)
+```
+
 
 DMPFC:
 ```{r}
-model <- brm(formula = dmpfc ~ IDAQ, 
-             data    = DF.roi.sep,
-             seed    = 123)
+dmpfcmodel <- brm(formula = dmpfc ~ IDAQ + IDAQ2, 
+             data = DF.roi.sep,
+             seed = 123)
+
+summary(dmpfcmodel)
+plot(dmpfcmodel)
+posterior_summary(dmpfcmodel)
+saveRDS(dmpfcmodel, file = "dmpfcmodel")
 ```
 
 MMPFC:
 ```{r}
-model <- brm(formula = mmpfc ~ IDAQ, 
-             data    = DF.roi.sep,
-             seed    = 123)
+mmpfcmodel <- brm(formula = mmpfc ~ IDAQ + IDAQ2, 
+             data = DF.roi.sep,
+             seed = 123)
+
+summary(mmpfcmodel)
+plot(mmpfcmodel)
+posterior_summary(mmpfcmodel)
+saveRDS(mmpfcmodel, file = "mmpfcmodel")
 ```
 
 VMPFC:
 ```{r}
-model <- brm(formula = vmpfc ~ IDAQ, 
-             data    = DF.roi.sep,
-             seed    = 123)
+vmpfcmodel <- brm(formula = vmpfc ~ IDAQ + IDAQ2, 
+             data = DF.roi.sep,
+             seed = 123)
+
+summary(vmpfcmodel)
+plot(vmpfcmodel)
+posterior_summary(vmpfcmodel)
+saveRDS(vmpfcmodel, file = "vmpfcmodel")
 ```
 
 PREC:
 ```{r}
-model <- brm(formula = prec ~ IDAQ, 
-             data    = DF.roi.sep,
-             seed    = 123)
+precmodel <- brm(formula = prec ~ IDAQ + IDAQ2, 
+             data = DF.roi.sep,
+             seed = 123)
+
+summary(precmodel)
+plot(precmodel)
+posterior_summary(precmodel)
+saveRDS(precmodel, file = "precmodel")
 ```
