@@ -1001,26 +1001,6 @@ conditional_effects(ord.2E, "dataset", categorical = TRUE)
 ```
 
 
-```{r}
-# OLD code: get fitted values
-newdata = data.frame(dataset = levels(as.factor(DF.test$dataset)), itemnr = as.factor(DF.test$itemnr))
-fit = fitted(mod1, newdata = newdata, re_formula = NA)
-colnames(fit) = c('fit', 'se', 'lwr', 'upr')
-df_plot = cbind(newdata, fit)
-df_plot
-
-obs = aggregate(value ~ dataset, DF.test, mean) 
-
-ggplot(df_plot, aes(x = dataset, y = fit)) +
-  geom_violin(data=DF.test, aes(x=dataset, y=value), alpha=0.5, color="gray70", fill='gray95') +
-  geom_jitter(data=obs, aes(x=dataset, y=value), alpha=0.3, position = position_jitter(width = 0.07)) +
-  geom_errorbar(aes(ymin=lwr, ymax=upr), position=position_dodge(), size=1, width=.5) +
-  geom_point(shape=21, size=4, fill='red') +
-  xlab("") +
-  theme_bw () +
-  theme(panel.grid = element_blank())
-```
-
 ## 5.5 IDAQ per subject
 Calculate the IDAQ per subject:
 ```{r}
@@ -1238,6 +1218,7 @@ reg_model <- function(region){
 
 Run the models for the ToM network first (it will load the model if it is already calculated):
 ```{r}
+#library("brms")
 rtpj <- reg_model("rtpj")
 ltpj <- reg_model("ltpj")
 prec <- reg_model("prec")
@@ -1258,8 +1239,6 @@ summary(dmpfc)
 
 Get the posterior summaries (do some wrangling):
 ```{r}
-library(broom)
-
 posterior_summary(rtpj)
 posterior_summary(ltpj)
 posterior_summary(prec)
@@ -1268,8 +1247,25 @@ posterior_summary(mmpfc)
 posterior_summary(dmpfc)
 ```
 
+Create plots (make some edit):
+```{r}
+library("bayesplot")
+library("broom")
+
+p4 <- plot(rtpj) + title("tpj")
 
 
+posterior <- as.matrix(rtpj) 
+plot_title <- ggtitle("Posterior distributions",
+                      "with medians and 80% intervals")
+mcmc_areas(posterior, 
+           prob = 0.8) + plot_title
+plot(ltpj)
+plot(prec)
+plot(vmpfc)
+plot(mmpfc)
+plot(dmpfc)
+```
 
 
 
@@ -1410,5 +1406,25 @@ plot(DF.test$cent_contrast ~ DF.test$cent_IDAQ, pch=16, ylab = "Counts ", cex.la
 lines(idaqvalues, predictedcounts, col = "darkgreen", lwd = 3)
 ```
 
+
+```{r}
+# OLD code: get fitted values
+newdata = data.frame(dataset = levels(as.factor(DF.test$dataset)), itemnr = as.factor(DF.test$itemnr))
+fit = fitted(mod1, newdata = newdata, re_formula = NA)
+colnames(fit) = c('fit', 'se', 'lwr', 'upr')
+df_plot = cbind(newdata, fit)
+df_plot
+
+obs = aggregate(value ~ dataset, DF.test, mean) 
+
+ggplot(df_plot, aes(x = dataset, y = fit)) +
+  geom_violin(data=DF.test, aes(x=dataset, y=value), alpha=0.5, color="gray70", fill='gray95') +
+  geom_jitter(data=obs, aes(x=dataset, y=value), alpha=0.3, position = position_jitter(width = 0.07)) +
+  geom_errorbar(aes(ymin=lwr, ymax=upr), position=position_dodge(), size=1, width=.5) +
+  geom_point(shape=21, size=4, fill='red') +
+  xlab("") +
+  theme_bw () +
+  theme(panel.grid = element_blank())
+```
 
 
