@@ -886,6 +886,7 @@ Get summary and marginal effects:
 ```{r}
 summary(ord.1) #prob = .99  for 99 credible intervals
 conditional_effects(ord.1, "dataset", categorical = TRUE)
+plot(ord.1)
 ```
 
 2. Second cumulative ordinal model with dataset as fixed factor and random intercepts for participant and itemnr:
@@ -1068,9 +1069,8 @@ DF.idaq %>%
 # 6. fROI results {.tabset}
 
 ## 6.1 Data wrangling
-Create function to load the data:
+Create function to load the data for the different networks:
 ```{r}
-#create function to load roi datasets for the different networks
 library(fs)
 roi_extract <- function(datasetno, substart, subend, network, nroi) {
   
@@ -1215,18 +1215,51 @@ p2 <- DF.roi %>%
 p1 + p2
 ```
 
-## 7.4 Create the quadratic predictor:
+## 7.4 Create the quadratic predictor
+For the formal analysis we will test a linear and quadratic relationship between IDAQ and ToM network activity:
 ```{r}
 DF.roi$cent_IDAQ2 <- DF.roi$cent_IDAQ^2
+```
 
+## 7.5 Bayesian analysis
 
-DF.roi <- DF.roi %>% 
-  mutate(IDAQ2 = IDAQ^2)
+We run the models with uninformative (default) priors and create a function to run it for each region separately:
+```{r}
+reg_model <- function(region){
+  brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
+      data = DF.roi %>% filter(roi == region),
+      family = gaussian,
+      chains = 4,
+      iter = 4000,
+      seed = 42, #so the model is reproducible
+      file = paste0(region, ".RDS"))
+}
+```
+
+Run the models for the ToM network first (it will load the model if it is already calculated):
+```{r}
+rtpj <- reg_model("rtpj")
+ltpj <- reg_model("ltpj")
+prec <- reg_model("prec")
+vmpfc <- reg_model("vmpfc")
+mmpfc <- reg_model("mmpfc")
+dmpfc <- reg_model("dmpfc")
+```
+
+Get the summaries (do some wrangling):
+```{r}
+summary(rtpj)
+summary(ltpj)
+summary(prec)
+summary(vmpfc)
+summary(mmpfc)
+summary(dmpfc)
 ```
 
 
 
-## 7.5 Bayesian analysis
+
+
 1. Across all ToM ROIs
   - Compare linear model vs. quadratic model; is there evidence for one, or for Null?
   - Fit the model, predict values, test sensitivity/fit
@@ -1238,46 +1271,54 @@ DF.roi <- DF.roi %>%
 (4. control for each pain ROI)
 
 
-Add seed!
+Add seed at the end!
 
 what is sigma
 
 ```{r}
-DF.test <- DF.roi %>% 
-  select(sub, dataset, network, cent_contrast, cent_IDAQ, cent_IDAQ2) %>%
-  filter(roi == "rtpj" | roi == "ltpj") %>%
-  pivot_wider(names_from = roi, values_from = cent_contrast)
+options("scipen"=10, "digits"=5)
 
 DF.test <- DF.roi %>% 
   filter(roi == "rtpj")
 
 
-reg.1 <- brm(formula = cent_contrast ~ cent_IDAQ + 
-               dataset, 
-             data = DF.test)
+reg.1 <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
+             data = DF.test,
+             family = gaussian)
 
-reg.2 <- brm(formula = cent_contrast ~ (cent_IDAQ + I(cent_IDAQ^2)), 
-             data = DF.test)
+plot(DF.test$cent_IDAQ2, DF.test$cent_IDAQ)
+
 
 summary(reg.1)
 plot(reg.1) 
+posterior_summary(reg.1)
 prior_summary(reg.1)
-
 pairs(reg.1) #look into this
+plot(conditional_effects(reg.1), points = TRUE)
 
-plot(conditional_effects(reg.2), points = TRUE)
+roi <- "rtpj"
+
+reg.2 <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
+             data = DF.roi %>% filter(roi == roi),
+             family = gaussian,
+             chains = 4,
+             iter = 4000,
+             seed = 42,
+             file = paste0(roi, ".RDS"))
+summary(reg.2)
+
 
 library("shinystan")
 
 launch_shinystan(reg.1)
 
-
-summary(reg.2)
-plot(reg.2) 
 ```
 
 ```{r}
-    print(summary(fit_lin))
+reg.2 <- brm(formula = cent_contrast ~ (cent_IDAQ + I(cent_IDAQ^2)), 
+             data = DF.test)  
+
+  print(summary(fit_lin))
     me <- marginal_effects(fit_lin, "time") %>%
       plot(plot = FALSE) %>%
       getElement(1) + 
