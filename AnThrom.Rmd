@@ -1063,8 +1063,6 @@ DF.d3 <- roi_extract(3, 301, 322, "tom", 6)
 DF.d4 <- roi_extract(4, 401, 422, "tom", 6)
 
 DF.temp <- bind_rows(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4) 
-
-test <- DF.temp %>% pivot_wider(names_from = c(network, roi), values_from = contrast) %>% write_csv("test.csv")
 ```
 
 Load the data for the Pain Matrix:
@@ -1089,6 +1087,20 @@ DF.roi <- DF.roi %>%
   group_by(sub, dataset) %>%
   mutate(roi = fct_relevel(roi, order))
 ```
+
+```{r}
+roi.compare <- brm(
+  formula = contrast ~ 1 + roi + dataset,
+  data = DF.roi %>% filter(network == "tom"),
+  #family  = cumulative("logit"),
+  file = 'roi.compare.RDS'
+) 
+
+summary(roi.compare)
+conditional_effects(roi.compare, "dataset", "roi")
+
+```
+
 
 ## 6.2 Theory-of-Mind network activation across datasets:
 Plot the TOM activity across regions and datasets:
