@@ -875,11 +875,9 @@ options(mc.cores = parallel::detectCores()) #run once (run on multiple cores)
 ord.1 <- brm(
   value ~ 1 + dataset,  
   data  = DF.test,  
-  family  = cumulative("logit")
+  family  = cumulative("logit"),
+  file = 'ord.1~simple.RDS'
 ) 
-
-saveRDS(ord.1, 'ord.1~simple.RDS') #save it to save time   
-ord.1 = readRDS('ord.1~simple.RDS')
 ```
 
 Get summary and marginal effects:
@@ -895,11 +893,9 @@ ord.2 <- brm(
   value ~ 1 + dataset +
     (1|sub) + (1|itemnr),   
   data  = DF.test,  
-  family  = cumulative("logit") # or "logit"
+  family  = cumulative("logit"),
+  file = 'ord.2~random.RDS'
 ) 
-
-saveRDS(ord.2, 'ord.2~random.RDS')  
-ord.2 = readRDS('ord.2~random.RDS')
 ```
 
 Get summary and marginal effects:
@@ -914,11 +910,9 @@ ord.3 <- brm(
   value ~ 1 + cs(dataset) +
     (cs(1)|sub) + (cs(1)|itemnr),
   data  = DF.test,  
-  family = acat("logit") # or "logit"
+  family = acat("logit"),
+  file = 'ord.3~category.RDS'
 )  
-
-saveRDS(ord.3, 'ord.3~category.RDS')  
-ord.3 = readRDS('ord.3~category.RDS')
 ```
 
 Get summary and marginal effects:
@@ -933,11 +927,9 @@ ord.4 <- brm(
   value ~ 1 + dataset +
     (1|sub) + (1|itemnr),
   data  = DF.test,  
-  family = acat("logit") # or "logit"
+  family = acat("logit"),
+  file = 'ord.4~category2.RDS'
 ) 
-
-saveRDS(ord.4, 'ord.4~category2.RDS')  
-ord.4 = readRDS('ord.4~category2.RDS')
 ```
 
 Get summary and marginal effects: #should add 1|itemnr and 1|sub
@@ -952,11 +944,9 @@ ord.5 <- brm(
   formula = bf(value ~ 1 + dataset) +
     lf(disc ~ 0 + dataset, cmc = FALSE),
   data = DF.test,
-  family  = cumulative("logit") # or "logit"
+  family  = cumulative("logit"),
+  file = 'ord.5~control.RDS'
 ) 
-
-saveRDS(ord.5, 'ord.5~control.RDS')  
-ord.5 = readRDS('ord.5~control.RDS')
 ```
 
 Get summary and marginal effects:
@@ -987,11 +977,9 @@ ord.2E <- brm(
   value ~ 1 + dataset +
     (1|sub) + (1|itemnr),   
   data  = DF.test,  
-  family = cumulative(link = "probit", threshold="equidistant")
+  family = cumulative(link = "probit", threshold="equidistant"),
+  file = 'ord.2E~random.RDS'
 ) 
-
-saveRDS(ord.2E, 'ord.2E~random.RDS')  
-ord.2E = readRDS('ord.2E~random.RDS')
 ```
 
 Get summary and marginal effects:
