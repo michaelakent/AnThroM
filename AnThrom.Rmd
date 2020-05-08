@@ -1119,6 +1119,7 @@ tom.compare <- brm(
 ) 
 
 summary(tom.compare)
+plot(tom.compare)
 conditional_effects(tom.compare)
 ```
 
@@ -1152,13 +1153,11 @@ pain.compare <- brm(
 ) 
 
 summary(pain.compare)
+plot(pain.compare)
 conditional_effects(pain.compare)
 ```
 
-
-# 7. IDAQ and ROI Analysis {.tabset}
-
-## 7.1 Combine IDAQ scores and ROI data
+## 6.6 Combine IDAQ scores and ROI data:
 Create one DF:
 ```{r}
 DF.roi <- DF.idaq %>% 
@@ -1169,7 +1168,6 @@ DF.roi <- DF.idaq %>%
   spread(key=scale, value=score) #change this (pivot_wider)
 ```
 
-## 7.2 Center the variables
 Center the variables for the formal analysis:
 ```{r}
 DF.roi$cent_IDAQNA <- scale(DF.roi$IDAQNA, scale = FALSE)
@@ -1177,7 +1175,9 @@ DF.roi$cent_IDAQ <- scale(DF.roi$IDAQ, scale = FALSE)
 DF.roi <- DF.roi %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, scale =FALSE))
 ```
 
-## 7.3 Plot ToM and IDAQ
+# 7. IDAQ scores and ToM activity {.tabset}
+
+## 7.1 Plot ToM and IDAQ
 Create scatterplots with linear and non-linear lines: 
 ```{r}
 library(patchwork)
@@ -1210,13 +1210,12 @@ p2 <- DF.roi %>%
 p1 + p2
 ```
 
-## 7.4 Create the quadratic predictor
+## 7.2 Create a function for the Bayesian regression models:
+
 For the formal analysis we will test a linear and quadratic relationship between IDAQ and ToM network activity:
 ```{r}
 DF.roi$cent_IDAQ2 <- DF.roi$cent_IDAQ^2
 ```
-
-## 7.5 Bayesian analysis
 
 We run the models with uninformative (default) priors and create a function to run it for each region separately:
 ```{r}
@@ -1231,7 +1230,8 @@ reg_model <- function(region){
 }
 ```
 
-Run the models for the ToM network first (it will load the model if it is already calculated):
+## 7.3 ToM regression models:
+Run the models for the ToM network first. It will load the model if it is already calculated:
 ```{r}
 #library("brms")
 rtpj <- reg_model("rtpj")
@@ -1282,8 +1282,66 @@ plot(mmpfc)
 plot(dmpfc)
 ```
 
+# 8. IDAQ scores and Pain Matrix activity {.tabset}
 
 
+## 7.1 Plot ToM and IDAQ
+Create scatterplots with linear and non-linear lines: 
+```{r}
+p1 <- DF.roi %>%
+  filter(network == "pain") %>%
+  ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
+  #coord_fixed(ratio = 25/1) +
+  labs(
+    x="IDAQ score",
+    y="contrast (pain vs mental)"
+  ) + theme_classic()
+
+p2 <- DF.roi %>%
+  filter(network == "pain") %>%
+  ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
+  #coord_fixed(ratio = 25/1) +
+  labs(
+    x="IDAQ score",
+    y="contrast (pain vs mental)"
+  ) + theme_classic() +
+  facet_grid(~roi)
+
+p1 + p2
+```
+
+## 8.2 Regression models for the Pain Matrix:
+Run the models for the Pain Matrix (control network). It will load the model if it is already calculated:
+```{r}
+rs2 <- reg_model("rs2")
+ls2 <- reg_model("ls2")
+rinsula <- reg_model("rinsula")
+linsula <- reg_model("linsula")
+rmfg <- reg_model("rmfg")
+lmfg <- reg_model("lmfg")
+amcc <- reg_model("amcc")
+```
+
+```{r}
+summary(linsula)
+posterior_summary(linsula)
+plot(linsula)
+```
+
+
+# 9. Control analyses {.tabset}
+
+use the update function!
+
+```{r}
+sessionInfo()
+```
 
 1. Across all ToM ROIs
   - Compare linear model vs. quadratic model; is there evidence for one, or for Null?
@@ -1441,5 +1499,7 @@ ggplot(df_plot, aes(x = dataset, y = fit)) +
   theme_bw () +
   theme(panel.grid = element_blank())
 ```
+
+
 
 
