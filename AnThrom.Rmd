@@ -1088,22 +1088,8 @@ DF.roi <- DF.roi %>%
   mutate(roi = fct_relevel(roi, order))
 ```
 
-```{r}
-roi.compare <- brm(
-  formula = contrast ~ 1 + roi + dataset,
-  data = DF.roi %>% filter(network == "tom"),
-  #family  = cumulative("logit"),
-  file = 'roi.compare.RDS'
-) 
-
-summary(roi.compare)
-conditional_effects(roi.compare, "dataset", "roi")
-
-```
-
-
 ## 6.2 Theory-of-Mind network activation across datasets:
-Plot the TOM activity across regions and datasets:
+Plot the ToM activity across regions and datasets:
 ```{r}
 p1 <- DF.roi %>%
   filter(network == "tom") %>%
@@ -1120,6 +1106,20 @@ p1 <- DF.roi %>%
   theme(legend.position="none") +
   facet_wrap(~dataset) 
 p1
+```
+
+## 6.3 Differences in ToM activation between datasets:
+Test if for potential differences between datasets and rois:
+```{r}
+tom.compare <- brm(
+  formula = contrast ~ roi * dataset,
+  data = DF.roi %>% filter(network == "tom"),
+  #family  = cumulative("logit"),
+  file = 'tom.compare.RDS'
+) 
+
+summary(tom.compare)
+conditional_effects(tom.compare)
 ```
 
 ## 6.4 Pain Matrix activation across datasets
@@ -1140,6 +1140,21 @@ p2 <- DF.roi %>%
   facet_wrap(~dataset)
 p2
 ```
+
+## 6.5 Differences in Pain Matrix activation between datasets:
+Test if for potential differences between datasets and rois:
+```{r}
+pain.compare <- brm(
+  formula = contrast ~ roi * dataset,
+  data = DF.roi %>% filter(network == "pain"),
+  #family  = cumulative("logit"),
+  file = 'pain.compare.RDS'
+) 
+
+summary(pain.compare)
+conditional_effects(pain.compare)
+```
+
 
 # 7. IDAQ and ROI Analysis {.tabset}
 
