@@ -1205,9 +1205,9 @@ p2 <- DF.roi %>%
     x="IDAQ score",
     y="contrast (mental vs pain)"
   ) + theme_classic() +
-  facet_grid(~roi)
+  facet_wrap(~roi)
 
-p1 + p2
+p1 & p2
 ```
 
 ## 7.2 Create a function for the Bayesian regression models:
@@ -1311,7 +1311,7 @@ p2 <- DF.roi %>%
     x="IDAQ score",
     y="contrast (pain vs mental)"
   ) + theme_classic() +
-  facet_grid(~roi)
+  facet_wrap(~roi, nrow = 2)
 
 p1 + p2
 ```
