@@ -1266,21 +1266,83 @@ Create plots (make some edit):
 ```{r}
 library("bayesplot")
 library("broom")
+library("rstanarm")
+library("tidyverse")
 
-p4 <- plot(rtpj) + title("tpj")
 
+fit <- stan_glm(mpg ~ ., data = mtcars)
+summary(fit)
+posterior <- as.matrix(fit)
+
+plot_title <- ggtitle("Posterior distributions",
+                      "with medians and 80% intervals")
+mcmc_areas(posterior, 
+           pars = c("cyl", "drat", "am", "wt"), 
+           prob = 0.8) + plot_title
 
 posterior <- as.matrix(rtpj) 
 plot_title <- ggtitle("Posterior distributions",
                       "with medians and 80% intervals")
 mcmc_areas(posterior, 
+           pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), 
            prob = 0.8) + plot_title
+summary(rtpj)
+
+
+color_scheme_set("red")
+ppc_dens_overlay(y = fit$y, 
+                 yrep = posterior_predict(fit, draws = 50))
+
+color_scheme_set("brightblue")
+rtpj %>% 
+  posterior_predict(draws = 500) %>%
+  ppc_stat_grouped(y = b_cent_IDAQ2,
+                   stat = "median")
+
 plot(ltpj)
 plot(prec)
 plot(vmpfc)
 plot(mmpfc)
 plot(dmpfc)
 ```
+
+
+```{r}
+
+pp_check(rtpj, nsamples = 100) #maximal model
+
+
+library(doBy)
+library(brms)
+library(easystats)
+library(tidyverse)
+
+rope_range(rtpj) # determine the ROPE range
+
+test <- bayestestR::equivalence_test(rtpj, range = c(-0.04232769, 0.04232769), ci = 0.95) # assert the null
+test <- test[-c(3),]
+
+plot(test) + theme_abyss() + scale_fill_flat() # plot the decision on H0
+
+
+describe_posterior(
+  rtpj,
+  effects = "all",
+  component = "all",
+  test = c("p_direction", "p_significance"),
+  centrality = "all"
+)
+
+
+library(bayestestR)
+
+posterior <- distribution_gamma(10000, 1.5)  # Generate a skewed distribution
+centrality <- point_estimate(posterior)  # Get indices of centrality
+centrality
+plot(centrality)
+plot(rtpj)
+```
+
 
 # 8. IDAQ scores and Pain Matrix activity {.tabset}
 
