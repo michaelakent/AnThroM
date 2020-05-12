@@ -1405,8 +1405,7 @@ plot(rtpj)
 
 # 8. IDAQ scores and Pain Matrix activity {.tabset}
 
-
-## 7.1 Plot ToM and IDAQ
+## 8.1 Plot Pain Matrix and IDAQ
 Create scatterplots with linear and non-linear lines: 
 ```{r}
 p1 <- DF.roi %>%
@@ -1455,6 +1454,34 @@ posterior_summary(linsula)
 plot(linsula)
 ```
 
+Create plots (different way):
+```{r}
+pain_combined <- bind_rows("rs2" = as_tibble(as.mcmc(rs2,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE)),
+                          "ls2" = as_tibble(as.mcmc(ls2, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "rinsula" = as_tibble(as.mcmc(rinsula, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "linsula" = as_tibble(as.mcmc(linsula, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "rmfg" = as_tibble(as.mcmc(rmfg, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "lmfg" = as_tibble(as.mcmc(lmfg, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "amcc" = as_tibble(as.mcmc(amcc, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          .id = "roi")
+
+pain_combined <- pain_combined %>%
+  pivot_longer(c("b_cent_IDAQ", "b_cent_IDAQ2"),names_to = "varIDAQ") %>%
+  mutate(roi = fct_relevel(roi, order[7:13]))
+```
+
+Plot the distributions:
+```{r}
+ggplot(data = pain_combined, aes(value, fill = varIDAQ)) +
+  geom_density(aes(alpha = 0.9))+
+  theme_linedraw(base_size = 10) +
+  #theme(strip.background = element_blank()) +
+  geom_vline(xintercept = 0, color = "black", linetype = 2) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  ggtitle(paste("Posterior distributions for the Pain Matrix")) + 
+  theme(legend.position="none") +
+  facet_wrap(~roi) 
+```
 
 # 9. Control analyses {.tabset}
 
