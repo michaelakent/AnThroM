@@ -993,7 +993,7 @@ conditional_effects(ord.2E, "dataset", categorical = TRUE)
 Calculate the IDAQ per subject:
 ```{r}
 DF.idaq <- DF.idaq %>%
-  group_by(sub,dataset, scale, subscale) %>%
+  group_by(sub,dataset, scale) %>%
   summarise(score = sum(value, na.rm = TRUE)) %>%
   ungroup()%>%
   mutate_at(vars(-score),as.factor)
@@ -1004,14 +1004,18 @@ DF.idaq <- DF.idaq %>%
 Visualise the scores across the datasets and scales:
 ```{r}
 source("R_rainclouds.R") #/Volumes/Project0255/code
+#source("summarySE.R")
+
+#idaq_sum <- summarySEwithin(DF.idaq, measurevar="score", betweenvars="dataset", withinvars= "scale", idvar="sub")
+
 
 p <- DF.idaq %>%
   group_by(sub,dataset, scale) %>%
-  summarise(score = sum(score)) %>%
   ggplot(.,aes(x=dataset,y=score,fill=dataset, group = dataset))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
   geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
   geom_boxplot(aes(x=dataset,y=score),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
+  #geom_errorbar(data = idaq_sum, aes(x=dataset,y=score, ymin = score-ci, ymax = score+ci), position=position_nudge(x = .3, y = 0), width = .05)+
   scale_fill_brewer(palette = "Blues") +
   scale_colour_brewer(palette = "Blues") +
   theme_classic() + 
