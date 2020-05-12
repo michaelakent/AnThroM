@@ -1261,21 +1261,20 @@ posterior_summary(vmpfc)
 posterior_summary(mmpfc)
 posterior_summary(dmpfc)
 ```
-Create a function for the posterior plots:
+Create the posterior plot:
 ```{r}
 library("bayesplot")
 
 posterior_plots <- function(model){
   posterior <- as.matrix(model)
-  plot_title <- ggtitle( "Posterior distributions for", paste(deparse(substitute(model))),
-                        "with medians and 80% intervals")
+  plot_title <- ggtitle(paste(deparse(substitute(model))))
   mcmc_areas(posterior, 
              pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), 
              prob = 0.8) + plot_title + theme_bw()
 }
 ```
 
-Plot the posterior distributions
+Plot the posterior distributions with medians and 80% intervals
 ```{r}
 pp_rtpj <- posterior_plots(rtpj)
 pp_ltpj <- posterior_plots(ltpj)
@@ -1289,7 +1288,7 @@ pp_rtpj + pp_ltpj + pp_prec +
 ```
 
 
-Create plots (make some edit):
+Create plots (different way):
 ```{r}
 
 
