@@ -988,7 +988,6 @@ summary(ord.2E) #prob = .99  for 99 credible intervals
 conditional_effects(ord.2E, "dataset", categorical = TRUE)
 ```
 
-
 ## 5.5 IDAQ per subject
 Calculate the IDAQ per subject:
 ```{r}
@@ -1007,7 +1006,6 @@ source("R_rainclouds.R") #/Volumes/Project0255/code
 #source("summarySE.R")
 
 #idaq_sum <- summarySEwithin(DF.idaq, measurevar="score", betweenvars="dataset", withinvars= "scale", idvar="sub")
-
 
 p <- DF.idaq %>%
   group_by(sub,dataset, scale) %>%
@@ -1311,13 +1309,17 @@ Plot the distributions:
 ```{r}
 ggplot(data = tom_combined, aes(value, fill = varIDAQ)) +
   geom_density(aes(alpha = 0.9))+
-  theme_linedraw(base_size = 10) +
-  #theme(strip.background = element_blank()) +
+  theme_linedraw(base_size = 9) +
+  theme(strip.background = element_blank()) +
   geom_vline(xintercept = 0, color = "black", linetype = 2) +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
   ggtitle(paste("Posterior distributions for the Theory-of-Mind network")) + 
   theme(legend.position="none") +
-  facet_wrap(~roi) 
+  facet_wrap(~roi, ncol =1) +
+  coord_fixed(ratio = 1/40) +
+  theme(panel.border =  element_blank())+
+  theme(axis.line.y=element_line())
+  
 ```
 
 
