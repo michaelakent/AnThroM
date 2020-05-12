@@ -1075,7 +1075,7 @@ DF.d4 <- roi_extract(4, 401, 422, "pain", 7)
 
 DF.roi <- bind_rows(DF.temp, DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4)
 
-rm(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4, DF.temp)
+rm(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4, DF.temp, DF.test)
 ```
 
 Reorder ROI names for plots:
@@ -1130,7 +1130,7 @@ p2 <- DF.roi %>%
   filter(network == "pain") %>%
   ggplot(.,aes(x=roi,y=contrast,fill=roi))+
   geom_hline(yintercept = 0, color = "grey", linetype = 2) +
-  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, colour = "Black") +
   geom_point(aes(colour = roi, fill = roi), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
   geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
   theme_classic() + 
@@ -1170,9 +1170,9 @@ DF.roi <- DF.idaq %>%
 
 Center the variables for the formal analysis:
 ```{r}
-DF.roi$cent_IDAQNA <- scale(DF.roi$IDAQNA, scale = FALSE)
-DF.roi$cent_IDAQ <- scale(DF.roi$IDAQ, scale = FALSE)
-DF.roi <- DF.roi %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, scale =FALSE))
+DF.roi$cent_IDAQNA <- scale(DF.roi$IDAQNA, scale = TRUE)
+DF.roi$cent_IDAQ <- scale(DF.roi$IDAQ, scale = TRUE)
+DF.roi <- DF.roi %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, scale =TRUE))
 ```
 
 # 7. IDAQ scores and ToM activity {.tabset}
@@ -1255,6 +1255,8 @@ summary(dmpfc)
 Get the posterior summaries (do some wrangling):
 ```{r}
 posterior_summary(rtpj)
+posterior_summary(test2)
+
 posterior_summary(ltpj)
 posterior_summary(prec)
 posterior_summary(vmpfc)
@@ -1280,13 +1282,13 @@ mcmc_areas(posterior,
            pars = c("cyl", "drat", "am", "wt"), 
            prob = 0.8) + plot_title
 
-posterior <- as.matrix(rtpj) 
+posterior <- as.matrix(test2) 
 plot_title <- ggtitle("Posterior distributions",
                       "with medians and 80% intervals")
 mcmc_areas(posterior, 
-           pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), 
+           pars = c("b_cent_IDAQS", "b_cent_IDAQ2S"), 
            prob = 0.8) + plot_title
-summary(rtpj)
+summary(test2)
 
 
 color_scheme_set("red")
@@ -1294,11 +1296,11 @@ ppc_dens_overlay(y = fit$y,
                  yrep = posterior_predict(fit, draws = 50))
 
 color_scheme_set("brightblue")
-rtpj %>% 
+test %>% 
   posterior_predict(draws = 500) %>%
-  ppc_stat_grouped(y = b_cent_IDAQ2,
+  ppc_stat_grouped(y = b_cent_IDAQ2S,
                    stat = "median")
-
+plot(test2)
 plot(ltpj)
 plot(prec)
 plot(vmpfc)
@@ -1317,12 +1319,12 @@ library(brms)
 library(easystats)
 library(tidyverse)
 
-rope_range(rtpj) # determine the ROPE range
+rope_range(test) # determine the ROPE range
 
-test <- bayestestR::equivalence_test(rtpj, range = c(-0.04232769, 0.04232769), ci = 0.95) # assert the null
-test <- test[-c(3),]
+testR <- bayestestR::equivalence_test(test, range = c(-0.1, 0.1), ci = 0.95) # assert the null
+testR <- testR[-c(3),]
 
-plot(test) + theme_abyss() + scale_fill_flat() # plot the decision on H0
+plot(testR) + theme_abyss() + scale_fill_flat() # plot the decision on H0
 
 
 describe_posterior(
