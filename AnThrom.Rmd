@@ -1290,16 +1290,32 @@ pp_rtpj + pp_ltpj + pp_prec +
 
 Create plots (different way):
 ```{r}
+tom_combined <- bind_rows("rtpj" = as_tibble(as.mcmc(rtpj,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), exact_match = TRUE ,combine_chains = TRUE)),
+                                "ltpj" = as_tibble(as.mcmc(ltpj, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), exact_match = TRUE ,combine_chains = TRUE)),
+                                "prec" = as_tibble(as.mcmc(prec, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), exact_match = TRUE ,combine_chains = TRUE)),
+                                "vmpfc" = as_tibble(as.mcmc(vmpfc, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), exact_match = TRUE ,combine_chains = TRUE)),
+                                "mmpfc" = as_tibble(as.mcmc(mmpfc, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), exact_match = TRUE ,combine_chains = TRUE)),
+                                "dmpfc" = as_tibble(as.mcmc(dmpfc, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), exact_match = TRUE ,combine_chains = TRUE)),
+                                .id = "roi")
+
+tom_combined <- tom_combined %>%
+  mutate(roi = fct_relevel(roi, order[1:6]))
+```
+
+Plot the distributions:
+```{r}
+ggplot(data = posterior_combined, aes(x = b_cent_IDAQ2)) +
+  geom_density()+
+  geom_density(aes(x = b_cent_IDAQ))+
+  theme_linedraw(base_size = 10) +
+  #theme(strip.background = element_blank()) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  facet_wrap(~roi) +
+  ggtitle(paste("Posterior distributions for the Theory-of-Mind network"))
+```
 
 
-
-posterior1.2.3.4.5 <- bind_rows("uninformative prior" = as_tibble(as.mcmc(model,  pars = "b_age", exact_match = TRUE ,combine_chains = TRUE)),
-                                "informative prior 1" = as_tibble(as.mcmc(model2, pars = "b_age", exact_match = TRUE ,combine_chains = TRUE)),
-                                "informative prior 2" = as_tibble(as.mcmc(model3, pars = "b_age", exact_match = TRUE ,combine_chains = TRUE)),
-                                "informative prior 3" = as_tibble(as.mcmc(model4, pars = "b_age", exact_match = TRUE ,combine_chains = TRUE)),
-                                "informative prior 4" = as_tibble(as.mcmc(model5, pars = "b_age", exact_match = TRUE ,combine_chains = TRUE)),
-                                .id = "id1")
-
+```{r}
 plot(conditional_effects(ltpj),points = TRUE)
 
 posterior_plots(ltpj)
