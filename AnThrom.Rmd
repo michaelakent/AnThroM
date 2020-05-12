@@ -1255,18 +1255,58 @@ summary(dmpfc)
 Get the posterior summaries (do some wrangling):
 ```{r}
 posterior_summary(rtpj)
-posterior_summary(test2)
-
 posterior_summary(ltpj)
 posterior_summary(prec)
 posterior_summary(vmpfc)
 posterior_summary(mmpfc)
 posterior_summary(dmpfc)
 ```
+Create a function for the posterior plots:
+```{r}
+library("bayesplot")
+
+posterior_plots <- function(model){
+  posterior <- as.matrix(model)
+  plot_title <- ggtitle( "Posterior distributions for", paste(deparse(substitute(model))),
+                        "with medians and 80% intervals")
+  mcmc_areas(posterior, 
+             pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), 
+             prob = 0.8) + plot_title + theme_bw()
+}
+```
+
+Plot the posterior distributions
+```{r}
+pp_rtpj <- posterior_plots(rtpj)
+pp_ltpj <- posterior_plots(ltpj)
+pp_prec <- posterior_plots(prec)
+pp_vmpfc <- posterior_plots(vmpfc)
+pp_mmpfc <- posterior_plots(mmpfc)
+pp_dmpfc <- posterior_plots(dmpfc)
+
+pp_rtpj + pp_ltpj + pp_prec + 
+  pp_vmpfc + pp_mmpfc + pp_dmpfc
+```
+
 
 Create plots (make some edit):
 ```{r}
-library("bayesplot")
+
+
+
+posterior1.2.3.4.5 <- bind_rows("uninformative prior" = as_tibble(as.mcmc(model,  pars = "b_age", exact_match = TRUE ,combine_chains = TRUE)),
+                                "informative prior 1" = as_tibble(as.mcmc(model2, pars = "b_age", exact_match = TRUE ,combine_chains = TRUE)),
+                                "informative prior 2" = as_tibble(as.mcmc(model3, pars = "b_age", exact_match = TRUE ,combine_chains = TRUE)),
+                                "informative prior 3" = as_tibble(as.mcmc(model4, pars = "b_age", exact_match = TRUE ,combine_chains = TRUE)),
+                                "informative prior 4" = as_tibble(as.mcmc(model5, pars = "b_age", exact_match = TRUE ,combine_chains = TRUE)),
+                                .id = "id1")
+
+plot(conditional_effects(ltpj),points = TRUE)
+
+posterior_plots(ltpj)
+?conditional_effects
+test <- as.matrix(rtpj)
+
 library("broom")
 library("rstanarm")
 library("tidyverse")
