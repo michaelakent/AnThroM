@@ -1290,28 +1290,30 @@ pp_rtpj + pp_ltpj + pp_prec +
 
 Create plots (different way):
 ```{r}
-tom_combined <- bind_rows("rtpj" = as_tibble(as.mcmc(rtpj,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), exact_match = TRUE ,combine_chains = TRUE)),
-                                "ltpj" = as_tibble(as.mcmc(ltpj, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), exact_match = TRUE ,combine_chains = TRUE)),
-                                "prec" = as_tibble(as.mcmc(prec, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), exact_match = TRUE ,combine_chains = TRUE)),
-                                "vmpfc" = as_tibble(as.mcmc(vmpfc, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), exact_match = TRUE ,combine_chains = TRUE)),
-                                "mmpfc" = as_tibble(as.mcmc(mmpfc, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), exact_match = TRUE ,combine_chains = TRUE)),
-                                "dmpfc" = as_tibble(as.mcmc(dmpfc, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), exact_match = TRUE ,combine_chains = TRUE)),
+tom_combined <- bind_rows("rtpj" = as_tibble(as.mcmc(rtpj,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE)),
+                                "ltpj" = as_tibble(as.mcmc(ltpj, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                                "prec" = as_tibble(as.mcmc(prec, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                                "vmpfc" = as_tibble(as.mcmc(vmpfc, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                                "mmpfc" = as_tibble(as.mcmc(mmpfc, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                                "dmpfc" = as_tibble(as.mcmc(dmpfc, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
                                 .id = "roi")
 
 tom_combined <- tom_combined %>%
+  pivot_longer(c("b_cent_IDAQ", "b_cent_IDAQ2"),names_to = "varIDAQ") %>%
   mutate(roi = fct_relevel(roi, order[1:6]))
 ```
 
 Plot the distributions:
 ```{r}
-ggplot(data = posterior_combined, aes(x = b_cent_IDAQ2)) +
-  geom_density()+
-  geom_density(aes(x = b_cent_IDAQ))+
+ggplot(data = tom_combined, aes(value, fill = varIDAQ)) +
+  geom_density(aes(alpha = 0.9))+
   theme_linedraw(base_size = 10) +
   #theme(strip.background = element_blank()) +
+  geom_vline(xintercept = 0, color = "black", linetype = 2) +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-  facet_wrap(~roi) +
-  ggtitle(paste("Posterior distributions for the Theory-of-Mind network"))
+  ggtitle(paste("Posterior distributions for the Theory-of-Mind network")) + 
+  theme(legend.position="none") +
+  facet_wrap(~roi) 
 ```
 
 
