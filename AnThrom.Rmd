@@ -996,7 +996,6 @@ DF.idaq <- DF.idaq %>%
   summarise(score = sum(value, na.rm = TRUE)) %>%
   ungroup()%>%
   mutate_at(vars(-score),as.factor)
-
 ```
 
 ## 5.6 Visualise the scores
@@ -1164,17 +1163,16 @@ Create one DF:
 ```{r}
 DF.roi <- DF.idaq %>% 
   group_by(sub,dataset, scale) %>%
-  summarise(score = sum(score)) %>%
   ungroup() %>% 
   left_join(DF.roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
-  spread(key=scale, value=score) #change this (pivot_wider)
+  pivot_wider(names_from=scale, values_from = score) #
 ```
 
 Center the variables for the formal analysis:
 ```{r}
 DF.roi$cent_IDAQNA <- scale(DF.roi$IDAQNA, scale = TRUE)
 DF.roi$cent_IDAQ <- scale(DF.roi$IDAQ, scale = TRUE)
-DF.roi <- DF.roi %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, scale =TRUE))
+DF.roi <- DF.roi %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, scale =TRUE)) #scale per roi (analyses are done per roi)
 ```
 
 # 7. IDAQ scores and ToM activity {.tabset}
@@ -1235,7 +1233,7 @@ reg_model <- function(region){
 ## 7.3 ToM regression models:
 Run the models for the ToM network first. It will load the model if it is already calculated:
 ```{r}
-#library("brms")
+library("brms")
 rtpj <- reg_model("rtpj")
 ltpj <- reg_model("ltpj")
 prec <- reg_model("prec")
@@ -1263,6 +1261,8 @@ posterior_summary(vmpfc)
 posterior_summary(mmpfc)
 posterior_summary(dmpfc)
 ```
+
+## 7.4 Posterior plots:
 Create the posterior plot:
 ```{r}
 library("bayesplot")
@@ -1284,6 +1284,9 @@ pp_prec <- posterior_plots(prec)
 pp_vmpfc <- posterior_plots(vmpfc)
 pp_mmpfc <- posterior_plots(mmpfc)
 pp_dmpfc <- posterior_plots(dmpfc)
+
+#all
+pp_tom <- posterior_plots(tom)
 
 pp_rtpj + pp_ltpj + pp_prec + 
   pp_vmpfc + pp_mmpfc + pp_dmpfc
@@ -1308,13 +1311,14 @@ tom_combined <- tom_combined %>%
 Plot the distributions:
 ```{r}
 ggplot(data = tom_combined, aes(value, fill = varIDAQ)) +
-  geom_density(aes(alpha = 0.9))+
+  geom_density(alpha = .5)+
   geom_vline(xintercept = 0, color = "black", linetype = 2) +
   ggtitle(paste("Posterior distributions for the Theory-of-Mind network")) + 
   facet_wrap(~roi, ncol =1) +
   coord_fixed(ratio = 1/40) +
-  theme_classic(base_size = 10) +
+  theme_classic(base_size = 8) +
   theme(strip.background = element_blank(), legend.position="none") +
+  scale_fill_brewer(palette = "Blues")+ 
   theme(axis.text.y = element_blank())
 ```
 
@@ -1369,6 +1373,8 @@ posterior_summary(linsula)
 plot(linsula)
 ```
 
+## 8.3 Posterior plots:
+Create the posterior plot:
 Create plots (different way):
 ```{r}
 pain_combined <- bind_rows("rs2" = as_tibble(as.mcmc(rs2,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE)),
@@ -1388,23 +1394,100 @@ pain_combined <- pain_combined %>%
 Plot the distributions:
 ```{r}
 ggplot(data = pain_combined, aes(value, fill = varIDAQ)) +
-  geom_density(aes(alpha = 0.9))+
-  theme_linedraw(base_size = 9) +
-  #theme(strip.background = element_blank()) +
+  geom_density(alpha = .5)+
   geom_vline(xintercept = 0, color = "black", linetype = 2) +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-  ggtitle(paste("Posterior distributions for the Pain Matrix")) + 
-  theme(legend.position="none")  +
-   theme(
-        strip.background = element_blank(),
-        panel.border = element_rect(colour = "black"))+
+  ggtitle(paste("Posterior distributions for the Theory-of-Mind network")) + 
   facet_wrap(~roi, ncol =1) +
   coord_fixed(ratio = 1/40) +
-  theme(panel.border =  element_blank())+
-  theme(axis.line.y=element_line(), axis.text.y = element_blank())
+  theme_classic(base_size = 8) +
+  theme(strip.background = element_blank(), legend.position="none") +
+  scale_fill_brewer(palette = "Reds") 
+#theme(axis.text.y = element_blank())
+
 ```
 
-# 9. Control analyses {.tabset}
+
+## 9 One model across the networks 
+
+## 9.1 Theory-of-Mind:
+All ToM regions combined:
+```{r}
+tom <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
+      data = DF.roi %>% filter(network == "tom"),
+      family = gaussian,
+      chains = 4,
+      iter = 4000,
+      seed = 42, #so the model is reproducible
+      file = "tom.RDS")
+```
+
+Summary:
+```{r}
+summary(tom)
+```
+
+Posterior summary:
+```{r}
+posterior_summary(tom)
+```
+
+Posterior plots:
+```{r}
+tom_all <- bind_rows("all" = as_tibble(as.mcmc(pain,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE), .id = "network")  %>%
+                        rename(IDAQ_linear = b_cent_IDAQ, IDAQ_quadratic = b_cent_IDAQ2) %>%
+                        pivot_longer(c("IDAQ_linear", "IDAQ_quadratic"),names_to = "varIDAQ") %>%
+                        mutate(network = "tom"))
+```
+
+## 9.2 Pain Matrix:
+All ToM regions combined:
+```{r}
+pain <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
+      data = DF.roi %>% filter(network == "pain"),
+      family = gaussian,
+      chains = 4,
+      iter = 4000,
+      seed = 42, #so the model is reproducible
+      file = "pain.RDS")
+```
+
+Summary:
+```{r}
+summary(pain)
+```
+
+Posterior summary:
+```{r}
+posterior_summary(pain)
+```
+
+Posterior plots:
+```{r}
+pain_all <- bind_rows("all" = as_tibble(as.mcmc(pain,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE), .id = "network")  %>%
+                        rename(IDAQ_linear = b_cent_IDAQ, IDAQ_quadratic = b_cent_IDAQ2) %>%
+                        pivot_longer(c("IDAQ_linear", "IDAQ_quadratic"),names_to = "varIDAQ") %>%
+                        mutate(network = "pain"))
+```
+
+## 9.3 Posterior plots for the two networks:
+
+```{r}
+tom_all %>% bind_rows(., pain_all) %>%
+  mutate_at(vars(-value),as.factor) %>%
+  rename(predictor = varIDAQ) %>%
+  ggplot(., aes(value, fill = predictor)) +
+  geom_density(alpha = .5)+
+  geom_vline(xintercept = 0, color = "black", linetype = 2) +
+  ggtitle(paste("Posterior distributions across the two networks")) + 
+  facet_wrap(~network) +
+  coord_fixed(ratio = 1/40) +
+  theme_classic(base_size = 16) +
+  scale_fill_brewer(palette = "Greens") +
+  theme(strip.background = element_blank())
+```
+
+
+# 10. Control analyses {.tabset}
 
 use the update function!
 
