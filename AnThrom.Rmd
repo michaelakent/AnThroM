@@ -817,13 +817,13 @@ DF.roi2 <- DF.idaq %>%
   spread(key=scale, value=score)
 ```
 
-#center the variables
+# Center the variables
 
 ```{r}
-DF.roi$cent_IDAQNA <- scale(DF.roi$IDAQNA, scale = FALSE)
-DF.roi$cent_IDAQ <- scale(DF.roi$IDAQ, scale = FALSE)
+DF.roi$cent_IDAQNA <- scale(DF.roi$IDAQNA, scale = TRUE)
+DF.roi$cent_IDAQ <- scale(DF.roi$IDAQ, scale = TRUE)
 
-DF.roi <- DF.roi %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, scale =FALSE))
+DF.roi <- DF.roi %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, scale = TRUE))
 ```
 
 ```{r}
@@ -1000,7 +1000,31 @@ other_roi_plot2
 
 
 # 8. Load data for Bayesian analysis:
-Load data from repository:
+### Loading packages
+```{r}
+library(brms)
+library(rstan)
+library(shinystan)
+library(bayesplot)
+library(ggplot2)
+library(coda)
+#library(rstanarm)
+
+# idea of brms: fitting all kinds of regression models within one framework 
+# can use brm in the same way as lme4
+#fit <- brm(Reaction ~ 1 + Days + (1 + Days|Subject),
+#           data = sleepstudy,
+#           family = x())
+
+# for complex non-linear relationships something like this:
+#  fitgp <- brm(y ~ s(x), bdata)
+# marginal_effects(fitgp, nsamples = 100, spaghetti = TRUE)
+
+#at1 <- brm(contrast ~ s(IDAQ), 
+#           data = )
+```
+
+### Load data from repository:
 ```{r}
 #library("tidyverse") - if not already loaded
 
@@ -1067,7 +1091,7 @@ DF.d4 <- roi_extract2(4, 401, 422, "tom", 6)
 DF.roi <- bind_rows(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4) 
 ```
 
-## 8.2 Combine IDAQ and ROI:
+## 8.2 Combine IDAQ and ROI then center:
 ```{r}
 DF.roi <- DF.idaq %>% 
   group_by(sub,dataset, scale) %>%
@@ -1076,26 +1100,11 @@ DF.roi <- DF.idaq %>%
   mutate(dataset = as.numeric(dataset)) %>% 
   left_join(DF.roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
   spread(key=scale, value=score)
-```
 
-```{r}
-library(brms)
-library(rstan)
-library(psych)
-library(shinystan)
+DF.roi$cent_IDAQNA <- scale(DF.roi$IDAQNA, scale = TRUE)
+DF.roi$cent_IDAQ <- scale(DF.roi$IDAQ, scale = TRUE)
 
-# idea of brms: fitting all kinds of regression models within one framework 
-# can use brm in the same way as lme4
-#fit <- brm(Reaction ~ 1 + Days + (1 + Days|Subject),
-#           data = sleepstudy,
-#           family = x())
-
-# for complex non-linear relationships something like this:
-#  fitgp <- brm(y ~ s(x), bdata)
-# marginal_effects(fitgp, nsamples = 100, spaghetti = TRUE)
-
-#at1 <- brm(contrast ~ s(IDAQ), 
-#           data = )
+DF.roi <- DF.roi %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, scale = TRUE))
 ```
 
 Plot:
@@ -1133,7 +1142,19 @@ Look at model summary:
 summary(model)
 plot(model)
 posterior_summary(model)
+saveRDS(model, file="model")
 ```
+
+Showing the posterior distributions:
+```{r}
+posterior <- as.matrix(model)
+plot_title <- ggtitle("Posterior distributions",
+                      "with medians and 80% intervals")
+mcmc_areas(posterior,
+           pars = c("b_IDAQ", "b_Intercept"),
+           prob = 0.8) + plot_title
+```
+
 
 ## 8.3 Model for seperate ROIs:
 ```{r}
@@ -1144,15 +1165,25 @@ DF.roi.sep <- DF.idaq %>%
   mutate(dataset = as.numeric(dataset)) %>% 
   left_join(DF.roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
   spread(key=scale, value=score) %>%
-  spread(roi, contrast)
+  spread(roi, cent_contrast) 
 
 DF.roi.sep <- DF.roi.sep %>%
-  mutate(IDAQ2 = IDAQ^2)
+  mutate(cent_IDAQ2 = cent_IDAQ^2)
+```
+
+
+```{r}
+DF.roi %>%
+  group_by(roi) %>%
+  summarise(mcontrast = mean(cent_contrast),
+            mIDAQ = mean(cent_IDAQ),
+            sdcontrast = sd(cent_contrast),
+            sdIDAQ = sd(cent_IDAQ))
 ```
 
 LTPJ:
 ```{r}
-ltpjmodel <- brm(formula = ltpj ~ IDAQ + IDAQ2, 
+ltpjmodel <- brm(formula = ltpj ~ cent_IDAQ + cent_IDAQ2, 
              data = DF.roi.sep,
              seed = 123)
 
@@ -1160,29 +1191,58 @@ summary(ltpjmodel)
 plot(ltpjmodel)
 posterior_summary(ltpjmodel)
 saveRDS(ltpjmodel, file = "ltpjmodel")
+
+posterior_ltpj <- as.matrix(ltpjmodel)
+
+mcmc_areas(posterior_ltpj,
+           pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),
+           prob = 0.8) + plot_title
+
 ```
 
 RTPJ:
 ```{r}
 rtpjmodel <- brm(formula = rtpj ~ IDAQ + IDAQ2, 
              data = DF.roi.sep,
-             seed = 123)
+             seed = 123,
+             file = "rtpjmodel")
 
 summary(rtpjmodel)
 plot(rtpjmodel)
 posterior_summary(rtpjmodel)
 saveRDS(rtpjmodel,file = "rtpjmodel")
+
+posterior_rtpj <- as.matrix(rtpjmodel)
+
+mcmc_areas(posterior_rtpj,
+           pars = c("b_IDAQ", "b_IDAQ2"),
+           prob = 0.8) + plot_title
 ```
 
 Compare LTPJ and RTPJ:
 ```{r}
 tpjmod <- brm(formula = rtpj ~ ltpj,
               data = DF.roi.sep,
-              seed = 123)
+              seed = 123,
+              file = "tpjmod.RDS")
 
 summary(tpjmod)
 plot(tpjmod)
+posterior_summary(tpjmod)
+saveRDS(tpjmod,file="tpjmod")
 launch_shinystan(tpjmod)
+
+tpjmod2 <- brm(formula = rtpj ~ltpj + IDAQ,
+               data = DF.roi.sep, 
+               seed = 123,
+               file = "tpjmod2.RDS")
+
+summary(tpjmod2)
+plot(tpjmod2)
+posterior_summary(tpjmod2)
+saveRDS(tpjmod2, file = "tpjmod2")
+
+plot(conditional_effects(tpjmod2), points = TRUE)
 ```
 
 
@@ -1190,46 +1250,198 @@ DMPFC:
 ```{r}
 dmpfcmodel <- brm(formula = dmpfc ~ IDAQ + IDAQ2, 
              data = DF.roi.sep,
-             seed = 123)
+             seed = 123,
+             file = "dmpfcmodel.RDS")
 
 summary(dmpfcmodel)
 plot(dmpfcmodel)
 posterior_summary(dmpfcmodel)
 saveRDS(dmpfcmodel, file = "dmpfcmodel")
+
+posterior_dmpfc <- as.matrix(dmpfcmodel)
+
+mcmc_areas(posterior_dmpfc,
+           pars = c("b_IDAQ", "b_IDAQ2"),
+           prob = 0.8) + plot_title
 ```
 
 MMPFC:
 ```{r}
 mmpfcmodel <- brm(formula = mmpfc ~ IDAQ + IDAQ2, 
              data = DF.roi.sep,
-             seed = 123)
+             seed = 123,
+             file = "mmpfcmodel.RDS")
 
 summary(mmpfcmodel)
 plot(mmpfcmodel)
 posterior_summary(mmpfcmodel)
 saveRDS(mmpfcmodel, file = "mmpfcmodel")
+
+posterior_mmpfc <- as.matrix(mmpfcmodel)
+
+mcmc_areas(posterior_mmpfc,
+           pars = c("b_IDAQ", "b_IDAQ2"),
+           prob = 0.8) + plot_title
 ```
 
 VMPFC:
 ```{r}
 vmpfcmodel <- brm(formula = vmpfc ~ IDAQ + IDAQ2, 
              data = DF.roi.sep,
-             seed = 123)
+             seed = 123,
+             file = "vmpfcmodel.RDS")
 
 summary(vmpfcmodel)
 plot(vmpfcmodel)
 posterior_summary(vmpfcmodel)
 saveRDS(vmpfcmodel, file = "vmpfcmodel")
+
+posterior_vmpfc <- as.matrix(vmpfcmodel)
+
+mcmc_areas(posterior_vmpfc,
+           pars = c("b_IDAQ", "b_IDAQ2"),
+           prob = 0.8) + plot_title
 ```
 
 PREC:
 ```{r}
 precmodel <- brm(formula = prec ~ IDAQ + IDAQ2, 
              data = DF.roi.sep,
-             seed = 123)
+             seed = 123,
+             file = "precmodel.RDS")
 
 summary(precmodel)
 plot(precmodel)
 posterior_summary(precmodel)
 saveRDS(precmodel, file = "precmodel")
+
+posterior_prec <- as.matrix(precmodel)
+
+
+mcmc_areas(posterior_prec,
+           pars = c("b_IDAQ", "b_IDAQ2"),
+           prob = 0.8) + plot_title
 ```
+
+## 8.4 Models using centered data:
+
+LTPJ:
+```{r}
+ltpjmodel_c <- brm(formula = ltpj ~ cent_IDAQ + cent_IDAQ2, 
+             data = DF.roi.sep,
+             seed = 123,
+             file = "ltpjmodel_c.RDS")
+
+summary(ltpjmodel_c)
+plot(ltpjmodel_c)
+posterior_summary(ltpjmodel_c)
+saveRDS(ltpjmodel_c, file = "ltpjmodel_c")
+
+posterior_ltpj_c <- as.matrix(ltpjmodel_c)
+
+mcmc_areas(posterior_ltpj_c,
+           pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),
+           prob = 0.8) + plot_title
+
+```
+
+RTPJ:
+
+```{r}
+rtpjmodel_c <- brm(formula = rtpj ~ cent_IDAQ + cent_IDAQ2, 
+             data = DF.roi.sep,
+             seed = 123,
+             file = "rtpjmodel_c.RDS")
+
+summary(rtpjmodel_c)
+plot(rtpjmodel_c)
+posterior_summary(rtpjmodel_c)
+saveRDS(rtpjmodel_c, file = "rtpjmodel_c")
+
+posterior_rtpj_c <- as.matrix(rtpjmodel_c)
+
+mcmc_areas(posterior_rtpj_c,
+           pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),
+           prob = 0.8) + plot_title
+```
+
+DMPFC:
+```{r}
+dmpfcmodel_c <- brm(formula = dmpfc ~ cent_IDAQ + cent_IDAQ2, 
+             data = DF.roi.sep,
+             seed = 123,
+             file = "dmpfcmodel_c.RDS")
+
+summary(dmpfcmodel_c)
+plot(dmpfcmodel_c)
+posterior_summary(dmpfcmodel_c)
+saveRDS(dmpfcmodel_c, file = "dmpfcmodel_c")
+
+posterior_dmpfc_c <- as.matrix(dmpfcmodel_c)
+
+mcmc_areas(posterior_dmpfc_c,
+           pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),
+           prob = 0.8) + plot_title
+
+```
+
+MMPFC:
+```{r}
+mmpfcmodel_c <- brm(formula = mmpfc ~ cent_IDAQ + cent_IDAQ2, 
+             data = DF.roi.sep,
+             seed = 123,
+             file = "mmpfcmodel_c.RDS")
+
+summary(mmpfcmodel_c)
+plot(mmpfcmodel_c)
+posterior_summary(mmpfcmodel_c)
+saveRDS(mmpfcmodel_c, file = "mmpfcmodel_c")
+
+posterior_mmpfc_c <- as.matrix(mmpfcmodel_c)
+
+mcmc_areas(posterior_mmpfc_c,
+           pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),
+           prob = 0.8) + plot_title
+
+```
+
+VMPFC:
+```{r}
+vmpfcmodel_c <- brm(formula = vmpfc ~ cent_IDAQ + cent_IDAQ2, 
+             data = DF.roi.sep,
+             seed = 123,
+             file = "vmpfcmodel_c.RDS")
+
+summary(vmpfcmodel_c)
+plot(vmpfcmodel_c)
+posterior_summary(vmpfcmodel_c)
+saveRDS(vmpfcmodel_c, file = "vmpfcmodel_c")
+
+posterior_vmpfc_c <- as.matrix(vmpfcmodel_c)
+
+mcmc_areas(posterior_vmpfc_c,
+           pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),
+           prob = 0.8) + plot_title
+
+```
+
+PREC:
+```{r}
+precmodel_c <- brm(formula = prec ~ cent_IDAQ + cent_IDAQ2, 
+             data = DF.roi.sep,
+             seed = 123,
+             file = "precmodel_c.RDS")
+
+summary(precmodel_c)
+plot(precmodel_c)
+posterior_summary(precmodel_c)
+saveRDS(precmodel_c, file = "precmodel_c")
+
+posterior_prec_c <- as.matrix(precmodel_c)
+
+mcmc_areas(posterior_prec_c,
+           pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),
+           prob = 0.8) + plot_title
+
+```
+
