@@ -1433,7 +1433,7 @@ posterior_summary(tom)
 
 Posterior plots:
 ```{r}
-tom_all <- bind_rows("all" = as_tibble(as.mcmc(pain,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE), .id = "network")  %>%
+tom_all <- bind_rows("all" = as_tibble(as.mcmc(tom,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE), .id = "network")  %>%
                         rename(IDAQ_linear = b_cent_IDAQ, IDAQ_quadratic = b_cent_IDAQ2) %>%
                         pivot_longer(c("IDAQ_linear", "IDAQ_quadratic"),names_to = "varIDAQ") %>%
                         mutate(network = "tom"))
@@ -1482,14 +1482,39 @@ tom_all %>% bind_rows(., pain_all) %>%
   facet_wrap(~network) +
   coord_fixed(ratio = 1/40) +
   theme_classic(base_size = 16) +
-  scale_fill_brewer(palette = "Greens") +
+  scale_fill_brewer(palette = "Purples") +
   theme(strip.background = element_blank())
 ```
 
-
 # 10. Control analyses {.tabset}
 
-use the update function!
+##10.1 Theory-of-Mind network
+Update the models by removing the 16 participants that completed a different version of the IDAQ (1-10). We create a function to do this:
+```{r}
+
+update_model <- function(model_old, region){
+  model_new <- update(model_old, newdata = DF.roi %>% filter(roi == region & !sub %in% sub_ex), seed = 41)
+  
+  m1 <- posterior_summary(model_old)[c("b_cent_IDAQ", "b_cent_IDAQ2") , "Estimate"]
+  m2 <- posterior_summary(model_new)[c("b_cent_IDAQ", "b_cent_IDAQ2") , "Estimate"]
+  
+  tibble(bias = round(100*((m1-m2)/m2), 2), predictor = c("b_cent_IDAQ", "b_cent_IDAQ2"))
+}
+```
+
+
+Calculate the difference (bias) per region:
+```{r}
+rtpj_bias <- update_model(rtpj, "rtpj")
+ltpj_bias <- update_model(ltpj, "ltpj")
+prec_bias <- update_model(prec, "prec")
+vmpfc_bias <- update_model(vmpfc, "vmpfc")
+mmpfc_bias <- update_model(mmpfc, "mmpfc")
+dmpfc_bias <- update_model(dmpfc, "dmpfc")
+```
+
+We see that the influence of this highly informative prior is around 386% and 406% on the two regression coefficients respectively. This is a large difference and we thus certainly would not end up with similar conclusions.
+
 
 ```{r}
 sessionInfo()
