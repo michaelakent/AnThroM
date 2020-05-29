@@ -1008,6 +1008,7 @@ library(shinystan)
 library(bayesplot)
 library(ggplot2)
 library(coda)
+library(patchwork)
 #library(rstanarm)
 
 # idea of brms: fitting all kinds of regression models within one framework 
@@ -1132,17 +1133,18 @@ DF.roi %>%
 ```
 Model:
 ```{r}
-model <- brm(formula = contrast ~ IDAQ, 
+model_tom <- brm(formula = cent_contrast ~ cent_IDAQ, 
              data    = DF.roi,
-             seed    = 123)
+             seed    = 123,
+             file="model_tom.RDS")
 ```
 
 Look at model summary:
 ```{r}
-summary(model)
-plot(model)
-posterior_summary(model)
-saveRDS(model, file="model")
+summary(model_tom)
+plot(model_tom)
+posterior_summary(model_tom)
+saveRDS(model_tom, file="model_tom")
 ```
 
 Showing the posterior distributions:
@@ -1339,10 +1341,10 @@ saveRDS(ltpjmodel_c, file = "ltpjmodel_c")
 
 posterior_ltpj_c <- as.matrix(ltpjmodel_c)
 
-mcmc_areas(posterior_ltpj_c,
+plot_ltpj <- mcmc_areas(posterior_ltpj_c,
            pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),
            prob = 0.8) + plot_title
-
+plot_ltpj
 ```
 
 RTPJ:
@@ -1360,7 +1362,7 @@ saveRDS(rtpjmodel_c, file = "rtpjmodel_c")
 
 posterior_rtpj_c <- as.matrix(rtpjmodel_c)
 
-mcmc_areas(posterior_rtpj_c,
+plot_rtpj <- mcmc_areas(posterior_rtpj_c,
            pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),
            prob = 0.8) + plot_title
 ```
@@ -1379,7 +1381,7 @@ saveRDS(dmpfcmodel_c, file = "dmpfcmodel_c")
 
 posterior_dmpfc_c <- as.matrix(dmpfcmodel_c)
 
-mcmc_areas(posterior_dmpfc_c,
+plot_dmpfc <- mcmc_areas(posterior_dmpfc_c,
            pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),
            prob = 0.8) + plot_title
 
@@ -1399,7 +1401,7 @@ saveRDS(mmpfcmodel_c, file = "mmpfcmodel_c")
 
 posterior_mmpfc_c <- as.matrix(mmpfcmodel_c)
 
-mcmc_areas(posterior_mmpfc_c,
+plot_mmpfc <- mcmc_areas(posterior_mmpfc_c,
            pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),
            prob = 0.8) + plot_title
 
@@ -1419,10 +1421,9 @@ saveRDS(vmpfcmodel_c, file = "vmpfcmodel_c")
 
 posterior_vmpfc_c <- as.matrix(vmpfcmodel_c)
 
-mcmc_areas(posterior_vmpfc_c,
+plot_vmpfc <- mcmc_areas(posterior_vmpfc_c,
            pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),
            prob = 0.8) + plot_title
-
 ```
 
 PREC:
@@ -1439,9 +1440,68 @@ saveRDS(precmodel_c, file = "precmodel_c")
 
 posterior_prec_c <- as.matrix(precmodel_c)
 
-mcmc_areas(posterior_prec_c,
+plot_prec <- mcmc_areas(posterior_prec_c,
            pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),
            prob = 0.8) + plot_title
+```
 
+Combine posterior plots:
+```{r}
+#library(patchwork)
+plot_ltpj + plot_rtpj + plot_prec + 
+  plot_vmpfc + plot_dmpfc + plot_mmpfc
+```
+
+Plot using code adapted from https://www.rensvandeschoot.com/tutorials/r-linear-regression-bayesian-using-brms/
+First want to combine:
+```{r}
+post_tom <- bind_rows("ltpj" = as_tibble(as.mcmc(ltpjmodel_c, pars = c("b_cent_IDAQ","b_cent_IDAQ2"), combine_chains = TRUE)),
+                      "rtpj" = as_tibble(as.mcmc(rtpjmodel_c, pars = c("b_cent_IDAQ","b_cent_IDAQ2"), combine_chains = TRUE)),
+                      "prec" = as_tibble(as.mcmc(precmodel_c, pars = c("b_cent_IDAQ","b_cent_IDAQ2"), combine_chains = TRUE)),
+                      "vmpfc" = as_tibble(as.mcmc(vmpfcmodel_c, pars = c("b_cent_IDAQ","b_cent_IDAQ2"), combine_chains = TRUE)),
+                      "dmpfc" = as_tibble(as.mcmc(dmpfcmodel_c, pars = c("b_cent_IDAQ","b_cent_IDAQ2"), combine_chains = TRUE)),
+                      "mmpfc" = as_tibble(as.mcmc(mmpfcmodel_c, pars = c("b_cent_IDAQ","b_cent_IDAQ2"), combine_chains = TRUE)),
+                      .id = "roi")
+
+
+post_tom <- post_tom %>%
+  gather(key = "IDAQmodel", value = "value", 2:3)
+```
+
+Using ggplot:
+```{r}
+ggplot(data = post_tom,aes(value, fill = IDAQmodel)) +
+  geom_density(size = 1, alpha = 0.5, color = NA) +
+  scale_fill_brewer() +
+  theme_linedraw(base_size=9) +
+  theme(panel.grid = element_blank()) +
+  theme(strip.background = element_blank()) +
+  theme(axis.line.y=element_line(), axis.text.y = element_blank()) +
+  geom_vline(xintercept = 0, colour = "black", linetype = "dashed", alpha = 0.5) +
+  coord_fixed(ratio = 1/50) +
+  facet_wrap(~roi, ncol = 1) +
+  labs(title = expression("Posterior distributions"), 
+       subtitle = "Theory-of-Mind Network")
+```
+
+## 8.4 Creating a table with posterior information
+```{r}
+# load required packages
+library(devtools)
+library(sjPlot)
+library(insight)
+library(httr)
+library(brms)
+
+table_ltpj <- tab_model(ltpjmodel_c)
+table_rtpj <- tab_model(rtpjmodel_c)
+table_prec <- tab_model(precmodel_c)
+table_dmpfc <- tab_model(dmpfcmodel_c)
+table_mmpfc <- tab_model(mmpfcmodel_c)
+table_vmpfc <- tab_model(vmpfcmodel_c)
+
+tab_model(ltpjmodel_c,rtpjmodel_c,precmodel_c,dmpfcmodel_c,mmpfcmodel_c,vmpfcmodel_c, show.)
+
+tab_model(model_tom)
 ```
 
