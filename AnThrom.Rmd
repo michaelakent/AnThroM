@@ -1008,6 +1008,7 @@ source("R_rainclouds.R") #/Volumes/Project0255/code
 
 p <- DF.idaq %>%
   group_by(sub,dataset, scale) %>%
+  filter(scale == "IDAQ") %>%
   ggplot(.,aes(x=dataset,y=score,fill=dataset, group = dataset))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
   geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
@@ -1017,7 +1018,7 @@ p <- DF.idaq %>%
   scale_colour_brewer(palette = "Blues") +
   theme_classic() + 
   ylab(paste("score (0-150)")) + 
-  ggtitle(paste("Comparison of IDAQ scores between datasets")) +
+  ggtitle(paste("IDAQ scores across datasets")) +
   theme(legend.position="none") +
   facet_wrap(~scale)
 p
@@ -1030,7 +1031,7 @@ DF.idaq %>%
   #filter(!sub %in%  sub_ex) %>% 
   group_by(sub,dataset, scale) %>%
   summarise(score = sum(score)) %>%
-  group_by(dataset, scale) %>%
+  group_by(scale) %>%
   summarise(median = median(score),
             iqr = IQR(score))
 ```
@@ -1188,7 +1189,7 @@ p1 <- DF.roi %>%
   geom_point(alpha=0.5,show.legend = FALSE) +
   geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
   geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
-  #coord_fixed(ratio = 25/1) +
+  coord_fixed(ratio = 1/1) +
   labs(
     x="IDAQ score",
     y="contrast (mental vs pain)"
@@ -1200,14 +1201,14 @@ p2 <- DF.roi %>%
   geom_point(alpha=0.5,show.legend = FALSE) +
   geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
   geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
-  #coord_fixed(ratio = 25/1) +
+  coord_fixed(ratio = 1/1) +
   labs(
     x="IDAQ score",
     y="contrast (mental vs pain)"
   ) + theme_classic() +
   facet_wrap(~roi)
 
-p1 & p2
+p1 + p2
 ```
 
 ## 7.2 Create a function for the Bayesian regression models:
@@ -1243,6 +1244,25 @@ dmpfc <- reg_model("dmpfc")
 ```
 
 Get the summaries (do some wrangling):
+```{r}
+# load required packages
+library(devtools)
+library(sjPlot)
+library(insight)
+library(httr)
+
+rtpj <- tab_model(rtpj)
+ltpj <- tab_model(ltpj)
+prec <- tab_model(prec)
+vmpfc <- tab_model(vmpfc)
+mmpfc <- tab_model(mmpfc)
+dmpfc <- tab_model(dmpfc)
+tab_model(rtpj,ltpj,prec,vmpfc,mmpfc,dmpfc, show.obs=FALSE, show.aic = TRUE)
+
+```
+
+
+
 ```{r}
 summary(rtpj)
 summary(ltpj)
@@ -1317,8 +1337,8 @@ ggplot(data = tom_combined, aes(value, fill = varIDAQ)) +
   facet_wrap(~roi, ncol =1) +
   coord_fixed(ratio = 1/40) +
   theme_classic(base_size = 8) +
-  theme(strip.background = element_blank(), legend.position="none") +
-  scale_fill_brewer(palette = "Blues")+ 
+  theme(strip.background = element_blank()) +
+  scale_fill_manual(values=c("#0072B2", "#D55E00"))+ 
   theme(axis.text.y = element_blank())
 ```
 
@@ -1396,12 +1416,12 @@ Plot the distributions:
 ggplot(data = pain_combined, aes(value, fill = varIDAQ)) +
   geom_density(alpha = .5)+
   geom_vline(xintercept = 0, color = "black", linetype = 2) +
-  ggtitle(paste("Posterior distributions for the Theory-of-Mind network")) + 
+  ggtitle(paste("Posterior distributions for the Pain Matrix")) + 
   facet_wrap(~roi, ncol =1) +
   coord_fixed(ratio = 1/40) +
   theme_classic(base_size = 8) +
   theme(strip.background = element_blank(), legend.position="none") +
-  scale_fill_brewer(palette = "Reds") 
+  scale_fill_manual(values=c("#0072B2", "#D55E00"))
 #theme(axis.text.y = element_blank())
 
 ```
@@ -1434,8 +1454,8 @@ posterior_summary(tom)
 Posterior plots:
 ```{r}
 tom_all <- bind_rows("all" = as_tibble(as.mcmc(tom,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE), .id = "network")  %>%
-                        rename(IDAQ_linear = b_cent_IDAQ, IDAQ_quadratic = b_cent_IDAQ2) %>%
-                        pivot_longer(c("IDAQ_linear", "IDAQ_quadratic"),names_to = "varIDAQ") %>%
+                        rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
+                        pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
                         mutate(network = "tom"))
 ```
 
@@ -1464,8 +1484,8 @@ posterior_summary(pain)
 Posterior plots:
 ```{r}
 pain_all <- bind_rows("all" = as_tibble(as.mcmc(pain,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE), .id = "network")  %>%
-                        rename(IDAQ_linear = b_cent_IDAQ, IDAQ_quadratic = b_cent_IDAQ2) %>%
-                        pivot_longer(c("IDAQ_linear", "IDAQ_quadratic"),names_to = "varIDAQ") %>%
+                        rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
+                        pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
                         mutate(network = "pain"))
 ```
 
@@ -1482,7 +1502,7 @@ tom_all %>% bind_rows(., pain_all) %>%
   facet_wrap(~network) +
   coord_fixed(ratio = 1/40) +
   theme_classic(base_size = 16) +
-  scale_fill_brewer(palette = "Purples") +
+  scale_fill_manual(values=c("#0072B2", "#D55E00"))+ 
   theme(strip.background = element_blank())
 ```
 
@@ -1518,6 +1538,7 @@ We see that the influence of this highly informative prior is around 386% and 40
 
 ```{r}
 sessionInfo()
+library(brms)
 ```
 
 1. Across all ToM ROIs
@@ -1656,7 +1677,7 @@ reg.2 <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
              file = paste0(roi, ".RDS"))
 summary(reg.2)
 tidy(rtpj) %>% slice(1:3) %>% mutate_if(is.double, round, digits = 2)
-
+library(rstan)
 
 library("shinystan")
 
