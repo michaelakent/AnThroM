@@ -1480,6 +1480,25 @@ tom_all %>% bind_rows(., pain_all) %>%
   theme(strip.background = element_blank())
 ```
 
+## 9.5 HDI+ROPE decision rule
+
+```{r}
+library("easystats")
+
+hdi_rope <- function(model){
+  rope <- rope_range(model)
+  rope_model <- equivalence_test(model, range = rope, ci = 0.95) 
+  #rope_model %>% mutate(roi = as.character(model$file))
+  plot(rope_model) 
+}
+
+hdi_rope(tom) + hdi_rope(pain)
+
+
+hdi_rope(rtpj) + hdi_rope(ltpj) + hdi_rope(prec) / hdi_rope(vmpfc) + hdi_rope(mmpfc) + hdi_rope(dmpfc)
+
+```
+
 # 10. Control analyses {.tabset}
 
 ##10.1 Theory-of-Mind network
@@ -1520,12 +1539,6 @@ sessionInfo()
 2. For each ToM ROI
   - Compare linear model vs. quadratic model; is there evidence for one, or for Null?
   - Fit the model, predict values, test sensitivity/fit
-
-(3. control across all ROIs - pain)
-(4. control for each pain ROI)
-
-
-Add seed at the end!
 
 
 
