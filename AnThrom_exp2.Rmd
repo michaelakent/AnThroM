@@ -22,10 +22,13 @@ The preregistration can be found here:
 
 ## 1.2 Data description
 [short description]
+```{r}
+
+```
 
 
 ## 1.3 Libraries
-```{r}
+```{r, echo = TRUE, message=FALSE}
 library(fs)
 library(psych)
 library(patchwork)
@@ -45,7 +48,7 @@ events_cloud = c(4,5,14)
 
 ## 2.2 Rating data for the movie
 Explain it:
-```{r}
+```{r, echo = TRUE, message=FALSE}
 DF.rating <- dir_ls(paste("/Users/ruudhortensius/PsyCloud/Technician/1_AnThrom/Experiment_2/data/pilot"), regexp = "\\.csv$") %>% 
   map_dfr(read_csv, .id = "id") %>%
   select("please type in a series of digits", "eventnr", "event_type",  "measure", "item", "focus", "key_resp_1.keys", "key_resp_2.keys", "slider.response")  %>%
@@ -64,10 +67,54 @@ DF.rating <- dir_ls(paste("/Users/ruudhortensius/PsyCloud/Technician/1_AnThrom/E
 ```{r}
 DF.rating %>%
   filter(event_nr != "end") %>%
-  group_by(sub, measure, event_type) %>%
+  group_by(sub, measure, focus, event_type) %>%
   summarise(rating = mean(response)) %>%
-  ggplot(., aes(x=event_type, y=rating, fill = event_type)) +
-  geom_point(aes(colour = event_type), position=position_jitter(width = .05), size = 5, shape = 21, colour = "Black") +
+  ggplot(., aes(x=event_type, y=rating, fill = focus)) +
+  geom_point(aes(colour = event_type), position=position_jitter(width = .05), size = 1, shape = 21, colour = "Black") +
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
+  geom_boxplot(aes(x=event_type,y=rating),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
+  ylab("rating")+
+  xlab("mental or pain") +
+  scale_fill_manual(values=c("#0072B2", "#D55E00")) +
+  theme(legend.position="none") +
+  facet_wrap(~measure)
+```
+
+```{r}
+DF.rating %>%
+  filter(event_nr != "end") %>%
+  group_by(sub, measure) %>%
+  summarise(ratingSD = sd(response)) %>%
+  ggplot(., aes(x=measure, y=ratingSD, fill = measure)) +
+  geom_point(aes(colour = measure), position=position_jitter(width = .05), size = 1, shape = 21, colour = "Black") +
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
+  geom_boxplot(aes(x=measure,y=ratingSD),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
+  ylab("rating")+
+  xlab("mental or pain") +
+  scale_fill_manual(values=c("#0072B2", "#D55E00")) +
+  theme(legend.position="none") 
+```
+
+
+```{r}
+DF.rating <- dir_ls(paste("/Users/ruudhortensius/PsyCloud/Technician/1_AnThrom/Experiment_2/data/pilot"), regexp = "\\.csv$") %>% 
+  map_dfr(read_csv, .id = "id") %>%
+  select("please type in a series of digits", "eventnr", "event_type",  "measure", "item", "focus", "key_resp_1.rt", "key_resp_2.rt", "slider.response")  %>%
+  rename_at(1,~"sub",3) %>%
+  mutate_at(vars(-key_resp_1.rt, -key_resp_2.rt, -slider.response),as.factor) %>%
+  mutate(response = coalesce(key_resp_1.rt, key_resp_2.rt, slider.response)) %>%
+  select(sub, measure, item, focus, response) %>%
+  filter(!is.na(response) & !is.na(focus)) %>%
+  group_by(sub) %>%
+  mutate(trial_nr = c(1:length(response))) %>%
+  left_join(., events, by = "trial_nr")
+
+test <- DF.rating %>%
+  filter(event_nr != "end") %>%
+  group_by(sub, measure) %>%
+  summarise(rating = mean(response)) %>%
+  ggplot(., aes(x=event_type, y=rating, fill = focus)) +
+  geom_point(aes(colour = event_type), position=position_jitter(width = .05), size = 1, shape = 21, colour = "Black") +
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
   geom_boxplot(aes(x=event_type,y=rating),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
   ylab("rating")+
@@ -90,7 +137,7 @@ fa_ca <- read_csv("/Users/ruudhortensius/PsyCloud/Technician/1_AnThrom/Experimen
 
 ## 3.1 Load the data
 
-```{r}
+```{r, echo = TRUE, message=FALSE}
 DF.fa <- dir_ls(paste("/Users/ruudhortensius/PsyCloud/Technician/1_AnThrom/Experiment_2/data/pilot"), regexp = "\\.csv$") %>% 
   map_dfr(read_csv, .id = "id") %>%
   select("please type in a series of digits", "p_b", "trials_fb.thisIndex",  "key_resp_fb.keys")  %>%
@@ -111,7 +158,7 @@ DF.fa <- dir_ls(paste("/Users/ruudhortensius/PsyCloud/Technician/1_AnThrom/Exper
 ```{r}
 DF.fa %>%
   ggplot(., aes(x=p_b, y=acc, fill = p_b)) +
-  geom_point(aes(colour = p_b), position=position_jitter(width = .05), size = 5, shape = 21, colour = "Black") +
+  geom_point(aes(colour = p_b), position=position_jitter(width = .05), size = 1, shape = 21, colour = "Black") +
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
   geom_boxplot(aes(x=p_b,y=acc),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
   ylab("accuracy (p)")+
@@ -123,19 +170,57 @@ DF.fa %>%
 
 
 
-# 5. IDAQ {.tabset}
+# 4. IDAQ {.tabset}
 
-## 5.1 Calculation of individual scores:
+## 4.1 Calculation of individual scores:
 
 Get the IDAQ data for all the participants:
-```{r}
+```{r, echo = TRUE, message=FALSE}
+idaq <- read_csv("/Users/ruudhortensius/PsyCloud/Technician/1_AnThrom/Experiment_2/task/idaq_scale.csv") 
+
 #load data (/Volumes/Project0255/dataset_1/sourcedata/)
-DF.idaq  <- read_csv(file = "IDAQ_dataset1.csv") %>%
-  gather("sub", "value", 4:32)
+DF.idaq  <- read_csv(file = "/Users/ruudhortensius/PsyCloud/Technician/1_AnThrom/Experiment_2/data/IDAQ_test.csv") %>%
+  pivot_longer(cols = desert_lethargic:dog_goodlooking, names_to = "item", values_to = "response") %>%
+  group_by(session) %>%
+  filter(!is.na(check) & !is.na(ended)) %>%
+  mutate(itemnr = c(1:30)) %>%
+  left_join(., idaq, by = "itemnr") %>%
+  mutate(duration = (ended - created)/60) %>%
+  ungroup()  %>%
+  select(check, duration, itemnr, scale, response)
 ```
 
+## 4.2 Data exclusion and missing responses
 
-## 5.2 Reliability of IDAQ
+Participants who click through the IDAQ questionnaire, i.e. with total duration of < 2 min, and/or who have 5 or more missing responses will be excluded;
+```{r}
+DF.idaq %>% filter(duration <= 2.3) %>% group_by(check) %>% count()
+DF.idaq %>% filter(is.na(response)<= ) %>% group_by(check) %>% count()
+
+is.na(titanic_train)
+
+tapply(DF.idaq %>% filter(duration <= 2.3,length))
+group_by(eye_color, gender) %>%
+  tally()
+
+DF.idaq %>%
+  add_count(check) %>%
+  filter(duration <= 2.3)
+
+?tally
+
+DF.idaq <- DF.idaq %>%
+  filter(!duration <= 2 | )
+```
+
+Participants who have 5 or more missing responses for the IDAQ questionnaire will be excluded
+```{r}
+DF.idaq <- DF.idaq %>%
+  filter(duration <= 2)
+
+```
+
+## 4.3 Reliability of IDAQ
 Check the reliability of the IDAQ scale:
 ```{r}
 DF.idaq %>% 
@@ -144,7 +229,7 @@ DF.idaq %>%
   select(-scale, -subscale)  %>%
   spread(itemnr, value) %>%
   select(-sub) %>%
-  alpha(na.rm = TRUE)
+  alpha()
 ```
 
 ## 5.3 Reliability of IDAQ-NA

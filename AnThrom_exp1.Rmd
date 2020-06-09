@@ -1231,7 +1231,7 @@ reg_model <- function(region){
 }
 ```
 
-## 7.3 ToM regression models:
+## 7.3 Run the ToM regression models:
 Run the models for the ToM network first. It will load the model if it is already calculated:
 ```{r}
 library("brms")
@@ -1243,26 +1243,7 @@ mmpfc <- reg_model("mmpfc")
 dmpfc <- reg_model("dmpfc")
 ```
 
-Get the summaries (do some wrangling):
-```{r}
-# load required packages
-library(devtools)
-library(sjPlot)
-library(insight)
-library(httr)
-
-rtpj <- tab_model(rtpj)
-ltpj <- tab_model(ltpj)
-prec <- tab_model(prec)
-vmpfc <- tab_model(vmpfc)
-mmpfc <- tab_model(mmpfc)
-dmpfc <- tab_model(dmpfc)
-tab_model(rtpj,ltpj,prec,vmpfc,mmpfc,dmpfc, show.obs=FALSE, show.aic = TRUE)
-
-```
-
-
-
+Get the summaries (verbatim, run individually):
 ```{r}
 summary(rtpj)
 summary(ltpj)
@@ -1272,48 +1253,26 @@ summary(mmpfc)
 summary(dmpfc)
 ```
 
-Get the posterior summaries (do some wrangling):
+## 7.4 ToM model output:
+Use sjPlot to create html tables following [procedure outlined here](https://strengejacke.github.io/sjPlot/articles/tab_bayes.html):
 ```{r}
-posterior_summary(rtpj)
-posterior_summary(ltpj)
-posterior_summary(prec)
-posterior_summary(vmpfc)
-posterior_summary(mmpfc)
-posterior_summary(dmpfc)
+# load required packages
+library(sjPlot)
+library(insight)
+library(httr)
+
+tab_model(
+  rtpj,ltpj,prec,vmpfc,mmpfc,dmpfc,
+  show.se = TRUE,
+  #collapse.se = TRUE,
+  pred.labels = c("Intercept", "linear predictor", "quadratic predictor"),
+  dv.labels = c("rtpj", "ltpj","prec","vmpfc","mmpfc","dmpfc"),
+  show.obs=FALSE
+)
 ```
 
-## 7.4 Posterior plots:
-Create the posterior plot:
-```{r}
-library("bayesplot")
-
-posterior_plots <- function(model){
-  posterior <- as.matrix(model)
-  plot_title <- ggtitle(paste(deparse(substitute(model))))
-  mcmc_areas(posterior, 
-             pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), 
-             prob = 0.8) + plot_title + theme_bw()
-}
-```
-
-Plot the posterior distributions with medians and 80% intervals
-```{r}
-pp_rtpj <- posterior_plots(rtpj)
-pp_ltpj <- posterior_plots(ltpj)
-pp_prec <- posterior_plots(prec)
-pp_vmpfc <- posterior_plots(vmpfc)
-pp_mmpfc <- posterior_plots(mmpfc)
-pp_dmpfc <- posterior_plots(dmpfc)
-
-#all
-pp_tom <- posterior_plots(tom)
-
-pp_rtpj + pp_ltpj + pp_prec + 
-  pp_vmpfc + pp_mmpfc + pp_dmpfc
-```
-
-
-Create plots (different way):
+## 7.5 Posterior plots:
+Create plots based on [this tutorial](https://www.rensvandeschoot.com/tutorials/r-linear-regression-bayesian-using-brms/):
 ```{r}
 tom_combined <- bind_rows("rtpj" = as_tibble(as.mcmc(rtpj,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE)),
                           "ltpj" = as_tibble(as.mcmc(ltpj, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
@@ -1322,6 +1281,7 @@ tom_combined <- bind_rows("rtpj" = as_tibble(as.mcmc(rtpj,  pars = c("b_cent_IDA
                           "mmpfc" = as_tibble(as.mcmc(mmpfc, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
                           "dmpfc" = as_tibble(as.mcmc(dmpfc, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
                           .id = "roi")
+#order <- c("rtpj", "ltpj", "prec", "vmpfc","mmpfc","dmpfc", "rs2", "ls2", "rinsula", "linsula", "rmfg", "lmfg", "amcc")  
 
 tom_combined <- tom_combined %>%
   pivot_longer(c("b_cent_IDAQ", "b_cent_IDAQ2"),names_to = "varIDAQ") %>%
@@ -1387,15 +1347,32 @@ lmfg <- reg_model("lmfg")
 amcc <- reg_model("amcc")
 ```
 
+Get the summaries (verbatim, run individually):
 ```{r}
+summary(rs2)
+summary(ls2)
+summary(rinsula)
 summary(linsula)
-posterior_summary(linsula)
-plot(linsula)
+summary(rmfg)
+summary(lmfg)
+summary(amcc)
 ```
 
-## 8.3 Posterior plots:
-Create the posterior plot:
-Create plots (different way):
+## 8.3 Pain Matrix model output:
+Use sjPlot to create html tables following [procedure outlined here](https://strengejacke.github.io/sjPlot/articles/tab_bayes.html):
+```{r}
+tab_model(
+  rs2,ls2,rinsula,linsula,rmfg,lmfg,amcc,
+  show.se = TRUE,
+  #collapse.se = TRUE,
+  pred.labels = c("Intercept", "linear predictor", "quadratic predictor"),
+  dv.labels = c("rs2","ls2","rinsula","linsula","rmfg","lmfg","amcc"),
+  show.obs=FALSE
+)
+```
+
+## 8.4 Posterior plots:
+Create plots based on [this tutorial](https://www.rensvandeschoot.com/tutorials/r-linear-regression-bayesian-using-brms/):
 ```{r}
 pain_combined <- bind_rows("rs2" = as_tibble(as.mcmc(rs2,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE)),
                           "ls2" = as_tibble(as.mcmc(ls2, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
@@ -1446,19 +1423,6 @@ Summary:
 summary(tom)
 ```
 
-Posterior summary:
-```{r}
-posterior_summary(tom)
-```
-
-Posterior plots:
-```{r}
-tom_all <- bind_rows("all" = as_tibble(as.mcmc(tom,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE), .id = "network")  %>%
-                        rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
-                        pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
-                        mutate(network = "tom"))
-```
-
 ## 9.2 Pain Matrix:
 All ToM regions combined:
 ```{r}
@@ -1476,22 +1440,32 @@ Summary:
 summary(pain)
 ```
 
-Posterior summary:
+## 9.3 Posterior plots for the two networks:
+
 ```{r}
-posterior_summary(pain)
+tab_model(
+  tom, pain,
+  show.se = TRUE,
+  #collapse.se = TRUE,
+  pred.labels = c("Intercept", "linear predictor", "quadratic predictor"),
+  dv.labels = c("tom","pain"),
+  show.obs=FALSE
+)
 ```
 
-Posterior plots:
+## 9.4 Posterior plots for the two networks:
+
 ```{r}
+tom_all <- bind_rows("all" = as_tibble(as.mcmc(tom,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE), .id = "network")  %>%
+                        rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
+                        pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
+                        mutate(network = "tom"))
+
 pain_all <- bind_rows("all" = as_tibble(as.mcmc(pain,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE), .id = "network")  %>%
                         rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
                         pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
                         mutate(network = "pain"))
-```
 
-## 9.3 Posterior plots for the two networks:
-
-```{r}
 tom_all %>% bind_rows(., pain_all) %>%
   mutate_at(vars(-value),as.factor) %>%
   rename(predictor = varIDAQ) %>%
