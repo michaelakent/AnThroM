@@ -1133,7 +1133,10 @@ DF.roi %>%
 ```
 Model:
 ```{r}
-model_tom <- brm(formula = cent_contrast ~ cent_IDAQ, 
+DF.roi <- DF.roi %>%
+  mutate(cent_IDAQ2 = cent_IDAQ^2)
+
+model_tom <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2, 
              data    = DF.roi,
              seed    = 123,
              file="model_tom.RDS")
@@ -1500,7 +1503,7 @@ table_dmpfc <- tab_model(dmpfcmodel_c)
 table_mmpfc <- tab_model(mmpfcmodel_c)
 table_vmpfc <- tab_model(vmpfcmodel_c)
 
-tab_model(ltpjmodel_c,rtpjmodel_c,precmodel_c,dmpfcmodel_c,mmpfcmodel_c,vmpfcmodel_c, show.)
+tab_model(ltpjmodel_c,rtpjmodel_c,precmodel_c,dmpfcmodel_c,mmpfcmodel_c,vmpfcmodel_c)
 
 tab_model(model_tom)
 ```
