@@ -1033,14 +1033,14 @@ idaq_sum <- summarySEwithin(DF.idaq, measurevar="score", withinvars= "scale", id
 F1A <- DF.idaq %>%
   filter(scale == "IDAQ") %>%
   group_by(sub) %>%
-  ggplot(.,aes(x = 1, y=score, fill = "Blue"))+
+  ggplot(.,aes(x = 1, y=score, fill = "Black"))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
   geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
   geom_boxplot(aes(x=1,y=score),position=position_nudge(x = .12, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
   geom_point(data = idaq_sum %>% filter(scale == "IDAQ"), aes(x = 0.95, y = score), position = position_nudge(.3), colour = "BLACK")+
   geom_errorbar(data = idaq_sum %>% filter(scale == "IDAQ"), aes(x=0.95,y=score, ymin = score-ci, ymax = score+ci), position=position_nudge(x = .3, y = 0), width = .05)+
-  scale_fill_brewer(palette = "Blues") +
-  scale_colour_brewer(palette = "Blues") +
+  scale_fill_brewer(palette = "Greys") +
+  scale_colour_brewer(palette = "Greys") +
   #theme_classic() + 
   coord_fixed(ratio = 1/90) + 
   ylab(paste("Dispositional anthropomorphism (0-150)")) + 
@@ -1153,6 +1153,35 @@ FS2
 ggsave("S2.TIFF", plot = FS2, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
+Plot the ToM activity across regions (Figure 1C):
+```{r}
+source("R_rainclouds.R") #/Volumes/Project0255/code
+source("summarySE.R")
+theme_set(theme_classic(base_size = 15)) 
+
+roi_sum <- summarySEwithin(DF.roi, measurevar="contrast", withinvars= c("roi","network"), idvar="sub")
+
+F1C <- DF.roi %>%
+  filter(network == "tom") %>%
+  ggplot(.,aes(x=roi,y=contrast,fill=roi))+
+  geom_hline(yintercept = 0, color = "grey", linetype = 2) +
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, colour = "Black") +
+  geom_point(aes(colour = roi, fill = roi), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
+  geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
+  geom_point(data = roi_sum %>% filter(network == "tom"), aes(x = roi, y = contrast), position = position_nudge(.3), colour = "BLACK")+
+  geom_errorbar(data = roi_sum %>% filter(network == "tom"), aes(x=roi,y=contrast, ymin = contrast-ci, ymax = contrast+ci), position=position_nudge(x = .3, y = 0), width = .05)+
+  #theme_classic() + 
+  ylab(paste("Theory-of-Mind network activation")) + 
+  scale_fill_brewer(palette = "Blues") +
+  scale_colour_brewer(palette = "Blues") + 
+  #ggtitle(paste("Theory-of-Mind network contrasts estimates across datasets and regions")) + 
+  theme(legend.position="none") 
+
+F1C
+
+ggsave("F1C.TIFF", plot = F1C, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+```
+
 ## 6.3 Differences in ToM activation between datasets:
 Test if for potential differences between datasets and rois:
 ```{r}
@@ -1226,11 +1255,12 @@ DF.roi <- DF.roi %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, sc
 # 7. IDAQ scores and ToM activity {.tabset}
 
 ## 7.1 Plot ToM and IDAQ
-Create scatterplots with linear and non-linear lines: 
+Create scatterplots with linear and non-linear lines for ToM network: 
 ```{r}
 library(patchwork)
+theme_set(theme_classic(base_size = 15)) 
 
-p1 <- DF.roi %>%
+F1D <- DF.roi %>%
   filter(network == "tom") %>%
   ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
   geom_point(alpha=0.5,show.legend = FALSE) +
@@ -1238,25 +1268,36 @@ p1 <- DF.roi %>%
   geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
   coord_fixed(ratio = 1/1) +
   labs(
-    x="IDAQ score",
-    y="contrast (mental vs pain)"
-  ) + theme_classic()
+    x="Dispositional anthropomorphism",
+    y="Theory-of-Mind network activation"
+  ) #+ theme_classic()
 
-p2 <- DF.roi %>%
-  filter(network == "tom") %>%
-  ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
-  geom_point(alpha=0.5,show.legend = FALSE) +
-  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
-  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
-  coord_fixed(ratio = 1/1) +
-  labs(
-    x="IDAQ score",
-    y="contrast (mental vs pain)"
-  ) + theme_classic() +
-  facet_wrap(~roi)
+F1D 
 
-p1 + p2
+ggsave("F1D.TIFF", plot = F1D, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
+
+Create scatterplots with linear and non-linear lines for individual regions of ToM network: 
+```{r}
+F1E <- DF.roi %>%
+  filter(network == "tom") %>%
+  ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
+  coord_fixed(ratio = 1/1) +
+  facet_wrap(~roi, ncol = 6) +
+  labs(
+    x="Dispositional anthropomorphism",
+    y="Theory-of-Mind network activation"
+  ) + theme_classic() 
+
+F1E
+
+ggsave("F1E.TIFF", plot = F1E, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+
+```
+
 
 ## 7.2 Create a function for the Bayesian regression models:
 
