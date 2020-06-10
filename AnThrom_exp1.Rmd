@@ -1003,10 +1003,11 @@ Visualise the scores across the datasets and scales (Figure S1):
 ```{r}
 source("R_rainclouds.R") #/Volumes/Project0255/code
 source("summarySE.R")
+theme_set(theme_classic(base_size = 15)) 
 
 idaq_sum <- summarySEwithin(DF.idaq, measurevar="score", betweenvars="dataset", withinvars= "scale", idvar="sub")
 
-S1 <- DF.idaq %>%
+FS1 <- DF.idaq %>%
   group_by(sub,dataset, scale) %>%
   ggplot(.,aes(x=dataset,y=score,fill=dataset, group = dataset))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
@@ -1016,12 +1017,13 @@ S1 <- DF.idaq %>%
   geom_errorbar(data = idaq_sum, aes(x=dataset,y=score, ymin = score-ci, ymax = score+ci), position=position_nudge(x = .3, y = 0), width = .05)+
   scale_fill_brewer(palette = "Blues") +
   scale_colour_brewer(palette = "Blues") +
-  theme_classic() + 
   ylab(paste("score (0-150)")) + 
   ggtitle(paste("IDAQ scores across datasets")) +
   theme(legend.position="none") +
   facet_wrap(~scale)
-S1
+FS1
+ggsave("S1.TIFF", plot = FS1, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+
 ```
 
 Visualise the scores for IDAQ scale only (Figure 1A):
@@ -1039,12 +1041,19 @@ F1A <- DF.idaq %>%
   geom_errorbar(data = idaq_sum %>% filter(scale == "IDAQ"), aes(x=0.95,y=score, ymin = score-ci, ymax = score+ci), position=position_nudge(x = .3, y = 0), width = .05)+
   scale_fill_brewer(palette = "Blues") +
   scale_colour_brewer(palette = "Blues") +
-  theme_classic() + 
+  #theme_classic() + 
   coord_fixed(ratio = 1/90) + 
-  ylab(paste("score (0-150)")) + 
-  ggtitle(paste("Dispositional anthropomorphism")) +
-  theme(legend.position="none") 
+  ylab(paste("Dispositional anthropomorphism (0-150)")) + 
+  #ggtitle(paste("Dispositional anthropomorphism")) +
+  theme(legend.position="none") +
+  theme(
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+      
+  )
 F1A
+ggsave("F1A.TIFF", plot = F1A, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 ## 5.7 Median and interquartile range per dataset
@@ -1065,6 +1074,7 @@ DF.idaq %>%
 Create function to load the data for the different networks:
 ```{r}
 library(fs)
+library(tidyverse)
 roi_extract <- function(datasetno, substart, subend, network, nroi) {
   
   dir_ls(paste("dataset_", datasetno, "/derivatives/roi/", network, sep = ""), regexp = "\\.tsv$") %>% 
@@ -1100,7 +1110,7 @@ DF.d4 <- roi_extract(4, 401, 422, "pain", 7)
 
 DF.roi <- bind_rows(DF.temp, DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4)
 
-rm(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4, DF.temp, DF.test)
+rm(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4, DF.temp)
 ```
 
 Reorder ROI names for plots:
@@ -1114,23 +1124,33 @@ DF.roi <- DF.roi %>%
 ```
 
 ## 6.2 Theory-of-Mind network activation across datasets:
-Plot the ToM activity across regions and datasets:
+Plot the ToM activity across regions and datasets (Figure S2):
 ```{r}
-p1 <- DF.roi %>%
+source("R_rainclouds.R") #/Volumes/Project0255/code
+source("summarySE.R")
+theme_set(theme_classic(base_size = 15)) 
+
+roi_sum <- summarySEwithin(DF.roi, measurevar="contrast", betweenvars="dataset", withinvars= c("roi","network"), idvar="sub")
+
+FS2 <- DF.roi %>%
   filter(network == "tom") %>%
   ggplot(.,aes(x=roi,y=contrast,fill=roi))+
   geom_hline(yintercept = 0, color = "grey", linetype = 2) +
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, colour = "Black") +
   geom_point(aes(colour = roi, fill = roi), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
   geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
-  theme_classic() + 
+  geom_point(data = roi_sum %>% filter(network == "tom"), aes(x = roi, y = contrast), position = position_nudge(.3), colour = "BLACK")+
+  geom_errorbar(data = roi_sum %>% filter(network == "tom"), aes(x=roi,y=contrast, ymin = contrast-ci, ymax = contrast+ci), position=position_nudge(x = .3, y = 0), width = .05)+
+  #theme_classic() + 
   ylab(paste("contrast estimates (mental > pain)")) + 
   scale_fill_brewer(palette = "Blues") +
   scale_colour_brewer(palette = "Blues") + 
-  ggtitle(paste("ToM network contrasts estimates across datasets")) + 
+  ggtitle(paste("Theory-of-Mind network contrasts estimates across datasets and regions")) + 
   theme(legend.position="none") +
   facet_wrap(~dataset) 
-p1
+FS2
+
+ggsave("S2.TIFF", plot = FS2, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 ## 6.3 Differences in ToM activation between datasets:
@@ -1149,22 +1169,26 @@ conditional_effects(tom.compare)
 ```
 
 ## 6.4 Pain Matrix activation across datasets
-Plot the Pain Matrix activity across regions and datasets:
+Plot the Pain Matrix activity across regions and datasets (Figure S3):
 ```{r}
-p2 <- DF.roi %>%
+FS3 <- DF.roi %>%
   filter(network == "pain") %>%
   ggplot(.,aes(x=roi,y=contrast,fill=roi))+
   geom_hline(yintercept = 0, color = "grey", linetype = 2) +
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, colour = "Black") +
   geom_point(aes(colour = roi, fill = roi), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
-  geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
-  theme_classic() + 
+  geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
+  geom_point(data = roi_sum %>% filter(network == "pain"), aes(x = roi, y = contrast), position = position_nudge(.3), colour = "BLACK")+
+  geom_errorbar(data = roi_sum %>% filter(network == "pain"), aes(x=roi,y=contrast, ymin = contrast-ci, ymax = contrast+ci), position=position_nudge(x = .3, y = 0), width = .05)+
+  #theme_classic() + 
   ylab(paste("contrast estimates (pain > mental)")) + 
   scale_fill_brewer(palette = "Reds") +
   scale_colour_brewer(palette = "Reds") + 
-  ggtitle(paste("Pain matrix contrasts estimates across datasets")) + theme(legend.position="none") +
+  ggtitle(paste("Pain Matrix contrasts estimates across datasets and regions")) + 
+  theme(legend.position="none") +
   facet_wrap(~dataset)
-p2
+FS3
+ggsave("S3.TIFF", plot = FS3, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 ## 6.5 Differences in Pain Matrix activation between datasets:
