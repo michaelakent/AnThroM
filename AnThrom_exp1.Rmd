@@ -999,21 +999,21 @@ DF.idaq <- DF.idaq %>%
 ```
 
 ## 5.6 Visualise the scores
-Visualise the scores across the datasets and scales:
+Visualise the scores across the datasets and scales (Figure S1):
 ```{r}
 source("R_rainclouds.R") #/Volumes/Project0255/code
-#source("summarySE.R")
+source("summarySE.R")
 
-#idaq_sum <- summarySEwithin(DF.idaq, measurevar="score", betweenvars="dataset", withinvars= "scale", idvar="sub")
+idaq_sum <- summarySEwithin(DF.idaq, measurevar="score", betweenvars="dataset", withinvars= "scale", idvar="sub")
 
-p <- DF.idaq %>%
+S1 <- DF.idaq %>%
   group_by(sub,dataset, scale) %>%
-  filter(scale == "IDAQ") %>%
   ggplot(.,aes(x=dataset,y=score,fill=dataset, group = dataset))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
   geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
   geom_boxplot(aes(x=dataset,y=score),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
-  #geom_errorbar(data = idaq_sum, aes(x=dataset,y=score, ymin = score-ci, ymax = score+ci), position=position_nudge(x = .3, y = 0), width = .05)+
+  geom_point(data = idaq_sum, aes(x = dataset, y = score), position = position_nudge(.3), colour = "BLACK")+
+  geom_errorbar(data = idaq_sum, aes(x=dataset,y=score, ymin = score-ci, ymax = score+ci), position=position_nudge(x = .3, y = 0), width = .05)+
   scale_fill_brewer(palette = "Blues") +
   scale_colour_brewer(palette = "Blues") +
   theme_classic() + 
@@ -1021,7 +1021,30 @@ p <- DF.idaq %>%
   ggtitle(paste("IDAQ scores across datasets")) +
   theme(legend.position="none") +
   facet_wrap(~scale)
-p
+S1
+```
+
+Visualise the scores for IDAQ scale only (Figure 1A):
+```{r}
+idaq_sum <- summarySEwithin(DF.idaq, measurevar="score", withinvars= "scale", idvar="sub")
+ 
+F1A <- DF.idaq %>%
+  filter(scale == "IDAQ") %>%
+  group_by(sub) %>%
+  ggplot(.,aes(x = 1, y=score, fill = "Blue"))+
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
+  geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
+  geom_boxplot(aes(x=1,y=score),position=position_nudge(x = .12, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
+  geom_point(data = idaq_sum %>% filter(scale == "IDAQ"), aes(x = 0.95, y = score), position = position_nudge(.3), colour = "BLACK")+
+  geom_errorbar(data = idaq_sum %>% filter(scale == "IDAQ"), aes(x=0.95,y=score, ymin = score-ci, ymax = score+ci), position=position_nudge(x = .3, y = 0), width = .05)+
+  scale_fill_brewer(palette = "Blues") +
+  scale_colour_brewer(palette = "Blues") +
+  theme_classic() + 
+  coord_fixed(ratio = 1/90) + 
+  ylab(paste("score (0-150)")) + 
+  ggtitle(paste("Dispositional anthropomorphism")) +
+  theme(legend.position="none") 
+F1A
 ```
 
 ## 5.7 Median and interquartile range per dataset
