@@ -1491,12 +1491,12 @@ hdi_rope <- function(model){
   #rope_model %>% mutate(roi = as.character(model$file))
   plot(rope_model) + theme_classic() + 
     ggtitle(deparse(substitute(model))) + 
-    xlim(-0.3,0.3) +  
+    xlim(-0.15,0.15) +  
     theme(axis.title.y = element_blank(), axis.title.x = element_blank()) 
     #scale_fill_manual(values=c("#0072B2", "#D55E00"))
 }
 
-hdi_rope(tom) / hdi_rope(pain) + plot_layout(guides = 'collect')  
+hdi_rope(tom) + hdi_rope(pain) + plot_layout(guides = 'collect')  
 
 
 (hdi_rope(rtpj) / hdi_rope(ltpj) / hdi_rope(prec)) &
