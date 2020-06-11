@@ -1402,9 +1402,9 @@ ggsave("F2.TIFF", plot = F2, width = 24.7, height = 15.24, units = "cm", dpi = 3
 # 8. IDAQ scores and Pain Matrix activity {.tabset}
 
 ## 8.1 Plot Pain Matrix and IDAQ
-Create scatterplots with linear and non-linear lines: 
+Create scatterplots with linear and non-linear lines for the Pain Matrix: 
 ```{r}
-p1 <- DF.roi %>%
+S4 <- DF.roi %>%
   filter(network == "pain") %>%
   ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
   geom_point(alpha=0.5,show.legend = FALSE) +
@@ -1416,7 +1416,14 @@ p1 <- DF.roi %>%
     y="contrast (pain vs mental)"
   ) + theme_classic()
 
-p2 <- DF.roi %>%
+S4 
+
+ggsave("S4.TIFF", plot = S4, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+```
+
+Create scatterplots with linear and non-linear lines for individual regions of the Pain Matrix: 
+```{r}
+S5 <- DF.roi %>%
   filter(network == "pain") %>%
   ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
   geom_point(alpha=0.5,show.legend = FALSE) +
@@ -1429,8 +1436,11 @@ p2 <- DF.roi %>%
   ) + theme_classic() +
   facet_wrap(~roi, nrow = 2)
 
-p1 + p2
+S5 
+
+ggsave("S5.TIFF", plot = S5, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
+
 
 ## 8.2 Regression models for the Pain Matrix:
 Run the models for the Pain Matrix (control network). It will load the model if it is already calculated:
@@ -1488,7 +1498,7 @@ pain_combined <- pain_combined %>%
 
 Plot the distributions:
 ```{r}
-pain_combined %>%
+S6 <- pain_combined %>%
   mutate_at(vars(-value),as.factor) %>%
   rename(predictor = varIDAQ) %>%
   ggplot(., aes(value, fill = predictor)) +
@@ -1502,6 +1512,9 @@ pain_combined %>%
   scale_fill_manual(values=c("#0072B2", "#D55E00"))
 #theme(axis.text.y = element_blank())
 
+S6 
+
+ggsave("S6.TIFF", plot = S6, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 
