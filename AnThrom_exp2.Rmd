@@ -34,7 +34,7 @@ library(psych)
 library(patchwork)
 library(tidyverse)
 source("R_rainclouds.R") #/Volumes/Project0255/code
-#source("summarySE.R")
+source("summarySE.R")
 theme_set(theme_classic(base_size = 20)) 
 ```
 
@@ -42,14 +42,14 @@ theme_set(theme_classic(base_size = 20))
 
 ## 2.1 Events for the movie
 ```{r}
-events <- read_csv("/Users/ruudhortensius/PsyCloud/Technician/1_AnThrom/Experiment_2/task/pilot/events_pilot.csv")
+events <- read_csv("/Users/rh/PsyCloud/Technician/1_AnThrom/Experiment_2/task/pilot/events_pilot.csv")
 events_cloud = c(4,5,14)
 ```
 
 ## 2.2 Rating data for the movie
 Explain it:
 ```{r, echo = TRUE, message=FALSE}
-DF.rating <- dir_ls(paste("/Users/ruudhortensius/PsyCloud/Technician/1_AnThrom/Experiment_2/data/pilot"), regexp = "\\.csv$") %>% 
+DF.rating <- dir_ls(paste("/Users/rh/PsyCloud/Technician/1_AnThrom/Experiment_2/data/pilot"), regexp = "\\.csv$") %>% 
   map_dfr(read_csv, .id = "id") %>%
   select("please type in a series of digits", "eventnr", "event_type",  "measure", "item", "focus", "key_resp_1.keys", "key_resp_2.keys", "slider.response")  %>%
   rename_at(1,~"sub",3) %>%
@@ -97,7 +97,7 @@ DF.rating %>%
 
 
 ```{r}
-DF.rating <- dir_ls(paste("/Users/ruudhortensius/PsyCloud/Technician/1_AnThrom/Experiment_2/data/pilot"), regexp = "\\.csv$") %>% 
+DF.rating <- dir_ls(paste("/Users/rh/PsyCloud/Technician/1_AnThrom/Experiment_2/data/pilot"), regexp = "\\.csv$") %>% 
   map_dfr(read_csv, .id = "id") %>%
   select("please type in a series of digits", "eventnr", "event_type",  "measure", "item", "focus", "key_resp_1.rt", "key_resp_2.rt", "slider.response")  %>%
   rename_at(1,~"sub",3) %>%
@@ -130,7 +130,7 @@ test <- DF.rating %>%
 ## 3.1 Load the correct answers
 
 ```{r}
-fa_ca <- read_csv("/Users/ruudhortensius/PsyCloud/Technician/1_AnThrom/Experiment_2/task/false_belief_correct_answers.csv")  %>%
+fa_ca <- read_csv("/Users/rh/PsyCloud/Technician/1_AnThrom/Experiment_2/task/false_belief_correct_answers.csv")  %>%
   select("item_number", "CA") 
 ```
 
@@ -138,7 +138,7 @@ fa_ca <- read_csv("/Users/ruudhortensius/PsyCloud/Technician/1_AnThrom/Experimen
 ## 3.1 Load the data
 
 ```{r, echo = TRUE, message=FALSE}
-DF.fa <- dir_ls(paste("/Users/ruudhortensius/PsyCloud/Technician/1_AnThrom/Experiment_2/data/pilot"), regexp = "\\.csv$") %>% 
+DF.fa <- dir_ls(paste("/Users/rh/PsyCloud/Technician/1_AnThrom/Experiment_2/data/pilot"), regexp = "\\.csv$") %>% 
   map_dfr(read_csv, .id = "id") %>%
   select("please type in a series of digits", "p_b", "trials_fb.thisIndex",  "key_resp_fb.keys")  %>%
   rename_at(1,~"sub",3) %>%
@@ -176,10 +176,10 @@ DF.fa %>%
 
 Get the IDAQ data for all the participants:
 ```{r, echo = TRUE, message=FALSE}
-idaq <- read_csv("/Users/ruudhortensius/PsyCloud/Technician/1_AnThrom/Experiment_2/task/idaq_scale.csv") 
+idaq <- read_csv("/Users/rh/PsyCloud/Technician/1_AnThrom/Experiment_2/task/idaq_scale.csv") 
 
 #load data (/Volumes/Project0255/dataset_1/sourcedata/)
-DF.idaq  <- read_csv(file = "/Users/ruudhortensius/PsyCloud/Technician/1_AnThrom/Experiment_2/data/IDAQ_test.csv") %>%
+DF.idaq  <- read_csv(file = "/Users/rh/PsyCloud/Technician/1_AnThrom/Experiment_2/data/IDAQ_test.csv") %>%
   pivot_longer(cols = desert_lethargic:dog_goodlooking, names_to = "item", values_to = "response") %>%
   group_by(session) %>%
   filter(!is.na(check) & !is.na(ended)) %>%
