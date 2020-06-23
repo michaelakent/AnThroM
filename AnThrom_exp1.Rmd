@@ -814,6 +814,8 @@ DF.idaq %>%
   spread(itemnr, value) %>%
   select(-sub, -dataset) %>%
   alpha(na.rm = TRUE)
+
+
 ```
 
 ## 5.3 Reliability of IDAQ-NA
@@ -854,7 +856,7 @@ cumulativemodelfit <- function(formula, data, links=c("logit", "probit", "cloglo
 }
 ```
 
-For the anthropomorphism subscale first:
+Run the analyse for the anthropomorphism subscale:
 ```{r}
 DF.test = DF.idaq %>% 
   filter(scale == "IDAQ") %>% 
@@ -902,6 +904,7 @@ Get summary and marginal effects:
 ```{r}
 summary(ord.2) #prob = .99  for 99 credible intervals
 conditional_effects(ord.2, "dataset", categorical = TRUE)
+plot(ord.2)
 ```
 
 3. Category-specific model:
@@ -957,8 +960,8 @@ conditional_effects(ord.5, "dataset", categorical = TRUE)
 
 6. Model comparison: 
 ```{r}
-modelC1 <- LOO(ord.1, ord.2, ord.3, ord.4, ord.5)
-save(modelC1, file="modelC1.RData")
+#modelC1 <- LOO(ord.1, ord.2, ord.3, ord.4, ord.5)
+#save(modelC1, file="modelC1.RData")
 load('modelC1.RData')
 modelC1
 ```
@@ -986,6 +989,36 @@ Get summary and marginal effects:
 ```{r}
 summary(ord.2E) #prob = .99  for 99 credible intervals
 conditional_effects(ord.2E, "dataset", categorical = TRUE)
+```
+
+9. Model 3 while excluding these participants: 
+```{r}
+ord.3E <- brm(
+  value ~ 1 + cs(dataset) +
+    (cs(1)|sub) + (cs(1)|itemnr),
+  data  = DF.test,  
+  family = acat(link = "probit", threshold="equidistant"),
+  file = 'ord.3E~category.RDS'
+)  
+```
+
+
+
+Final output (Table S7):
+```{r}
+# load required packages
+library(sjPlot)
+library(insight)
+library(httr)
+
+tab_model(
+  ord.2,ord.2E,
+  show.se = FALSE,
+  #collapse.se = TRUE,
+  #pred.labels = c("Intercept", "linear predictor", "quadratic predictor"),
+  dv.labels = c("cumulative ordinal model", "cumulative ordinal model (excluding 16 participants)"),
+  show.obs=FALSE
+)
 ```
 
 ## 5.5 IDAQ per subject
@@ -1639,8 +1672,7 @@ update_model <- function(model_old, region){
 }
 ```
 
-
-Calculate the difference (bias) per region:
+Calculate the difference (bias) per ToM region:
 ```{r}
 rtpj_bias <- update_model(rtpj, "rtpj")
 ltpj_bias <- update_model(ltpj, "ltpj")
@@ -1650,250 +1682,18 @@ mmpfc_bias <- update_model(mmpfc, "mmpfc")
 dmpfc_bias <- update_model(dmpfc, "dmpfc")
 ```
 
-We see that the influence of this highly informative prior is around 386% and 406% on the two regression coefficients respectively. This is a large difference and we thus certainly would not end up with similar conclusions.
-
+##10.1 Pain Matrix
+Calculate the difference (bias) per Pain Matrix region:
+```{r}
+rs2_bias <- update_model(rtpj, "rs2")
+ls2_bias <- update_model(ltpj, "ls2")
+rinsula_bias <- update_model(prec, "rinsula")
+linsula_bias <- update_model(vmpfc, "linsula")
+rmfg_bias <- update_model(mmpfc, "rmfg")
+lmfg_bias <- update_model(dmpfc, "lmfg")
+amcc_bias <- update_model(dmpfc, "amcc")
+```
 
 ```{r}
 sessionInfo()
 ```
-
-1. Across all ToM ROIs
-  - Compare linear model vs. quadratic model; is there evidence for one, or for Null?
-  - Fit the model, predict values, test sensitivity/fit
-2. For each ToM ROI
-  - Compare linear model vs. quadratic model; is there evidence for one, or for Null?
-  - Fit the model, predict values, test sensitivity/fit
-
-
-
-```{r}
-plot(conditional_effects(ltpj),points = TRUE)
-
-posterior_plots(ltpj)
-?conditional_effects
-test <- as.matrix(rtpj)
-
-library("broom")
-library("rstanarm")
-library("tidyverse")
-
-
-fit <- stan_glm(mpg ~ ., data = mtcars)
-summary(fit)
-posterior <- as.matrix(fit)
-
-plot_title <- ggtitle("Posterior distributions",
-                      "with medians and 80% intervals")
-mcmc_areas(posterior, 
-           pars = c("cyl", "drat", "am", "wt"), 
-           prob = 0.8) + plot_title
-
-posterior <- as.matrix(test2) 
-plot_title <- ggtitle("Posterior distributions",
-                      "with medians and 80% intervals")
-mcmc_areas(posterior, 
-           pars = c("b_cent_IDAQS", "b_cent_IDAQ2S"), 
-           prob = 0.8) + plot_title
-summary(test2)
-
-
-color_scheme_set("red")
-ppc_dens_overlay(y = fit$y, 
-                 yrep = posterior_predict(fit, draws = 50))
-
-color_scheme_set("brightblue")
-test %>% 
-  posterior_predict(draws = 500) %>%
-  ppc_stat_grouped(y = b_cent_IDAQ2S,
-                   stat = "median")
-plot(test2)
-plot(ltpj)
-plot(prec)
-plot(vmpfc)
-plot(mmpfc)
-plot(dmpfc)
-```
-
-
-```{r}
-
-pp_check(rtpj, nsamples = 100) #maximal model
-
-
-library(doBy)
-library(brms)
-library(easystats)
-library(tidyverse)
-
-rope_range(test) # determine the ROPE range
-
-testR <- bayestestR::equivalence_test(test, range = c(-0.1, 0.1), ci = 0.95) # assert the null
-testR <- testR[-c(3),]
-
-plot(testR) + theme_abyss() + scale_fill_flat() # plot the decision on H0
-
-
-describe_posterior(
-  rtpj,
-  effects = "all",
-  component = "all",
-  test = c("p_direction", "p_significance"),
-  centrality = "all"
-)
-
-
-library(bayestestR)
-
-posterior <- distribution_gamma(10000, 1.5)  # Generate a skewed distribution
-centrality <- point_estimate(posterior)  # Get indices of centrality
-centrality
-plot(centrality)
-plot(rtpj)
-```
-
-
-```{r}
-options("scipen"=10, "digits"=5)
-
-tidy(rtpj) %>% slice(1:3) %>% mutate_if(is.double, round, digits = 5)
-
-
-DF.test <- DF.roi %>% 
-  filter(roi == "rtpj")
-
-
-reg.1 <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
-             data = DF.test,
-             family = gaussian)
-
-plot(DF.test$cent_IDAQ2, DF.test$cent_IDAQ)
-
-
-summary(reg.1)
-plot(reg.1) 
-posterior_summary(reg.1)
-prior_summary(reg.1)
-pairs(reg.1) #look into this
-plot(conditional_effects(reg.1), points = TRUE)
-
-roi <- "rtpj"
-
-reg.2 <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
-             data = DF.roi %>% filter(roi == roi),
-             family = gaussian,
-             chains = 4,
-             iter = 4000,
-             seed = 42,
-             file = paste0(roi, ".RDS"))
-summary(reg.2)
-tidy(rtpj) %>% slice(1:3) %>% mutate_if(is.double, round, digits = 2)
-library(rstan)
-
-library("shinystan")
-
-launch_shinystan(reg.1)
-
-```
-
-```{r}
-reg.2 <- brm(formula = cent_contrast ~ (cent_IDAQ + I(cent_IDAQ^2)), 
-             data = DF.test)  
-
-  print(summary(fit_lin))
-    me <- marginal_effects(fit_lin, "time") %>%
-      plot(plot = FALSE) %>%
-      getElement(1) + 
-      ylim(range(dat_tmp$rating, na.rm = TRUE) + c(-0.5, 0.5))
-    plot(me)
-    
-    # quadratic model
-    fit_quad <- run_model(
-      brm(
-        rating ~ (time + I(time^2)) + 
-          Age + Geschlecht + Erstbehandlung + diag + 
-          ((time + I(time^2)) | PATNR) + (1 | item), 
-        data = dat_tmp, family = fam, 
-        cores = cores, chains = chains
-      ),
-      path = paste0("models/fit_hyp1_", meas, "_", fam, "_quad")
-    )
-    print(summary(fit_quad))
-    me <- marginal_effects(fit_quad, "time") %>%
-      plot(plot = FALSE) %>%
-      getElement(1) + 
-      ylim(range(dat_tmp$rating, na.rm = TRUE) + c(-0.5, 0.5))
-    plot(me)
-```
-
-
-
-```{r}
-# install.packages("rstanarm") #do not selet the one that needs complilation 
-library(rstan)
-library(rstanarm)
-library(ggplot2)
-library(bayesplot)
-
-
-# this option uses multiple cores if they're available
-options(mc.cores = parallel::detectCores()) 
-
-DF.test <- DF.roi %>%
-  filter(roi == "rtpj")
-
-glm_post1 <- stan_glm(cent_contrast~cent_IDAQ, data=DF.test, family=gaussian) #which family?
-glm_post1 <- stan_glm(contrast~IDAQ + I(IDAQ^2), data=DF.test, family=gaussian) #does it need to be centered?
-
-stan_trace(glm_post1, pars=c("(Intercept)","IDAQ","sigma"))
-summary(glm_post1)
-pp_check(glm_post1)
-
-posterior_vs_prior(glm_post1, group_by_parameter = TRUE, pars=c("(Intercept)"))
-posterior_vs_prior(glm_post1, group_by_parameter = TRUE, pars=c("cent_IDAQ","sigma"))
-
-
-linear.model <-lm(DF.test$cent_contrast ~ DF.test$cent_IDAQ +I(DF.test$cent_IDAQ^2))
-glm_fit <- glm(cent_contrast~cent_IDAQ +I(cent_IDAQ^2), data=DF.test, family=gaussian)
-glm_fit <- glm(cent_contrast~cent_IDAQ, data=DF.test, family=gaussian)
-
-summary(glm_fit)
-summary(linear.model)
-
-plot(DF.test$cent_contrast ~ DF.test$cent_IDAQ, pch=16, ylab = "Counts ", cex.lab = 1.3, col = "red")
-abline(lm(DF.test$cent_contrast ~ DF.test$cent_IDAQ), col = "blue")
-
-
-DF.test$cent_IDAQ2 <- DF.test$cent_IDAQ^2
-quadratic.model <-lm(DF.test$cent_contrast ~ DF.test$cent_IDAQ + DF.test$cent_IDAQ2)
-summary(quadratic.model)
-
-idaqvalues <- seq(-40, 51, .1)
-predictedcounts <- predict(quadratic.model,list(IDAQ=idaqvalues, IDAQ2=idaqvalues^2))
-plot(DF.test$cent_contrast ~ DF.test$cent_IDAQ, pch=16, ylab = "Counts ", cex.lab = 1.3, col = "red")
-lines(idaqvalues, predictedcounts, col = "darkgreen", lwd = 3)
-```
-
-
-```{r}
-# OLD code: get fitted values
-newdata = data.frame(dataset = levels(as.factor(DF.test$dataset)), itemnr = as.factor(DF.test$itemnr))
-fit = fitted(mod1, newdata = newdata, re_formula = NA)
-colnames(fit) = c('fit', 'se', 'lwr', 'upr')
-df_plot = cbind(newdata, fit)
-df_plot
-
-obs = aggregate(value ~ dataset, DF.test, mean) 
-
-ggplot(df_plot, aes(x = dataset, y = fit)) +
-  geom_violin(data=DF.test, aes(x=dataset, y=value), alpha=0.5, color="gray70", fill='gray95') +
-  geom_jitter(data=obs, aes(x=dataset, y=value), alpha=0.3, position = position_jitter(width = 0.07)) +
-  geom_errorbar(aes(ymin=lwr, ymax=upr), position=position_dodge(), size=1, width=.5) +
-  geom_point(shape=21, size=4, fill='red') +
-  xlab("") +
-  theme_bw () +
-  theme(panel.grid = element_blank())
-```
-
-
-
-
