@@ -876,7 +876,7 @@ ord.1 <- brm(
   value ~ 1 + dataset,  
   data  = DF.test,  
   family  = cumulative("logit"),
-  file = 'ord.1~simple.RDS'
+  file = 'models/control/ord.1~simple.RDS'
 ) 
 ```
 
@@ -894,7 +894,7 @@ ord.2 <- brm(
     (1|sub) + (1|itemnr),   
   data  = DF.test,  
   family  = cumulative("logit"),
-  file = 'ord.2~random.RDS'
+  file = 'models/control/ord.2~random.RDS'
 ) 
 ```
 
@@ -912,7 +912,7 @@ ord.3 <- brm(
     (cs(1)|sub) + (cs(1)|itemnr),
   data  = DF.test,  
   family = acat("logit"),
-  file = 'ord.3~category.RDS'
+  file = 'models/control/ord.3~category.RDS'
 )  
 ```
 
@@ -929,7 +929,7 @@ ord.4 <- brm(
     (1|sub) + (1|itemnr),
   data  = DF.test,  
   family = acat("logit"),
-  file = 'ord.4~category2.RDS'
+  file = 'models/control/ord.4~category2.RDS'
 ) 
 ```
 
@@ -946,7 +946,7 @@ ord.5 <- brm(
     lf(disc ~ 0 + dataset, cmc = FALSE),
   data = DF.test,
   family  = cumulative("logit"),
-  file = 'ord.5~control.RDS'
+  file = 'models/control/ord.5~control.RDS'
 ) 
 ```
 
@@ -959,7 +959,7 @@ conditional_effects(ord.5, "dataset", categorical = TRUE)
 6. Model comparison: 
 ```{r}
 #modelC1 <- LOO(ord.1, ord.2, ord.3, ord.4, ord.5)
-#save(modelC1, file="modelC1.RData")
+#save(modelC1, file="models/control/modelC1.RData")
 load('modelC1.RData')
 modelC1 
 
@@ -980,7 +980,7 @@ ord.2E <- brm(
     (1|sub) + (1|itemnr),   
   data  = DF.test,  
   family = cumulative(link = "probit", threshold="equidistant"),
-  file = 'ord.2E~random.RDS'
+  file = 'models/control/ord.2E~random.RDS'
 ) 
 ```
 
@@ -997,7 +997,7 @@ ord.3E <- brm(
     (cs(1)|sub) + (cs(1)|itemnr),
   data  = DF.test,  
   family = acat(link = "probit", threshold="equidistant"),
-  file = 'ord.3E~category.RDS'
+  file = 'models/control/ord.3E~category.RDS'
 )  
 
 summary(ord.3E)
@@ -1045,7 +1045,7 @@ FS1 <- DF.idaq %>%
   theme(legend.position="none") +
   facet_wrap(~scale)
 FS1
-ggsave("S1.TIFF", plot = FS1, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("figures/S1.TIFF", plot = FS1, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 
 ```
 
@@ -1076,7 +1076,7 @@ F1A <- DF.idaq %>%
       
   )
 F1A
-ggsave("F1A.TIFF", plot = F1A, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("figures/F1A.TIFF", plot = F1A, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 ## 5.7 Median and interquartile range per dataset
@@ -1147,10 +1147,6 @@ DF.roi <- DF.roi %>%
 ## 6.2 Theory-of-Mind network activation across datasets:
 Plot the ToM activity across regions and datasets (Figure S2):
 ```{r}
-source("R_rainclouds.R") #/Volumes/Project0255/code
-source("summarySE.R")
-theme_set(theme_classic(base_size = 15)) 
-
 roi_sum <- summarySEwithin(DF.roi, measurevar="contrast", betweenvars="dataset", withinvars= c("roi","network"), idvar="sub")
 
 FS2 <- DF.roi %>%
@@ -1171,15 +1167,11 @@ FS2 <- DF.roi %>%
   facet_wrap(~dataset) 
 FS2
 
-ggsave("S2.TIFF", plot = FS2, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("figures/S2.TIFF", plot = FS2, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 Plot the ToM activity across regions (Figure 1C):
 ```{r}
-source("R_rainclouds.R") #/Volumes/Project0255/code
-source("summarySE.R")
-theme_set(theme_classic(base_size = 15)) 
-
 roi_sum <- summarySEwithin(DF.roi, measurevar="contrast", withinvars= c("roi","network"), idvar="sub")
 
 F1C <- DF.roi %>%
@@ -1200,7 +1192,7 @@ F1C <- DF.roi %>%
 
 F1C
 
-ggsave("F1C.TIFF", plot = F1C, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("figures/F1C.TIFF", plot = F1C, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 ## 6.3 Differences in ToM activation between datasets:
@@ -1210,15 +1202,12 @@ tom.compare <- brm(
   formula = contrast ~ roi * dataset,
   data = DF.roi %>% filter(network == "tom"),
   #family  = cumulative("logit"),
-  file = 'tom.compare.RDS'
+  file = 'models/control/tom.compare.RDS'
 ) 
 
 summary(tom.compare)
 plot(tom.compare)
-p <- conditional_effects(tom.compare)
-p <- p[1]
-ggsave("S5.TIFF", plot = p , width = 24.7, height = 15.24, units = "cm", dpi = 300)
-
+conditional_effects(tom.compare)
 ```
 
 ```{r}
@@ -1253,7 +1242,7 @@ FS3 <- DF.roi %>%
   theme(legend.position="none") +
   facet_wrap(~dataset)
 FS3
-ggsave("S3.TIFF", plot = FS3, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("figures/S3.TIFF", plot = FS3, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 ## 6.5 Differences in Pain Matrix activation between datasets:
@@ -1263,7 +1252,7 @@ pain.compare <- brm(
   formula = contrast ~ roi * dataset,
   data = DF.roi %>% filter(network == "pain"),
   #family  = cumulative("logit"),
-  file = 'pain.compare.RDS'
+  file = 'models/control/pain.compare.RDS'
 ) 
 
 summary(pain.compare)
@@ -1321,7 +1310,7 @@ F1D <- DF.roi %>%
 
 F1D 
 
-ggsave("F1D.TIFF", plot = F1D, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("figures/F1D.TIFF", plot = F1D, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 Create scatterplots with linear and non-linear lines for individual regions of ToM network: 
@@ -1341,7 +1330,7 @@ F1E <- DF.roi %>%
 
 F1E
 
-ggsave("F1E.TIFF", plot = F1E, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("figures/F1E.TIFF", plot = F1E, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 
 ```
 
@@ -1436,7 +1425,7 @@ F2 <- tom_combined %>%
   theme(axis.text.y = element_blank())
 F2
 
-ggsave("F2.TIFF", plot = F2, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("figures/F2.TIFF", plot = F2, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 # 8. IDAQ scores and Pain Matrix activity {.tabset}
@@ -1458,7 +1447,7 @@ S4 <- DF.roi %>%
 
 S4 
 
-ggsave("S4.TIFF", plot = S4, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("figures/S4.TIFF", plot = S4, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 Create scatterplots with linear and non-linear lines for individual regions of the Pain Matrix: 
@@ -1478,7 +1467,7 @@ S5 <- DF.roi %>%
 
 S5 
 
-ggsave("S5.TIFF", plot = S5, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("figures/S5.TIFF", plot = S5, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 
@@ -1554,7 +1543,7 @@ S6 <- pain_combined %>%
 
 S6 
 
-ggsave("S6.TIFF", plot = S6, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("figures/S6.TIFF", plot = S6, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 
@@ -1569,7 +1558,7 @@ tom <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
       chains = 4,
       iter = 4000,
       seed = 42, #so the model is reproducible
-      file = "tom.RDS")
+      file = "models/control/tom.RDS")
 ```
 
 Summary:
@@ -1586,7 +1575,7 @@ pain <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
       chains = 4,
       iter = 4000,
       seed = 42, #so the model is reproducible
-      file = "pain.RDS")
+      file = "models/control/pain.RDS")
 ```
 
 Summary:
