@@ -396,8 +396,9 @@ end
 
 # 4. Analyses {.tabset}
 
-## 4.1 Example script for first-level analysis
-Example MATLAB script (dataset 3):
+## 4.1 First-level analysis 
+
+Example:
 ```{}
 %========================================================================
 %     SPM first-level analysis for fmriprep data in BIDS format
@@ -530,8 +531,6 @@ for i=1:length(sublist)
 end
 ```
 
-## 4.2 First-level analysis 
-Run the followin commands in the terminal.
 
 Dataset_1:
 ```{bash}
@@ -559,7 +558,7 @@ cd "/Volumes/Project0255/code/"
 matlab -batch "BIDS_SPM_firstlevel_tom_dataset4"
 ```
 
-## 4.3 Create group mask
+## 4.2 Second-level whole-brain analysis 
 Create a group average for the GM_probseg.nii for each dataset in Matlab (change the code per dataset; run this in MATLAB):
 ```{}
 clear all
@@ -590,8 +589,6 @@ matlabbatch{1}.spm.util.imcalc.options.dtype = 4;
 spm_jobman('run',matlabbatch);
 ```
 
-## 4.4 Example script for second-level whole-brain analysis
-Example MATLAB script (dataset 3):
 ```{}
 %========================================================================
 %     SPM second-level analysis for fmriprep data in BIDS format
@@ -704,7 +701,7 @@ spm_jobman('run',matlabbatch);
 
 ```
 
-## 4.5 Second-level whole-brain analysis 
+
 Run it seperately for the datasets:
 ```{bash}
 cd "/Volumes/Project0255/code/"
@@ -714,7 +711,7 @@ matlab -batch "BIDS_SPM_secondlevel_tom_dataset3"
 matlab -batch "BIDS_SPM_secondlevel_tom_dataset4"
 ```
 
-## 4.6 ToM fROI analysis  
+## 4.3 ToM fROI analysis  
 Run the following (ROI_extract.m) script in matlab (change the code per dataset and roi and contrast - run this in MATLAB):
 ```{}
 %========================================================================
@@ -761,8 +758,7 @@ for i=1:length(parcels)
 end
 ```
 
-## 4.7 Custom steps
-Add sub-201 and sub-202 to get the fROI data (different parameters, not included in the whole-brain analysis):
+Add sub-201 and sub-202 (different parameters so not combined in whole-brain group analysis):
 ```{bash}
 cd "/Volumes/Project0255/code/"
 matlab -batch "BIDS_SPM_secondlevel_tom_dataset2_201_202"
