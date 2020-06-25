@@ -164,7 +164,8 @@ DF.fa %>%
   ylab("accuracy (p)")+
   xlab("belief (b) or photograph (p)") +
   scale_fill_manual(values=c("#0072B2", "#D55E00")) +
-  theme(legend.position="none")
+  theme(legend.position="none") +
+  ylim(0, 1)
 ```
 
 

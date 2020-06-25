@@ -53,10 +53,10 @@ Data of the Theory-of-Mind functional localiser and Individual Differences in An
 Get info for table S1:
 ```{r}
 #load data
-DF.dataset1 <- read_tsv(file = "/dataset_1/participants.tsv")
-DF.dataset2 <- read_tsv(file = "/dataset_2/participants.tsv")
-DF.dataset3 <- read_tsv(file = "/dataset_3/participants.tsv")
-DF.dataset4 <- read_tsv(file = "/dataset_4/participants.tsv")
+DF.dataset1 <- read_tsv(file = "dataset_1/participants.tsv")
+DF.dataset2 <- read_tsv(file = "dataset_2/participants.tsv")
+DF.dataset3 <- read_tsv(file = "dataset_3/participants.tsv")
+DF.dataset4 <- read_tsv(file = "dataset_4/participants.tsv")
 
 #combine data
 bind_rows(DF.dataset1, DF.dataset2, DF.dataset3,  DF.dataset4, .id = "dataset") %>%
@@ -340,19 +340,19 @@ modality <- "bold"
 Run the following code. Change the script below to load the group results for the different datasets:
 ```{r}
 #load data
-DF.dataset1  <- read_tsv(file = paste("/Volumes/Project0255/dataset_1/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
+DF.dataset1  <- read_tsv(file = paste("dataset_1/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
   gather("measure", "value", 2:46) %>%
   select("bids_name","measure", "value")
 
-DF.dataset2 <- read_tsv(file = paste("/Volumes/Project0255/dataset_2/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
+DF.dataset2 <- read_tsv(file = paste("dataset_2/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
   gather("measure", "value", 2:46) %>%
   select("bids_name","measure", "value")
 
-DF.dataset3 <- read_tsv(file = paste("/Volumes/Project0255/dataset_3/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
+DF.dataset3 <- read_tsv(file = paste("dataset_3/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
   gather("measure", "value", 2:46) %>%
   select("bids_name","measure", "value")
 
-DF.dataset4 <- read_tsv(file = paste("/Volumes/Project0255/dataset_4/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
+DF.dataset4 <- read_tsv(file = paste("dataset_4/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
   gather("measure", "value", 2:46) %>%
   select("bids_name","measure", "value") 
 
@@ -787,17 +787,17 @@ sub_ex = c(206:212, 219, 221:222, 224:225, 228, 231, 233:234)
 
 Get the IDAQ data for all the participants:
 ```{r}
-#load data (/Volumes/Project0255/dataset_1/sourcedata/)
-DF.d1  <- read_csv(file = paste("IDAQ_dataset1.csv", sep ="")) %>%
+#load data 
+DF.d1  <- read_csv(file = "dataset_1/derivatives/IDAQ_dataset1.csv") %>%
   gather("sub", "value", 4:32)
 
-DF.d2  <- read_csv(file = paste("IDAQ_dataset2.csv", sep ="")) %>%
+DF.d2  <- read_csv(file = "dataset_2/derivatives/IDAQ_dataset2.csv") %>%
   gather("sub", "value", 4:38) 
 
-DF.d3  <- read_csv(file = paste("IDAQ_dataset3.csv", sep ="")) %>%
+DF.d3  <- read_csv(file = "dataset_3/derivatives/IDAQ_dataset3.csv") %>%
   gather("sub", "value", 4:25) 
 
-DF.d4  <- read_csv(file = paste("IDAQ_dataset4.csv", sep ="")) %>%
+DF.d4  <- read_csv(file = "dataset_4/derivatives/IDAQ_dataset4.csv") %>%
   gather("sub", "value", 4:25) 
 
 DF.idaq <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
@@ -817,7 +817,7 @@ DF.idaq %>%
   select(-scale, -subscale)  %>%
   spread(itemnr, value) %>%
   select(-sub, -dataset) %>%
-  alpha(na.rm = TRUE)
+  psych::alpha(na.rm = TRUE)
 ```
 
 ## 5.3 Reliability of IDAQ-NA
@@ -829,7 +829,7 @@ DF.idaq %>%
   select(-scale, -subscale)  %>%
   spread(itemnr, value) %>%
   select(-sub, -dataset) %>%
-  alpha(na.rm = TRUE)
+  psych::alpha(na.rm = TRUE)
 ```
 
 ## 5.4 Differences between datasets
@@ -990,7 +990,7 @@ summary(ord.2E) #prob = .99  for 99 credible intervals
 conditional_effects(ord.2E, "dataset", categorical = TRUE)
 ```
 
-9. Model 3 while excluding these participants (no convergence): 
+9. Model 3 while excluding these participants (does not convergence): 
 ```{r}
 ord.3E <- brm(
   value ~ 1 + cs(dataset) +
