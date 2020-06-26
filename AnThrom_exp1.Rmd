@@ -1,0 +1,1694 @@
+---
+title: "Testing the relation between dispositional anthropomorphism and Theory-of-Mind network activation"
+author: Ruud Hortensius and Michaela Kent
+output:
+  html_notebook:
+    number_sections: no
+    theme: default
+    toc: yes
+    toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+#### Project AnThroM: experiment 1 
+June 2019 - July 2020
+
+# 1. Details {.tabset}
+
+## 1.1 Libraries
+```{r, message=FALSE}
+library("psych")
+library("ordinal")
+library("brms")
+library("fs")
+library("patchwork") #devtools::install_github("thomasp85/patchwork")
+library("easystats") #devtools::install_github("easystats/easystats")
+library("sjPlot")
+library("httr")
+library("tidyverse")
+source("R_rainclouds.R") 
+source("summarySE.R")
+theme_set(theme_classic(base_size = 15)) 
+options(mc.cores = parallel::detectCores()) #run on multiple cores)
+```
+
+Note: for the code chunk the language is listed, but all except for r chunks are executed in the terminal   
+
+## 1.2 Data description
+
+Data of the Theory-of-Mind functional localiser and Individual Differences in Anthropomorphism Questionnaire are from five different studies.
+  
+ Dataset_1: Bangor Imaging Unit; EMBOTS; *n*=29 (including 1 pilot scan); full dataset and publication: [Cross...Hortensius (2019)   PTRB](https://royalsocietypublishing.org/doi/10.1098/rstb.2018.0034).  
+ 
+ Dataset_2: Centre for Cognitive NeuroImaging; SHAREDBOTS; *n*=35 (including 2 pilot scans) publication: Hortensius & Cross, in preparation.  
+ 
+ Dataset_3: Centre for Cognitive NeuroImaging; Two studies with the same parameters: *n*=22 (including 2 pilot scans). Social_Gradient_1; *n*=10 (pilot experiment) and BOLDlight; *n*=12.  
+ 
+ Dataset_4: Centre for Cognitive NeuroImaging; GAMEBOTS; *n*=22.  
+
+Get info for table S1:
+```{r}
+#load data
+DF.dataset1 <- read_tsv(file = "dataset_1/participants.tsv")
+DF.dataset2 <- read_tsv(file = "dataset_2/participants.tsv")
+DF.dataset3 <- read_tsv(file = "dataset_3/participants.tsv")
+DF.dataset4 <- read_tsv(file = "dataset_4/participants.tsv")
+
+#combine data
+bind_rows(DF.dataset1, DF.dataset2, DF.dataset3,  DF.dataset4, .id = "dataset") %>%
+  group_by(dataset) %>% 
+  summarise(mean = mean(age), 
+            sd = sd(age))
+
+bind_rows(DF.dataset1, DF.dataset2, DF.dataset3,  DF.dataset4, .id = "dataset") %>%
+  group_by(dataset, sex) %>% 
+  tally()
+```
+
+## 1.3 Neuroimaging procedure
+ 
+ All participants completed a Theory-of-Mind localiser ([Jacoby et al., 2016](https://www.sciencedirect.com/science/article/pii/S1053811915010472); [Richardson et al. 2018](https://www.nature.com/articles/s41467-018-03399-2)) and an anatomical scan either in the same session or in two seperate sessions. During the localiser participants passively viewed a short 5.6 min animated film ([Partly Cloudy](https://www.pixar.com/partly-cloudy#partly-cloudy-1)). This movie includes scenes depicting pain (e.g. an alligator biting the main character) and events that trigger mentalizing (e.g. the main character revealing its intention). For dataset_3 and dataset_4 a fieldmap was collected as well. At the end of each experiment participants completed the Individual Differences in Anthropomorphism Questionnaire (IDAQ) ([Waytz et al., 2010](https://journals.sagepub.com/doi/full/10.1177/1745691610369336)). 
+ 
+- BOLD:   
+ Dataset_1: 3x3x3.5mm voxels, 32 slices, repetition time = 2s, echo time = 30ms  
+ Dataset_2: 3mm isotropic, 37 slices, TR = 2s, TE = 30ms  
+ Dataset_3: 2mm isotropic, 68 slices, TR = 2s, TE = 26ms  
+ Dataset_4: 2.75 x 2.75 x 4mm, 32 slices, TR = 2s, TE = 13 and 31ms  
+ 
+- T1W:   
+ Dataset_1: 1mm isotropic resolution, TR = 12ms, TE = 3.47 / 5.15 / 6.83 / 8.52 / 10.20ms (SENSE)  
+ Dataset_2 - 4: 1mm isotropic resolution, TR = 2.3s, TE = 29.6ms (ADNI)  
+ 
+- Fieldmaps:   
+ Dataset_1: no, so --use-syn-sdc  
+ Dataset_2: no, so --use-syn-sdc  
+ Dataset_3: yes  
+ Dataset_4: yes  
+ 
+# 2. BIDS dataset {.tabset}
+
+## 2.1 Creating the BIDS dataset
+For this you need HeuDiConv [Heuristic DICOM Converter](https://github.com/nipy/heudiconv).  
+Based on the tutorial by [Franklin Feingold](http://reproducibility.stanford.edu/bids-tutorial-series-part-2a/).
+
+Dowload the latest version of Heudiconv (we used 0.6.0.dev1):
+```{bash}
+docker pull nipy/heudiconv:latest
+```
+
+If on the GRID do:
+```{bash}
+singularity pull docker://nipy/heudiconv:latest
+```
+
+Create the info file (dataset_2 - 4):
+```{bash}
+docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_3/sourcedata/sub-{subject}/*.IMA -o /base/dataset_3 -f convertall -s 315 -c none --overwrite
+```
+
+For dataset_1 we first need to convert the .dcm from jpeg-2000 lossless to uncompressed dcm (thanks to Michele Svanera for the code):
+```{pyton}
+python3 convert_all_compressed_dicom.py
+```
+
+Create the info file (dataset_1):
+```{bash}
+docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1 -f convertall -s 129 -ss 01 -c none --overwrite
+```
+
+Get the info file:
+```{bash}
+cp /Volumes/Project0255/code/.heudiconv/301/info/dicominfo.tsv /Volumes/Project0255/code
+```
+
+## 2.2 Create the heuristic file
+Create the following python file and save it in the code folder. There is one functional task (func_movie) and one anatomical (t1w). Dataset_3 and 4 have a field map as well (fmap_phase and fmap_magnitude) 
+
+Create a heuristic to automatically convert the files:
+```{python}
+import os
+def create_key(template, outtype=('nii.gz',), annotation_classes=None):
+    if template is None or not template:
+        raise ValueError('Template must be a valid format string')
+    return template, outtype, annotation_classes
+def infotodict(seqinfo):
+    """Heuristic evaluator for determining which runs belong where
+    allowed template fields - follow python string module:
+    item: index within category
+    subject: participant id
+    seqitem: run number during scanning
+    subindex: sub index within group
+    session: session id (only for dataset_1)
+    """
+    
+    t1w1 = create_key('sub-{subject}/{session}/anat/sub-{subject}_{session}_T1w')
+    func_movie1 = create_key('sub-{subject}/{session}/func/sub-{subject}_{session}_task-movie_bold')
+
+    t1w = create_key('sub-{subject}/anat/sub-{subject}_T1w')
+    func_movie = create_key('sub-{subject}/func/sub-{subject}_task-movie_bold')
+    func_movie_echo_1 = create_key('sub-{subject}/func/sub-{subject}_task-movie_echo-1_bold')
+    func_movie_echo_2 = create_key('sub-{subject}/func/sub-{subject}_task-movie_echo-2_bold')
+    fmap_phase = create_key('sub-{subject}/fmap/sub-{subject}_phasediff')
+    fmap_magnitude = create_key('sub-{subject}/fmap/sub-{subject}_magnitude')
+    
+    info = {t1w1: [], func_movie1: [], t1w: [], func_movie: [], fmap_phase: [], fmap_magnitude: [],
+            func_movie_echo_1: [], func_movie_echo_2: []} 
+    
+    for idx, s in enumerate(seqinfo):
+        if ('T1W_1mm_sag SENSE' in s.protocol_name):
+            info[t1w1].append(s.series_id)
+        if ('ToM_PartlyCloudy SENSE' in s.protocol_name):
+            info[func_movie1].append(s.series_id)
+        if ('t1_mpr_ns_sag_iso_ADNI_32ch' in s.protocol_name):
+            info[t1w].append(s.series_id)
+        if ('t1_mpr_ns_sag_P2_ADNI_32ch' in s.protocol_name):
+            info[t1w].append(s.series_id)
+        if (s.dim4 == 175) and ('FMRI_MB2_p2_2MMISO_TR2_movie' in s.protocol_name):
+            info[func_movie].append(s.series_id)
+        if (s.dim4 == 175) and ('FMRI_MB2_movie_p2_2MMISO_TR2' in s.protocol_name):
+            info[func_movie].append(s.series_id)
+        if (s.dim4 == 170) and ('ep2d_ToM_Loc' in s.protocol_name):
+            info[func_movie].append(s.series_id)
+        if (s.dim4 == 175) and ('ep2d_ToM_Loc' in s.protocol_name):
+            info[func_movie].append(s.series_id)
+        if (s.dim4 == 175) and ('ep2d_ToM_Loc_boldTR2' in s.protocol_name):
+            info[func_movie].append(s.series_id)
+        if (s.TE == 13) and ('BP_ep2d_multiecho_32ch_p3_TOM' in s.protocol_name):
+            info[func_movie_echo_1].append(s.series_id)
+        if (s.TE == 31.36) and ('BP_ep2d_multiecho_32ch_p3_TOM' in s.protocol_name):
+            info[func_movie_echo_2].append(s.series_id)
+        if (s.dim3 == 92) and ('gre_field_mapping_AAH' in s.protocol_name):
+            info[fmap_magnitude].append(s.series_id)
+        if (s.dim3 == 46) and ('gre_field_mapping_AAH' in s.protocol_name):
+            info[fmap_phase].append(s.series_id)
+        if (s.dim3 == 64) and ('gre_field_mapping_AAH' in s.protocol_name):
+            info[fmap_magnitude].append(s.series_id)
+        if (s.dim3 == 32) and ('gre_field_mapping_AAH' in s.protocol_name):
+            info[fmap_phase].append(s.series_id)
+    return info
+```
+
+Use the heuristic file to convert the Dicom files to .nii.gz (nifti) and create .json files:
+```{bash}
+docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_4/sourcedata/sub-{subject}/*.IMA -o /base/dataset_4 -f /base/code/heuristic_anthrom.py -s 401 -c dcm2niix -b --overwrite
+```
+
+For dataset_1 (for dataset_1 add ses-{session}/ and --ss 01 and .dcm). Movie for sub-101 and 102 is in ses-02:
+```{bash}
+docker run --rm -it -v /Volumes/Project0255/:/base nipy/heudiconv:latest -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1 -f /base/code/heuristic_anthrom.py -s 121 -ss 02 -c dcm2niix -b --overwrite
+```
+
+On the grid do (Sub-116 was done manually in dcm2niigui): 
+
+Type in bash before running
+
+Dataset_1:
+```{bash}
+singularity run -B /analyse/Project0255/:/base /analyse/Project0255/my_images/heudiconv_latest.sif -d /base/dataset_1/sourcedata/sub-{subject}/ses-{session}/*.dcm -o /base/dataset_1/ -f /base/code/heuristic_anthrom.py -s 116 -ss 01 -c dcm2niix -b --overwrite
+```
+
+Dataset_2 - 4:
+```{bash}
+singularity run -B /analyse/Project0255/:/base /analyse/Project0255/my_images/heudiconv_latest.sif -d /base/dataset_2/sourcedata/sub-{subject}/*.IMA -o /base/dataset_2/ -f /base/code/heuristic_anthrom.py -s 201 -c dcm2niix -b --overwrite
+```
+
+## 2.3 Anonymize the data 
+Deface using [Pydeface](https://github.com/poldracklab/pydeface):
+```{bash}
+#!/bin/bash
+
+set -e 
+####For loop that defaces the MRI per subject and replaces the old MRI with the new defaced MRI
+rootfolder=/Volumes/Project0255/dataset_4
+
+for subj in 401; do
+	echo "Defacing participant $subj"
+pydeface ${rootfolder}/sub-${subj}/anat/sub-${subj}_T1w.nii.gz
+rm -f ${rootfolder}/sub-${subj}/anat/sub-${subj}_T1w.nii.gz
+mv ${rootfolder}/sub-${subj}/anat/sub-${subj}_T1w_defaced.nii.gz ${rootfolder}/sub-${subj}/anat/sub-${subj}_T1w.nii.gz 
+done
+```
+
+For dataset_1:
+ses-01: 101 102 103 107 112 113 117 118 119 122 123 124 128
+ses-02: 104 105 106 108 109 110 111 115 116 120 121 125 126 127
+```{bash}
+#!/bin/bash
+
+set -e 
+rootfolder=/Volumes/Project0255/dataset_1
+
+for subj in 129; do
+	echo "Defacing participant $subj"
+for session in 01; do
+for echo in 1 2 3 4 5; do
+pydeface ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_echo-${echo}_T1w.nii.gz
+rm -f ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_echo-${echo}_T1w.nii.gz 
+mv ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_echo-${echo}_T1w_defaced.nii.gz ${rootfolder}/sub-${subj}/ses-${session}/anat/sub-${subj}_ses-${session}_echo-${echo}_T1w.nii.gz 
+done
+done
+done
+```
+
+## 2.4 Update the .json file for the fmaps for dataset_3 and dataset_4
+You need to specify “IntendedFor” field in the _phasediff.json files to point which scans the estimated fieldmap should be applied to.
+
+Run the following script (thanks to Michele Svanera for the code):
+```{python}
+python change_json.py
+```
+
+## 2.5 Combine the dual-echo runs for dataset_4
+For dataset_4 we need to combine the two echo's (see [NeuroStar](https://neurostars.org/t/fmriprep-does-not-combine-multi-echo-timeseries/3398/2) for more info. We created a dual_sum volume by adding the two images together (see [Halai et al. 2014](https://onlinelibrary.wiley.com/doi/full/10.1002/hbm.22463). 
+
+Run the following script (thanks to Tyler Morgan for the code):
+```{python}
+python sum_echo.py
+```
+
+## 2.6 Theory-of-Mind event protocols 
+Create tsv file for functional localiser. Event coding (in s; 10s of fixation before movie starts; accounting for hemodynamic lag) is based on Richardson et al. 2018 - reverse correlation analyses. 
+ 
+Note: For sub-322 the trigger was at the start of the movie (thus create a different tsv, with event - 10s).
+Check the triggers for dataset_1.
+```{r}
+PartlyCloudy <- data.frame(onset = c(86, 98, 120, 176, 238, 252, 300, 70, 92, 106, 136, 194, 210, 228, 262, 312), #create the events (same for every sub)
+                           duration = c(4, 6, 4, 16, 6, 8, 6, 4, 2, 4, 10, 4, 12, 6, 6, 4),
+                           trial_type = c(rep("mental",7), rep("pain",9)))
+
+#dataset_1
+for (sub in 102:129){ #note: localisers for sub-101 are in ses-02
+  filename = paste("/Volumes/Project0255/dataset_1/sub-", sub, "/ses-01/func/sub-", sub, "_ses-01_task-movie_events.tsv", sep ="")
+write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
+}
+#dataset_2
+for (sub in 201:235){ 
+  filename = paste("/Volumes/Project0255/dataset_2/sub-", sub, "/func/sub-", sub, "_task-movie_events.tsv", sep ="")
+write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
+}
+#dataset_3
+for (sub in 301:322){ #note: localisers for sub-322 should have t-10 (no trigger) <-manually correct this
+  filename = paste("/Volumes/Project0255/dataset_3/sub-", sub, "/func/sub-", sub, "_task-movie_events.tsv", sep ="")
+write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
+}
+#dataset_4
+for (sub in 401:422){ 
+  filename = paste("/Volumes/Project0255/dataset_4/sub-", sub, "/func/sub-", sub, "_task-movie_events.tsv", sep ="")
+write.table(PartlyCloudy, file = filename, sep="\t", row.names = FALSE, quote = FALSE)
+}
+```
+
+## 2.6 BIDS validation
+Use the BIDS-Validator to check if the dataset is BIDS compliant:
+```{bash}
+docker run -ti --rm -v /Volumes/Project0255/dataset_4:/data:ro bids/validator /data
+```
+
+# 3. fMRI preprocessing {.tabset}
+
+## 3.1 Run MRQIC
+MRIQC is a docker tool to do quality control of the data. More info [here](https://poldracklab.github.io/mriqc/).
+
+MRIQC 0.14.2 was used:
+```{bash}
+docker run -it --rm -v /Volumes/Project0255/dataset_1/:/data:ro -v /Volumes/Project0255/dataset_1/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out participant --participant-label 101 -m T1w bold --ica --fft-spikes-detector 
+```
+
+On the grid do (cd in /analyse folder):
+```{bash}
+singularity run --cleanenv /analyse/Project0255/my_images/mriqc-0.14.2.simg /analyse/Project0255/dataset_1 /analyse/Project0255/dataset_1/derivatives/mriqc participant --participant-label 123 -m T1w bold --ica --fft-spikes-detector -w /analyse/Project0255/work
+```
+
+Run it seperately for the datasets. Change participant to group to create the group reports:
+```{bash}
+docker run -it --rm -v /Volumes/Project0255/dataset_4/:/data:ro -v /Volumes/Project0255/dataset_4/derivatives/mriqc:/out poldracklab/mriqc:0.14.2 /data /out group
+```
+
+## 3.2 Compare MRIQC
+Plot the output. This is based on [MRIQCeption](https://github.com/elizabethbeard/mriqception). The MRIQCeption Visualization by Catherine Walsh was adapted. Adjust the filter if you want to look at different measures.
+
+Adjust this to your liking (e.g. bold: fd_mean, fd_perc, dvars_std, dvars_vstd, gcor, tsnr, t1w: cjv, cnr, snr, efc, inu, wm2max, fwhm) and modality (bold or t1w):
+```{r}
+QCmeasure <- "fd_mean" 
+modality <- "bold"
+```
+
+Run the following code. Change the script below to load the group results for the different datasets:
+```{r}
+#load data
+DF.dataset1  <- read_tsv(file = paste("dataset_1/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
+  gather("measure", "value", 2:46) %>%
+  select("bids_name","measure", "value")
+
+DF.dataset2 <- read_tsv(file = paste("dataset_2/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
+  gather("measure", "value", 2:46) %>%
+  select("bids_name","measure", "value")
+
+DF.dataset3 <- read_tsv(file = paste("dataset_3/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
+  gather("measure", "value", 2:46) %>%
+  select("bids_name","measure", "value")
+
+DF.dataset4 <- read_tsv(file = paste("dataset_4/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
+  gather("measure", "value", 2:46) %>%
+  select("bids_name","measure", "value") 
+
+#select the most relevant measures
+#selectionMeasure <- c("snr", "tsnr", "efc", "fber", "gsr_x", "gsr_y", "dvars_nstd", "dvars_std", "dvars_vstd", "gcor", "fd_mean", "fd_number", "fd_percentage", "spikes", "aor", "aqi")
+
+#combine data
+DF.full <- bind_rows(DF.dataset1, DF.dataset2, DF.dataset3,  DF.dataset4, .id = "dataset") %>%
+  group_by(dataset) %>% 
+  filter(measure == QCmeasure) #%in% c(selectionMeasure)) 
+
+#create raincloud plot (check out the [github](https://github.com/RainCloudPlots/) or [preprint](https://wellcomeopenresearch.org/articles/4-63/v1)
+p <- ggplot(DF.full,aes(x=dataset,y=value,fill=dataset))+
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .5, colour = NA)+
+  geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 20)+
+  geom_boxplot(aes(x=dataset,y=value),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+ 
+  #facet_wrap(. ~ dataset) +
+  theme_classic() + ylab(QCmeasure) + scale_fill_brewer(palette = "Reds") +
+  scale_colour_brewer(palette = "Reds") + ggtitle(paste("Comparison of", modality, "QC measure", QCmeasure, "between datasets")) +
+  facet_wrap(~measure)
+p
+```
+
+## 3.3 fMRIprep 
+fMRIprep is a docker tool for preprocessing of the fMRI data. More info [here](https://fmriprep.readthedocs.io/en/stable/#)
+
+fMRIprep version 1.5.2 was used on a local iMac.
+
+If you run into memory problems you can use --skip_bids_validation; skipped the --write-graph flag to save space, and --use-syn-sdc only for dataset_1 and datatset_2.
+
+If run on the GRID, cd into the analyse folder and run:
+```{bash}
+singularity run --cleanenv /analyse/Project0255/my_images/fmriprep-1.5.2.simg /analyse/Project0255/dataset_1/ /analyse/Project0255/dataset_1/derivatives participant --participant-label sub-129 --fs-license-file /analyse/Project0255/my_images/license.txt --skip_bids_validation --use-syn-sd --fs-no-reconall -w /analyse/Project0255/work/compute00
+```
+
+Resize functional files for two participants (sub-117 and sub-125) from dataset_1 (sub-{sub}_ses-01_task-movie_space-MNI152NLin2009cAsym_desc-preproc_bold.nii) to allow for group comparison (run this in MATLAB):
+```{}
+voxsiz = [3 3 3.5]; % new voxel size {mm}
+V = spm_select([1 Inf],'image');
+V = spm_vol(V);
+for i=1:numel(V)
+   bb        = spm_get_bbox(V(i));
+   VV(1:2)   = V(i);
+   VV(1).mat = spm_matrix([bb(1,:) 0 0 0 voxsiz])*spm_matrix([-1 -1 -1]);
+   VV(1).dim = ceil(VV(1).mat \ [bb(2,:) 1]' - 0.1)';
+   VV(1).dim = VV(1).dim(1:3);
+   spm_reslice(VV,struct('mean',false,'which',1,'interp',0)); % 1 for linear
+end
+```
+
+# 4. fMRI analyses {.tabset}
+
+## 4.1 Example script for first-level analysis
+Example MATLAB script (dataset 3):
+```{}
+%========================================================================
+%     SPM first-level analysis for fmriprep data in BIDS format
+%========================================================================
+%     This script is written by Ruud Hortensius and Michaela Kent
+%     (University of Glasgow). Based upon a script written by 
+%     Shengdong Chen (ACRLAB) and Stephan Heunis (TU Eindhoven).
+%
+%     Added: loop for runs
+%     Parameters as specified by Saxelab: https://saxelab.mit.edu/theory-mind-and-pain-matrix-localizer-movie-viewing-experiment
+%
+%     Last updated: January 2020
+%========================================================================
+
+clear all 
+
+%% Inputdirs
+BIDS = spm_BIDS('/Volumes/Project0255/dataset_3/'); % Parse BIDS directory (easier to query info from dataset)
+BIDSpreproc=fullfile(BIDS.dir,'derivatives/fmriprep'); % get the preprocessed directory
+
+%sublist = spm_BIDS(BIDS,'subjects') %number of subjects
+sublist = transpose(BIDS.participants.participant_id) %get subject list including the 'sub'
+subex = [] 
+sublist(subex) = []; %update the subjects
+
+taskid='movie'; %specify the task to be analysed
+
+numScans=175;  %The number of volumes per run <---
+
+TR = 2;     % Repetition time, in seconds <---
+unit='secs'; % onset times in secs (seconds) or scans (TRs)
+
+%% Outputdirs
+outputdir=fullfile(BIDS.dir,'derivatives/bids_spm/first_level');  % root outputdir for sublist
+spm_mkdir(outputdir,char(sublist), char(taskid)); % create output directory
+
+%% Loop for sublist
+spm('Defaults','fMRI'); %Initialise SPM fmri
+spm_jobman('initcfg');  %Initialise SPM batch mode
+
+for i=1:length(sublist)
+    
+    
+    %% Output dirs where you save SPM.mat
+    subdir=fullfile(outputdir,sublist{i},taskid);
+    
+    %% Basic parameters
+    matlabbatch{1}.spm.stats.fmri_spec.dir = {subdir};
+    matlabbatch{1}.spm.stats.fmri_spec.timing.units = unit; % specified above
+    matlabbatch{1}.spm.stats.fmri_spec.timing.RT = TR; % specified above
+    matlabbatch{1}.spm.stats.fmri_spec.timing.fmri_t = 68; %<--- look into this
+    matlabbatch{1}.spm.stats.fmri_spec.timing.fmri_t0 = 34; %<--- look into this
+    
+    %% Load input files for task specilized
+    sub_inputdir=fullfile(BIDSpreproc,sublist{i},'func');
+    sub_inputdirA=fullfile(BIDSpreproc,sublist{i},'anat');
+    
+    %------------------------------------------------------------------
+    func=[sub_inputdir,filesep,sublist{i},'_task-',taskid,'_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz'];
+    func_nii=[sub_inputdir,filesep,sublist{i}, '_task-',taskid,'_space-MNI152NLin2009cAsym_desc-preproc_bold.nii'];
+    if ~exist(func_nii,'file'), gunzip(func)
+    end
+    run_scans = spm_select('Expand',func_nii);
+    
+    matlabbatch{1}.spm.stats.fmri_spec.sess(1).scans = cellstr(run_scans);
+    
+    % Load the condition files
+    events = spm_load([BIDS.dir,filesep,sublist{i},'/func/', sublist{i},'_task-',taskid,'_events.tsv']) %load TSV condition file
+    
+    names{1} = 'mental';
+    t = strcmp(names{1}, events.trial_type)
+    onsets{1} = transpose(events.onset(t));
+    durations{1} = transpose(events.duration(t));
+    
+    names{2} = 'pain';
+    t = strcmp(names{2}, events.trial_type)
+    onsets{2} = transpose(events.onset(t));
+    durations{2} = transpose(events.duration(t));
+    
+    file_mat = [subdir,filesep,sublist{i},'_task-',taskid,'_conditions.mat'];
+    save(file_mat, 'names', 'onsets', 'durations')
+    matlabbatch{1}.spm.stats.fmri_spec.sess(1).cond = struct('name', {}, 'onset', {}, 'duration', {}, 'tmod', {}, 'pmod', {}, 'orth', {});
+    matlabbatch{1}.spm.stats.fmri_spec.sess(1).multi = {file_mat};
+    
+    % Confounds file
+    confounds=spm_load([sub_inputdir,filesep,sublist{i},'_task-',taskid,'_desc-confounds_regressors.tsv'])  ;
+    confounds_matrix=[confounds.framewise_displacement, confounds.a_comp_cor_00,confounds.a_comp_cor_01,confounds.a_comp_cor_02,confounds.a_comp_cor_03, confounds.a_comp_cor_04,confounds.a_comp_cor_05, confounds.trans_x, confounds.trans_y, confounds.trans_z, confounds.rot_x, confounds.rot_y, confounds.rot_z];
+    confounds_name=[subdir,filesep,sublist{i},'_task-',taskid,'_acomcorr.txt'];
+    
+    confounds_matrix(isnan(confounds_matrix)) = 0 % nanmean(confounds_matrix); %check this <-----
+    
+    if ~exist(confounds_name,'file'), dlmwrite(confounds_name,confounds_matrix)
+    end
+    matlabbatch{1}.spm.stats.fmri_spec.sess(1).multi_reg = {confounds_name};
+    matlabbatch{1}.spm.stats.fmri_spec.sess(1).hpf = 128; % High-pass filter (hpf) without using consine
+    
+    %% Model  (Default)
+    matlabbatch{1}.spm.stats.fmri_spec.fact = struct('name', {}, 'levels', {});
+    matlabbatch{1}.spm.stats.fmri_spec.bases.hrf.derivs = [0 0];
+    matlabbatch{1}.spm.stats.fmri_spec.volt = 1;
+    matlabbatch{1}.spm.stats.fmri_spec.global = 'Scaling';
+    mask=[sub_inputdirA,filesep,sublist{i},'_space-MNI152NLin2009cAsym_label-GM_probseg.nii.gz'];
+    mask_nii=[sub_inputdirA,filesep,sublist{i},'_space-MNI152NLin2009cAsym_label-GM_probseg.nii'];
+    
+    if ~exist(mask_nii,'file'), gunzip(mask)
+    end
+    mask_nii=[mask_nii, ',1']
+    matlabbatch{1}.spm.stats.fmri_spec.mask = {mask_nii};
+    matlabbatch{1}.spm.stats.fmri_spec.mthresh = 0.8;
+    matlabbatch{1}.spm.stats.fmri_spec.cvi = 'none';
+    
+    %% Model estimation (Default)subdir
+    matlabbatch{2}.spm.stats.fmri_est.spmmat = {[subdir filesep 'SPM.mat']};
+    matlabbatch{2}.spm.stats.fmri_est.write_residuals = 0;
+    matlabbatch{2}.spm.stats.fmri_est.method.Classical = 1;
+    
+    %% Contrasts
+    matlabbatch{3}.spm.stats.con.spmmat = {[subdir filesep 'SPM.mat']};
+    % Set contrasts of interest.
+    matlabbatch{3}.spm.stats.con.consess{1}.tcon.name = 'mental_pain';
+    matlabbatch{3}.spm.stats.con.consess{1}.tcon.convec = [1 -1 0 0 0 0 0 0 0 0 0 0 0 0 0];
+    matlabbatch{3}.spm.stats.con.consess{2}.tcon.name = 'pain_mental';
+    matlabbatch{3}.spm.stats.con.consess{2}.tcon.convec = [-1 1 0 0 0 0 0 0 0 0 0 0 0 0 0];
+    matlabbatch{3}.spm.stats.con.delete = 0;
+    
+    %% Run matlabbatch jobs
+    spm_jobman('run',matlabbatch);
+    
+end
+```
+
+## 4.2 First-level analysis 
+Run the followin commands in the terminal.
+
+Dataset_1:
+```{bash}
+cd "/Volumes/Project0255/code/"
+matlab -batch "BIDS_SPM_firstlevel_tom_dataset1"
+matlab -batch "BIDS_SPM_firstlevel_tom_dataset1_ppn101"
+matlab -batch "BIDS_SPM_firstlevel_tom_dataset1_ppn114"
+```
+
+Dataset_2:
+```{bash}
+cd "/Volumes/Project0255/code/"
+matlab -batch "BIDS_SPM_firstlevel_tom_dataset2_ppn201_202"
+```
+
+Dataset_3:
+```{bash}
+cd "/Volumes/Project0255/code/"
+matlab -batch "BIDS_SPM_firstlevel_tom_dataset3"
+```
+
+Dataset_4:
+```{bash}
+cd "/Volumes/Project0255/code/"
+matlab -batch "BIDS_SPM_firstlevel_tom_dataset4"
+```
+
+## 4.3 Create group mask
+Create a group average for the GM_probseg.nii for each dataset in Matlab (change the code per dataset; run this in MATLAB):
+```{}
+clear all
+
+spm('Defaults','fMRI');
+spm_jobman('initcfg');  
+
+BIDS = spm_BIDS('/Volumes/Project0255/dataset_3'); %change this
+BIDSfirst=fullfile(BIDS.dir,'derivatives/fmriprep'); 
+
+sublist = transpose(BIDS.participants.participant_id) 
+subex = [] %subjects that don't have an anatomical (14 dataset_1)
+sublist(subex) = []; 
+
+for i=1:length(sublist)
+    subdir=fullfile(BIDSfirst,sublist{i}, 'anat')
+    matlabbatch{1}.spm.util.imcalc.input{i,1} = [subdir, filesep, sublist{i}, '_space-MNI152NLin2009cAsym_label-GM_probseg.nii,1']
+end
+matlabbatch{1}.spm.util.imcalc.output = 'dataset3_averageGM';
+matlabbatch{1}.spm.util.imcalc.outdir = {'/Volumes/Project0255/dataset_3/derivatives/fmriprep'}; %change this
+matlabbatch{1}.spm.util.imcalc.expression = 'mean(X)';
+matlabbatch{1}.spm.util.imcalc.var = struct('name', {}, 'value', {});
+matlabbatch{1}.spm.util.imcalc.options.dmtx = 1;
+matlabbatch{1}.spm.util.imcalc.options.mask = 0;
+matlabbatch{1}.spm.util.imcalc.options.interp = 1;
+matlabbatch{1}.spm.util.imcalc.options.dtype = 4;
+
+spm_jobman('run',matlabbatch);
+```
+
+## 4.4 Example script for second-level whole-brain analysis
+Example MATLAB script (dataset 3):
+```{}
+%========================================================================
+%     SPM second-level analysis for fmriprep data in BIDS format
+%========================================================================
+%     This script is written by Ruud Hortensius and Michaela Kent 
+%     (University of Glasgow) 
+%
+%     Last updated: January 2020
+%========================================================================
+
+
+clear all
+
+%% Inputdirs
+BIDS = spm_BIDS('/Volumes/Project0255/dataset_3'); % Parse BIDS directory (easier to query info from dataset)
+BIDSfirst=fullfile(BIDS.dir,'derivatives/bids_spm/first_level'); % get the first-level directory
+
+sublist = transpose(BIDS.participants.participant_id) %get subject list including the 'sub'
+subex = [] %subjects that don't have a second-session
+sublist(subex) = []; %update the subjects
+
+%nsession = spm_BIDS(BIDS,'sessions') %how many sessions? careful, sometimes collapsing across sessions not wanted
+%sessionid = 'ses-01' %get session id
+
+taskid='movieHC'; %specify the task to be analysed
+
+contrast='con_0001'; %specify the contrast to be analysed
+contrast_name='mental_hc'; %specify the name of the contrast
+
+smoothing = 1; %soomthing of first-level contrasts (1=yes, 0=no)
+s_kernel = [5 5 5]
+
+%% Outputdirs
+outputdir=fullfile(BIDS.dir,'derivatives/bids_spm/second_level', char(contrast_name));  % root outputdir for sublist
+spm_mkdir(outputdir); % create output directory 
+
+spm('Defaults','fMRI'); %Initialise SPM fmri
+spm_jobman('initcfg');  %Initialise SPM batch mode
+
+
+%% Smoothing of first-level contrasts
+if smoothing == 1
+    for i=1:length(sublist)
+        subdir=fullfile(BIDSfirst,sublist{i}, taskid);
+        matlabbatch{1}.spm.spatial.smooth.data{i,1} = [subdir, filesep, contrast, '.nii,1'];
+        matlabbatch{1}.spm.spatial.smooth.fwhm = s_kernel;
+        matlabbatch{1}.spm.spatial.smooth.dtype = 0;
+        matlabbatch{1}.spm.spatial.smooth.im = 0;
+        matlabbatch{1}.spm.spatial.smooth.prefix = 's';
+    end
+    spm_jobman('run',matlabbatch);
+    
+    clear matlabbatch
+end
+
+
+%% Load the contrasts
+matlabbatch{1}.spm.stats.factorial_design.dir = {outputdir};
+
+for i=1:length(sublist)
+    subdir=fullfile(BIDSfirst,sublist{i}, taskid);
+    if smoothing == 1
+        matlabbatch{1,1}.spm.stats.factorial_design.des.t1.scans{i,1} = [subdir, filesep, 's', contrast, '.nii,1']
+    else
+        matlabbatch{1,1}.spm.stats.factorial_design.des.t1.scans{i,1} = [subdir, filesep, contrast, '.nii,1']
+    end
+end
+
+matlabbatch{1}.spm.stats.factorial_design.cov = struct('c', {}, 'cname', {}, 'iCFI', {}, 'iCC', {});
+matlabbatch{1}.spm.stats.factorial_design.multi_cov = struct('files', {}, 'iCFI', {}, 'iCC', {});
+matlabbatch{1}.spm.stats.factorial_design.masking.tm.tm_none = 1;
+matlabbatch{1}.spm.stats.factorial_design.masking.im = 1;
+matlabbatch{1}.spm.stats.factorial_design.masking.em = {''};
+matlabbatch{1}.spm.stats.factorial_design.globalc.g_omit = 1;
+matlabbatch{1}.spm.stats.factorial_design.globalm.gmsca.gmsca_no = 1;
+matlabbatch{1}.spm.stats.factorial_design.globalm.glonorm = 1;
+
+%% Model estimation 
+matlabbatch{2}.spm.stats.fmri_est.spmmat = {[outputdir filesep 'SPM.mat']};
+matlabbatch{2}.spm.stats.fmri_est.write_residuals = 0;
+matlabbatch{2}.spm.stats.fmri_est.method.Classical = 1;
+
+%% Contrast
+%--------------------------------------------------------------------------
+matlabbatch{3}.spm.stats.con.spmmat = {[outputdir filesep 'SPM.mat']};
+matlabbatch{3}.spm.stats.con.consess{1}.tcon.name = contrast_name;
+matlabbatch{3}.spm.stats.con.consess{1}.tcon.weights = 1;
+matlabbatch{3}.spm.stats.con.consess{1}.tcon.sessrep = 'none';
+matlabbatch{3}.spm.stats.con.delete = 0;
+
+%% Results
+%--------------------------------------------------------------------------
+matlabbatch{4}.spm.stats.results.spmmat = {[outputdir filesep 'SPM.mat']};
+matlabbatch{4}.spm.stats.results.conspec.titlestr = '';
+matlabbatch{4}.spm.stats.results.conspec.contrasts = 1;
+matlabbatch{4}.spm.stats.results.conspec.threshdesc = 'none';
+matlabbatch{4}.spm.stats.results.conspec.thresh = 0.001;
+matlabbatch{4}.spm.stats.results.conspec.extent = 5;
+matlabbatch{4}.spm.stats.results.conspec.conjunction = 1;
+matlabbatch{4}.spm.stats.results.conspec.mask.image.name = {'/Volumes/Project0255/dataset_3/derivatives/fmriprep/dataset3_averageGM.nii,1'};
+matlabbatch{4}.spm.stats.results.conspec.mask.image.mtype = 0;
+matlabbatch{4}.spm.stats.results.units = 1;
+matlabbatch{4}.spm.stats.results.export{1}.pdf = true;
+matlabbatch{4}.spm.stats.results.export{2}.jpg = true;
+matlabbatch{4}.spm.stats.results.export{3}.csv = true;
+matlabbatch{4}.spm.stats.results.export{4}.tspm.basename = contrast_name;
+
+%% Run matlabbatch jobs
+spm_jobman('run',matlabbatch);
+
+```
+
+## 4.5 Second-level whole-brain analysis 
+Run it seperately for the datasets:
+```{bash}
+cd "/Volumes/Project0255/code/"
+matlab -batch "BIDS_SPM_secondlevel_tom_dataset1"
+matlab -batch "BIDS_SPM_secondlevel_tom_dataset2"
+matlab -batch "BIDS_SPM_secondlevel_tom_dataset3"
+matlab -batch "BIDS_SPM_secondlevel_tom_dataset4"
+```
+
+## 4.6 ToM fROI analysis  
+Run the following (ROI_extract.m) script in matlab (change the code per dataset and roi and contrast - run this in MATLAB):
+```{}
+%========================================================================
+%     fROI analysis for fmriprep data in BIDS format
+%========================================================================
+%     This script is written by  Michaela Kent and Ruud Hortensius
+%     (University of Glasgow) 
+%
+%     Last updated: January 2020
+%========================================================================
+clear all
+%add marsbar to path
+marsbar('on')
+
+%% Inputdirs
+BIDS = spm_BIDS('/Volumes/Project0255/dataset_4'); % parse BIDS directory (easier to query info from dataset)
+BIDSsecond=fullfile(BIDS.dir,'derivatives/bids_spm/second_level'); % get the second-level directory
+
+contrastid = 'mental' %can be either mental (vs. pain) or pain (vs. mental)
+networkid = 'tom' %can be either tom (theory-of-mind) or pain (pain matrix)
+
+%% Outputdirs
+outputdir=fullfile(BIDS.dir,'derivatives/roi', networkid);  % root outputdir for sublist
+spm_mkdir(outputdir); % create output directory 
+
+%% Load design matrix
+spm_name = spm_load(fullfile(BIDSsecond, filesep, contrastid , 'SPM.mat'))
+D  = mardo(spm_name);
+
+
+%% Load rois
+parcels = dir(fullfile(BIDS.dir,'derivatives/parcels/', networkid))
+parcels = struct2cell(parcels(arrayfun(@(x) ~strcmp(x.name(1),'.'),parcels)))
+parcels(2:6,:) = []
+
+for i=1:length(parcels) 
+    roi = fullfile(BIDS.dir,'derivatives/parcels/',  networkid, parcels{i})
+    R  = maroi(roi);
+    % Fetch data into marsbar data object
+    mY  = get_marsy(R, D, 'mean');
+    roi_data = summary_data(mY); % get summary time course(s)
+    roi_name = [outputdir,filesep,parcels{i},'.tsv'];
+    dlmwrite(roi_name,roi_data);
+end
+```
+
+## 4.7 Custom steps
+Add sub-201 and sub-202 to get the fROI data (different parameters, not included in the whole-brain analysis):
+```{bash}
+cd "/Volumes/Project0255/code/"
+matlab -batch "BIDS_SPM_secondlevel_tom_dataset2_201_202"
+matlab -batch "ROI_extract_201_202"
+```
+
+# 5. IDAQ {.tabset}
+
+## 5.1 Calculation of individual scores:
+Dataset 2: sub-206-212, 219, 221-22, 224-25, 228, 231, 233-34 completed a version with the scale ranging from 1-10 instead of 0-10. Analyses should be run with and without these participants:
+```{r}
+sub_ex = c(206:212, 219, 221:222, 224:225, 228, 231, 233:234)
+```
+
+Get the IDAQ data for all the participants:
+```{r}
+#load data 
+DF.d1  <- read_csv(file = "dataset_1/derivatives/IDAQ_dataset1.csv") %>%
+  gather("sub", "value", 4:32)
+
+DF.d2  <- read_csv(file = "dataset_2/derivatives/IDAQ_dataset2.csv") %>%
+  gather("sub", "value", 4:38) 
+
+DF.d3  <- read_csv(file = "dataset_3/derivatives/IDAQ_dataset3.csv") %>%
+  gather("sub", "value", 4:25) 
+
+DF.d4  <- read_csv(file = "dataset_4/derivatives/IDAQ_dataset4.csv") %>%
+  gather("sub", "value", 4:25) 
+
+DF.idaq <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
+  mutate(sub=gsub('sub-','',sub))%>%
+  transform(sub=as.integer(sub)) %>%
+  mutate(scale = as.factor(ifelse(scale == "IDAQ-NA", "IDAQNA", "IDAQ")))
+
+rm(DF.d1, DF.d2, DF.d3, DF.d4)
+```
+
+## 5.2 Reliability of IDAQ
+Check the reliability of the IDAQ scale:
+```{r}
+DF.idaq %>% 
+  filter(scale == "IDAQ") %>%
+  #filter(!sub %in% sub_ex) %>% 
+  select(-scale, -subscale)  %>%
+  spread(itemnr, value) %>%
+  select(-sub, -dataset) %>%
+  psych::alpha(na.rm = TRUE)
+```
+
+## 5.3 Reliability of IDAQ-NA
+Check the reliability of the IDAQ-NA scale:
+```{r}
+DF.idaq %>% 
+  filter(scale == "IDAQNA") %>%
+  filter(!sub %in%  sub_ex) %>% 
+  select(-scale, -subscale)  %>%
+  spread(itemnr, value) %>%
+  select(-sub, -dataset) %>%
+  psych::alpha(na.rm = TRUE)
+```
+
+## 5.4 Differences between datasets
+Test if there are differences in IDAQ and IDAQ-NA scores between datasets. 
+
+Before fitting any model we establish which link function we need to use. This code is taken from [Kevin Stadler's github]( https://kevinstadler.github.io/blog/bayesian-ordinal-regression-with-random-effects-using-brms/). In short, it uses the ordinal package to (quickly) find the link function that fits the data:
+```{r}
+cumulativemodelfit <- function(formula, data, links=c("logit", "probit", "cloglog", "cauchit"),
+    thresholds=c("flexible", "equidistant"), verbose=TRUE) {
+  names(links) <- links
+  names(thresholds) <- thresholds
+  llks <- outer(links, thresholds,
+    Vectorize(function(link, threshold)
+      # catch error for responses with 2 levels
+      tryCatch(ordinal::clm(formula, data=data, link=link, threshold=threshold)$logLik,
+        error = function(e) NA)))
+  print(llks)
+  if (verbose) {
+    bestfit <- which.max(llks)
+    cat("\nThe best link function is ", links[bestfit %% length(links)], " with a ",
+    thresholds[1 + bestfit %/% length(thresholds)], " threshold (logLik ", llks[bestfit],
+    ")\n", sep="")
+  }
+  invisible(llks)
+}
+```
+
+Run the analyse for the anthropomorphism subscale:
+```{r}
+DF.test = DF.idaq %>% 
+  filter(scale == "IDAQ") %>% 
+  mutate_all(as.factor) %>%
+  mutate(value = factor(value, levels=c(0:10), ordered=TRUE)) #add contrast coding?
+```
+
+Get the link function:
+```{r}
+cumulativemodelfit(value ~ 1, data=DF.test)
+```
+
+1. First cumulative ordinal model with dataset as fixed factor:
+```{r}
+ord.1 <- brm(
+  value ~ 1 + dataset,  
+  data  = DF.test,  
+  family  = cumulative("logit"),
+  file = 'models/control/ord.1~simple.RDS'
+) 
+```
+
+Get summary and marginal effects:
+```{r}
+summary(ord.1) #prob = .99  for 99 credible intervals
+conditional_effects(ord.1, "dataset", categorical = TRUE)
+plot(ord.1)
+```
+
+2. Second cumulative ordinal model with dataset as fixed factor and random intercepts for participant and itemnr:
+```{r}
+ord.2 <- brm(
+  value ~ 1 + dataset +
+    (1|sub) + (1|itemnr),   
+  data  = DF.test,  
+  family  = cumulative("logit"),
+  file = 'models/control/ord.2~random.RDS'
+) 
+```
+
+Get summary and marginal effects:
+```{r}
+summary(ord.2) #prob = .99  for 99 credible intervals
+conditional_effects(ord.2, "dataset", categorical = TRUE)
+plot(ord.2)
+```
+
+3. Category-specific model:
+```{r}
+ord.3 <- brm(
+  value ~ 1 + cs(dataset) +
+    (cs(1)|sub) + (cs(1)|itemnr),
+  data  = DF.test,  
+  family = acat("logit"),
+  file = 'models/control/ord.3~category.RDS'
+)  
+```
+
+Get summary and marginal effects:
+```{r}
+summary(ord.3) #prob = .99  for 99 credible intervals
+conditional_effects(ord.3, "dataset", categorical = TRUE)
+```
+
+4. Adjecent-category model without category-specific effects (to check if differences between model 2 and 3 are not due to different classes of ordinal models): 
+```{r}
+ord.4 <- brm(
+  value ~ 1 + dataset +
+    (1|sub) + (1|itemnr),
+  data  = DF.test,  
+  family = acat("logit"),
+  file = 'models/control/ord.4~category2.RDS'
+) 
+```
+
+Get summary and marginal effects: #should add 1|itemnr and 1|sub
+```{r}
+summary(ord.4) #prob = .99  for 99 credible intervals
+conditional_effects(ord.4, "dataset", categorical = TRUE)
+```
+
+5. Unequal variances model:
+```{r}
+ord.5 <- brm(
+  formula = bf(value ~ 1 + dataset) +
+    lf(disc ~ 0 + dataset, cmc = FALSE),
+  data = DF.test,
+  family  = cumulative("logit"),
+  file = 'models/control/ord.5~control.RDS'
+) 
+```
+
+Get summary and marginal effects:
+```{r}
+summary(ord.5) #prob = .99  for 99 credible intervals
+conditional_effects(ord.5, "dataset", categorical = TRUE)
+```
+
+6. Model comparison: 
+```{r}
+#modelC1 <- LOO(ord.1, ord.2, ord.3, ord.4, ord.5)
+#save(modelC1, file="models/control/modelC1.RData")
+load('modelC1.RData')
+modelC1 
+
+```
+
+7. Rerun winning model excluding the participants that completed the incorrect IDAQ version: 
+```{r}
+DF.test = DF.test %>% 
+  filter(!sub %in% sub_ex) 
+
+cumulativemodelfit(value ~ 1, data=DF.test)
+```
+
+8. Model 2 while excluding these participants: 
+```{r}
+ord.2E <- brm(
+  value ~ 1 + dataset +
+    (1|sub) + (1|itemnr),   
+  data  = DF.test,  
+  family = cumulative(link = "probit", threshold="equidistant"),
+  file = 'models/control/ord.2E~random.RDS'
+) 
+```
+
+Get summary and marginal effects:
+```{r}
+summary(ord.2E) #prob = .99  for 99 credible intervals
+conditional_effects(ord.2E, "dataset", categorical = TRUE)
+```
+
+9. Model 3 while excluding these participants (does not convergence): 
+```{r}
+ord.3E <- brm(
+  value ~ 1 + cs(dataset) +
+    (cs(1)|sub) + (cs(1)|itemnr),
+  data  = DF.test,  
+  family = acat(link = "probit", threshold="equidistant"),
+  file = 'models/control/ord.3E~category.RDS'
+)  
+
+summary(ord.3E)
+```
+
+Final output (Table S7):
+```{r}
+tab_model(
+  ord.2,ord.2E,
+  show.se = FALSE,
+  #collapse.se = TRUE,
+  #pred.labels = c("Intercept", "linear predictor", "quadratic predictor"),
+  dv.labels = c("cumulative ordinal model", "cumulative ordinal model (excluding 16 participants)"),
+  show.obs=FALSE
+)
+```
+
+## 5.5 IDAQ per subject
+Calculate the IDAQ per subject:
+```{r}
+DF.idaq <- DF.idaq %>%
+  group_by(sub,dataset, scale) %>%
+  summarise(score = sum(value, na.rm = TRUE)) %>%
+  ungroup()%>%
+  mutate_at(vars(-score),as.factor)
+```
+
+## 5.6 Visualise the scores
+Visualise the scores across the datasets and scales (Figure S1):
+```{r}
+idaq_sum <- summarySEwithin(DF.idaq, measurevar="score", betweenvars="dataset", withinvars= "scale", idvar="sub")
+
+FS1 <- DF.idaq %>%
+  group_by(sub,dataset, scale) %>%
+  ggplot(.,aes(x=dataset,y=score,fill=dataset, group = dataset))+
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
+  geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
+  geom_boxplot(aes(x=dataset,y=score),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
+  geom_point(data = idaq_sum, aes(x = dataset, y = score), position = position_nudge(.3), colour = "BLACK")+
+  geom_errorbar(data = idaq_sum, aes(x=dataset,y=score, ymin = score-ci, ymax = score+ci), position=position_nudge(x = .3, y = 0), width = .05)+
+  scale_fill_brewer(palette = "Greys") +
+  scale_colour_brewer(palette = "Greys") +
+  ylab(paste("score (0-150)")) + 
+  ggtitle(paste("IDAQ scores across datasets")) +
+  theme(legend.position="none") +
+  facet_wrap(~scale)
+FS1
+ggsave("figures/S1.TIFF", plot = FS1, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+
+```
+
+Visualise the scores for IDAQ scale only (Figure 1A):
+```{r}
+idaq_sum <- summarySEwithin(DF.idaq, measurevar="score", withinvars= "scale", idvar="sub")
+ 
+F1A <- DF.idaq %>%
+  filter(scale == "IDAQ") %>%
+  group_by(sub) %>%
+  ggplot(.,aes(x = 1, y=score, fill = "Black"))+
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
+  geom_point(aes(colour = dataset), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
+  geom_boxplot(aes(x=1,y=score),position=position_nudge(x = .12, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
+  geom_point(data = idaq_sum %>% filter(scale == "IDAQ"), aes(x = 0.95, y = score), position = position_nudge(.3), colour = "BLACK")+
+  geom_errorbar(data = idaq_sum %>% filter(scale == "IDAQ"), aes(x=0.95,y=score, ymin = score-ci, ymax = score+ci), position=position_nudge(x = .3, y = 0), width = .05)+
+  scale_fill_brewer(palette = "Greys") +
+  scale_colour_brewer(palette = "Greys") +
+  #theme_classic() + 
+  coord_fixed(ratio = 1/90) + 
+  ylab(paste("Dispositional anthropomorphism (0-150)")) + 
+  #ggtitle(paste("Dispositional anthropomorphism")) +
+  theme(legend.position="none") +
+  theme(
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+      
+  )
+F1A
+ggsave("figures/F1A.TIFF", plot = F1A, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+```
+
+## 5.7 Median and interquartile range per dataset
+Calculate the median IQR per dataset (table S2):
+```{r}
+DF.idaq %>%
+  #filter(!sub %in%  sub_ex) %>% 
+  group_by(sub,dataset, scale) %>%
+  summarise(score = sum(score)) %>%
+  group_by(scale) %>%
+  summarise(median = median(score),
+            iqr = IQR(score))
+```
+
+# 6. fROI results {.tabset}
+
+## 6.1 Data wrangling
+Create function to load the data for the different networks:
+```{r}
+roi_extract <- function(datasetno, substart, subend, network, nroi) {
+  
+  dir_ls(paste("dataset_", datasetno, "/derivatives/roi/", network, sep = ""), regexp = "\\.tsv$") %>% 
+    map_dfr(read.delim, sep = "\t", .id = "id", header = FALSE)  %>%
+    mutate(dataset = datasetno) %>%
+    mutate(network = network) %>%
+    mutate(network = str_extract(network, "tom|pain")) %>%
+    mutate(id = str_extract(id, "dmpfc|mmpfc|vmpfc|ltpj|rtpj|prec|amcc|lmfg|rmfg|ls2|rs2|linsula|rinsula")) %>%
+    rename(roi = id, contrast = V1) %>%
+    mutate(sub = rep(substart:subend, times=nroi, each=1)) %>%
+    select(5,3,4,1:2)
+} 
+```
+
+Load the data for the Theory-of-Mind network:
+```{r}
+DF.d1 <- roi_extract(1, 101, 129, "tom", 6)
+DF.d2.a <- roi_extract(2, 201, 202, "tom/201_202", 6)
+DF.d2.b <- roi_extract(2, 203, 235, "tom", 6)
+DF.d3 <- roi_extract(3, 301, 322, "tom", 6)
+DF.d4 <- roi_extract(4, 401, 422, "tom", 6)
+
+DF.temp <- bind_rows(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4) 
+```
+
+Load the data for the Pain Matrix:
+```{r}
+DF.d1 <- roi_extract(1, 101, 129, "pain", 7)
+DF.d2.a <- roi_extract(2, 201, 202, "pain/201_202/", 7)
+DF.d2.b <- roi_extract(2, 203, 235, "pain", 7)
+DF.d3 <- roi_extract(3, 301, 322, "pain", 7)
+DF.d4 <- roi_extract(4, 401, 422, "pain", 7)
+
+DF.roi <- bind_rows(DF.temp, DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4)
+
+rm(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4, DF.temp)
+```
+
+Reorder ROI names for plots:
+```{r}
+order <- c("rtpj", "ltpj", "prec", "vmpfc","mmpfc","dmpfc", "rs2", "ls2", "rinsula", "linsula", "rmfg", "lmfg", "amcc")  
+
+DF.roi <- DF.roi %>%
+  mutate_at(vars(-contrast),as.factor) %>%
+  group_by(sub, dataset) %>%
+  mutate(roi = fct_relevel(roi, order))
+```
+
+## 6.2 Theory-of-Mind network activation across datasets:
+Plot the ToM activity across regions and datasets (Figure S2):
+```{r}
+roi_sum <- summarySEwithin(DF.roi, measurevar="contrast", betweenvars="dataset", withinvars= c("roi","network"), idvar="sub")
+
+FS2 <- DF.roi %>%
+  filter(network == "tom") %>%
+  ggplot(.,aes(x=roi,y=contrast,fill=roi))+
+  geom_hline(yintercept = 0, color = "grey", linetype = 2) +
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, colour = "Black") +
+  geom_point(aes(colour = roi, fill = roi), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
+  geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
+  geom_point(data = roi_sum %>% filter(network == "tom"), aes(x = roi, y = contrast), position = position_nudge(.3), colour = "BLACK")+
+  geom_errorbar(data = roi_sum %>% filter(network == "tom"), aes(x=roi,y=contrast, ymin = contrast-ci, ymax = contrast+ci), position=position_nudge(x = .3, y = 0), width = .05)+
+  #theme_classic() + 
+  ylab(paste("contrast estimates (mental > pain)")) + 
+  scale_fill_brewer(palette = "Blues") +
+  scale_colour_brewer(palette = "Blues") + 
+  ggtitle(paste("Theory-of-Mind network contrasts estimates across datasets and regions")) + 
+  theme(legend.position="none") +
+  facet_wrap(~dataset) 
+FS2
+
+ggsave("figures/S2.TIFF", plot = FS2, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+```
+
+Plot the ToM activity across regions (Figure 1C):
+```{r}
+roi_sum <- summarySEwithin(DF.roi, measurevar="contrast", withinvars= c("roi","network"), idvar="sub")
+
+F1C <- DF.roi %>%
+  filter(network == "tom") %>%
+  ggplot(.,aes(x=roi,y=contrast,fill=roi))+
+  geom_hline(yintercept = 0, color = "grey", linetype = 2) +
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, colour = "Black") +
+  geom_point(aes(colour = roi, fill = roi), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
+  geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
+  geom_point(data = roi_sum %>% filter(network == "tom"), aes(x = roi, y = contrast), position = position_nudge(.3), colour = "BLACK")+
+  geom_errorbar(data = roi_sum %>% filter(network == "tom"), aes(x=roi,y=contrast, ymin = contrast-ci, ymax = contrast+ci), position=position_nudge(x = .3, y = 0), width = .05)+
+  #theme_classic() + 
+  ylab(paste("Theory-of-Mind network activation")) + 
+  scale_fill_brewer(palette = "Blues") +
+  scale_colour_brewer(palette = "Blues") + 
+  #ggtitle(paste("Theory-of-Mind network contrasts estimates across datasets and regions")) + 
+  theme(legend.position="none") 
+
+F1C
+
+ggsave("figures/F1C.TIFF", plot = F1C, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+```
+
+## 6.3 Differences in ToM activation between datasets:
+Test if for potential differences between datasets and rois:
+```{r}
+tom.compare <- brm(
+  formula = contrast ~ roi * dataset,
+  data = DF.roi %>% filter(network == "tom"),
+  #family  = cumulative("logit"),
+  file = 'models/control/tom.compare.RDS'
+) 
+
+summary(tom.compare)
+plot(tom.compare)
+conditional_effects(tom.compare)
+```
+
+```{r}
+tab_model(
+  tom.compare,
+  show.se = FALSE,
+  #collapse.se = TRUE,
+  #pred.labels = c("Intercept", "linear predictor", "quadratic predictor"),
+  #dv.labels = c("cumulative ordinal model", "cumulative ordinal model (excluding 16 participants)"),
+  show.obs=FALSE
+)
+```
+
+
+## 6.4 Pain Matrix activation across datasets
+Plot the Pain Matrix activity across regions and datasets (Figure S3):
+```{r}
+FS3 <- DF.roi %>%
+  filter(network == "pain") %>%
+  ggplot(.,aes(x=roi,y=contrast,fill=roi))+
+  geom_hline(yintercept = 0, color = "grey", linetype = 2) +
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, colour = "Black") +
+  geom_point(aes(colour = roi, fill = roi), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
+  geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
+  geom_point(data = roi_sum %>% filter(network == "pain"), aes(x = roi, y = contrast), position = position_nudge(.3), colour = "BLACK")+
+  geom_errorbar(data = roi_sum %>% filter(network == "pain"), aes(x=roi,y=contrast, ymin = contrast-ci, ymax = contrast+ci), position=position_nudge(x = .3, y = 0), width = .05)+
+  #theme_classic() + 
+  ylab(paste("contrast estimates (pain > mental)")) + 
+  scale_fill_brewer(palette = "Reds") +
+  scale_colour_brewer(palette = "Reds") + 
+  ggtitle(paste("Pain Matrix contrasts estimates across datasets and regions")) + 
+  theme(legend.position="none") +
+  facet_wrap(~dataset)
+FS3
+ggsave("figures/S3.TIFF", plot = FS3, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+```
+
+## 6.5 Differences in Pain Matrix activation between datasets:
+Test if for potential differences between datasets and rois:
+```{r}
+pain.compare <- brm(
+  formula = contrast ~ roi * dataset,
+  data = DF.roi %>% filter(network == "pain"),
+  #family  = cumulative("logit"),
+  file = 'models/control/pain.compare.RDS'
+) 
+
+summary(pain.compare)
+plot(pain.compare)
+conditional_effects(pain.compare)
+```
+
+```{r}
+tab_model(
+  pain.compare,
+  show.se = FALSE,
+  #collapse.se = TRUE,
+  #pred.labels = c("Intercept", "linear predictor", "quadratic predictor"),
+  #dv.labels = c("cumulative ordinal model", "cumulative ordinal model (excluding 16 participants)"),
+  show.obs=FALSE
+)
+```
+
+
+## 6.6 Combine IDAQ scores and ROI data:
+Create one DF:
+```{r}
+DF.roi <- DF.idaq %>% 
+  group_by(sub,dataset, scale) %>%
+  ungroup() %>% 
+  left_join(DF.roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
+  pivot_wider(names_from=scale, values_from = score) #
+```
+
+Center the variables for the formal analysis:
+```{r}
+DF.roi$cent_IDAQNA <- scale(DF.roi$IDAQNA, scale = TRUE)
+DF.roi$cent_IDAQ <- scale(DF.roi$IDAQ, scale = TRUE)
+DF.roi <- DF.roi %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, scale =TRUE)) #scale per roi (analyses are done per roi)
+```
+
+# 7. IDAQ scores and ToM activity {.tabset}
+
+## 7.1 Plot ToM and IDAQ
+Create scatterplots with linear and non-linear lines for ToM network: 
+```{r}
+
+
+F1D <- DF.roi %>%
+  filter(network == "tom") %>%
+  ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
+  coord_fixed(ratio = 1/1) +
+  labs(
+    x="Dispositional anthropomorphism",
+    y="Theory-of-Mind network activation"
+  ) #+ theme_classic()
+
+F1D 
+
+ggsave("figures/F1D.TIFF", plot = F1D, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+```
+
+Create scatterplots with linear and non-linear lines for individual regions of ToM network: 
+```{r}
+F1E <- DF.roi %>%
+  filter(network == "tom") %>%
+  ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
+  coord_fixed(ratio = 1/1) +
+  facet_wrap(~roi, ncol = 6) +
+  labs(
+    x="Dispositional anthropomorphism",
+    y="Theory-of-Mind network activation"
+  ) + theme_classic() 
+
+F1E
+
+ggsave("figures/F1E.TIFF", plot = F1E, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+
+```
+
+
+## 7.2 Create a function for the Bayesian regression models:
+
+For the formal analysis we will test a linear and quadratic relationship between IDAQ and ToM network activity:
+```{r}
+DF.roi$cent_IDAQ2 <- DF.roi$cent_IDAQ^2
+```
+
+We run the models with uninformative (default) priors and create a function to run it for each region separately:
+```{r}
+reg_model <- function(region){
+  brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
+      data = DF.roi %>% filter(roi == region),
+      family = gaussian,
+      chains = 4,
+      iter = 4000,
+      seed = 42, #so the model is reproducible
+      file = paste0(region, ".RDS"))
+}
+```
+
+## 7.3 Run the ToM regression models:
+Run the models for the ToM network first. It will load the model if it is already calculated:
+```{r}
+rtpj <- reg_model("rtpj")
+ltpj <- reg_model("ltpj")
+prec <- reg_model("prec")
+vmpfc <- reg_model("vmpfc")
+mmpfc <- reg_model("mmpfc")
+dmpfc <- reg_model("dmpfc")
+```
+
+Get the summaries (verbatim, run individually):
+```{r}
+summary(rtpj)
+summary(ltpj)
+summary(prec)
+summary(vmpfc)
+summary(mmpfc)
+summary(dmpfc)
+```
+
+## 7.4 ToM model output:
+Use sjPlot to create html tables following [procedure outlined here](https://strengejacke.github.io/sjPlot/articles/tab_bayes.html):
+```{r}
+tab_model(
+  rtpj,ltpj,prec,vmpfc,mmpfc,dmpfc,
+  show.se = TRUE,
+  #collapse.se = TRUE,
+  pred.labels = c("Intercept", "linear predictor", "quadratic predictor"),
+  dv.labels = c("rtpj", "ltpj","prec","vmpfc","mmpfc","dmpfc"),
+  show.obs=FALSE
+)
+```
+
+## 7.5 Posterior plots:
+Create plots based on [this tutorial](https://www.rensvandeschoot.com/tutorials/r-linear-regression-bayesian-using-brms/):
+```{r}
+tom_combined <- bind_rows("rtpj" = as_tibble(as.mcmc(rtpj,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE)),
+                          "ltpj" = as_tibble(as.mcmc(ltpj, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "prec" = as_tibble(as.mcmc(prec, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "vmpfc" = as_tibble(as.mcmc(vmpfc, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "mmpfc" = as_tibble(as.mcmc(mmpfc, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "dmpfc" = as_tibble(as.mcmc(dmpfc, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          .id = "roi")
+
+order <- c("rtpj", "ltpj", "prec", "vmpfc","mmpfc","dmpfc", "rs2", "ls2", "rinsula", "linsula", "rmfg", "lmfg", "amcc")  
+
+tom_combined <- tom_combined %>%
+  rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
+  pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
+  mutate(roi = fct_relevel(roi, order[1:6]))
+```
+
+Plot the distributions:
+```{r}
+F2 <- tom_combined %>%
+  mutate_at(vars(-value),as.factor) %>%
+  rename(predictor = varIDAQ) %>%
+  ggplot(., aes(value, fill = predictor)) +
+  geom_density(alpha = .5)+
+  geom_vline(xintercept = 0, color = "black", linetype = 2) +
+  ggtitle(paste("Posterior distributions for the Theory-of-Mind network")) + 
+  facet_wrap(~roi, ncol =1) +
+  coord_fixed(ratio = 1/40) +
+  theme_classic(base_size = 8) +
+  theme(strip.background = element_blank()) +
+  scale_fill_manual(values=c("#0072B2", "#D55E00"))+ 
+  theme(axis.text.y = element_blank())
+F2
+
+ggsave("figures/F2.TIFF", plot = F2, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+```
+
+# 8. IDAQ scores and Pain Matrix activity {.tabset}
+
+## 8.1 Plot Pain Matrix and IDAQ
+Create scatterplots with linear and non-linear lines for the Pain Matrix: 
+```{r}
+S4 <- DF.roi %>%
+  filter(network == "pain") %>%
+  ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
+  #coord_fixed(ratio = 25/1) +
+  labs(
+    x="IDAQ score",
+    y="contrast (pain vs mental)"
+  ) + theme_classic()
+
+S4 
+
+ggsave("figures/S4.TIFF", plot = S4, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+```
+
+Create scatterplots with linear and non-linear lines for individual regions of the Pain Matrix: 
+```{r}
+S5 <- DF.roi %>%
+  filter(network == "pain") %>%
+  ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
+  #coord_fixed(ratio = 25/1) +
+  labs(
+    x="IDAQ score",
+    y="contrast (pain vs mental)"
+  ) + theme_classic() +
+  facet_wrap(~roi, nrow = 2)
+
+S5 
+
+ggsave("figures/S5.TIFF", plot = S5, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+```
+
+
+## 8.2 Regression models for the Pain Matrix:
+Run the models for the Pain Matrix (control network). It will load the model if it is already calculated:
+```{r}
+rs2 <- reg_model("rs2")
+ls2 <- reg_model("ls2")
+rinsula <- reg_model("rinsula")
+linsula <- reg_model("linsula")
+rmfg <- reg_model("rmfg")
+lmfg <- reg_model("lmfg")
+amcc <- reg_model("amcc")
+```
+
+Get the summaries (verbatim, run individually):
+```{r}
+summary(rs2)
+summary(ls2)
+summary(rinsula)
+summary(linsula)
+summary(rmfg)
+summary(lmfg)
+summary(amcc)
+```
+
+## 8.3 Pain Matrix model output:
+Use sjPlot to create html tables following [procedure outlined here](https://strengejacke.github.io/sjPlot/articles/tab_bayes.html):
+```{r}
+tab_model(
+  rs2,ls2,rinsula,linsula,rmfg,lmfg,amcc,
+  show.se = TRUE,
+  #collapse.se = TRUE,
+  pred.labels = c("Intercept", "linear predictor", "quadratic predictor"),
+  dv.labels = c("rs2","ls2","rinsula","linsula","rmfg","lmfg","amcc"),
+  show.obs=FALSE
+)
+```
+
+## 8.4 Posterior plots:
+Create plots based on [this tutorial](https://www.rensvandeschoot.com/tutorials/r-linear-regression-bayesian-using-brms/):
+```{r}
+pain_combined <- bind_rows("rs2" = as_tibble(as.mcmc(rs2,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE)),
+                          "ls2" = as_tibble(as.mcmc(ls2, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "rinsula" = as_tibble(as.mcmc(rinsula, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "linsula" = as_tibble(as.mcmc(linsula, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "rmfg" = as_tibble(as.mcmc(rmfg, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "lmfg" = as_tibble(as.mcmc(lmfg, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "amcc" = as_tibble(as.mcmc(amcc, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          .id = "roi")
+
+pain_combined <- pain_combined %>%
+  rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
+  pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
+  mutate(roi = fct_relevel(roi, order[7:13]))
+```
+
+Plot the distributions:
+```{r}
+S6 <- pain_combined %>%
+  mutate_at(vars(-value),as.factor) %>%
+  rename(predictor = varIDAQ) %>%
+  ggplot(., aes(value, fill = predictor)) +
+  geom_density(alpha = .5)+
+  geom_vline(xintercept = 0, color = "black", linetype = 2) +
+  ggtitle(paste("Posterior distributions for the Pain Matrix")) + 
+  facet_wrap(~roi, ncol =1) +
+  coord_fixed(ratio = 1/40) +
+  theme_classic(base_size = 8) +
+  theme(strip.background = element_blank()) +
+  scale_fill_manual(values=c("#0072B2", "#D55E00"))
+#theme(axis.text.y = element_blank())
+
+S6 
+
+ggsave("figures/S6.TIFF", plot = S6, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+```
+
+
+## 9 One model across the networks 
+
+## 9.1 Theory-of-Mind:
+All ToM regions combined:
+```{r}
+tom <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
+      data = DF.roi %>% filter(network == "tom"),
+      family = gaussian,
+      chains = 4,
+      iter = 4000,
+      seed = 42, #so the model is reproducible
+      file = "models/control/tom.RDS")
+```
+
+Summary:
+```{r}
+summary(tom)
+```
+
+## 9.2 Pain Matrix:
+All ToM regions combined:
+```{r}
+pain <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
+      data = DF.roi %>% filter(network == "pain"),
+      family = gaussian,
+      chains = 4,
+      iter = 4000,
+      seed = 42, #so the model is reproducible
+      file = "models/control/pain.RDS")
+```
+
+Summary:
+```{r}
+summary(pain)
+```
+
+## 9.3 Posterior plots for the two networks:
+
+```{r}
+tab_model(
+  tom, pain,
+  show.se = TRUE,
+  #collapse.se = TRUE,
+  pred.labels = c("Intercept", "linear predictor", "quadratic predictor"),
+  dv.labels = c("tom","pain"),
+  show.obs=FALSE
+)
+```
+
+## 9.4 Posterior plots for the two networks:
+
+```{r}
+tom_all <- bind_rows("all" = as_tibble(as.mcmc(tom,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE), .id = "network")  %>%
+                        rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
+                        pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
+                        mutate(network = "tom"))
+
+pain_all <- bind_rows("all" = as_tibble(as.mcmc(pain,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE), .id = "network")  %>%
+                        rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
+                        pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
+                        mutate(network = "pain"))
+
+tom_all %>% bind_rows(., pain_all) %>%
+  mutate_at(vars(-value),as.factor) %>%
+  rename(predictor = varIDAQ) %>%
+  ggplot(., aes(value, fill = predictor)) +
+  geom_density(alpha = .5)+
+  geom_vline(xintercept = 0, color = "black", linetype = 2) +
+  ggtitle(paste("Posterior distributions across the two networks")) + 
+  facet_wrap(~network) +
+  coord_fixed(ratio = 1/40) +
+  theme_classic(base_size = 16) +
+  scale_fill_manual(values=c("#0072B2", "#D55E00"))+ 
+  theme(strip.background = element_blank())
+```
+
+## 9.5 HDI+ROPE decision rule
+
+```{r}
+
+hdi_rope <- function(model){
+  rope <- rope_range(model)
+  rope_model <- equivalence_test(model, range = rope, ci = 0.95) 
+  #rope_model %>% mutate(roi = as.character(model$file))
+  plot(rope_model) + theme_classic() + 
+    ggtitle(deparse(substitute(model))) + 
+    xlim(-0.15,0.15) +  
+    theme(axis.title.y = element_blank(), axis.title.x = element_blank()) 
+    #scale_fill_manual(values=c("#0072B2", "#D55E00"))
+}
+
+hdi_rope(tom) + hdi_rope(pain) + plot_layout(guides = 'collect')  
+
+
+(hdi_rope(rtpj) / hdi_rope(ltpj) / hdi_rope(prec)) &
+(hdi_rope(vmpfc) / hdi_rope(mmpfc) / hdi_rope(dmpfc)) + plot_layout(guides = 'collect')  
+
+(hdi_rope(rtpj) | hdi_rope(ltpj)) /
+(hdi_rope(prec) | hdi_rope(vmpfc)) /
+(hdi_rope(mmpfc) | hdi_rope(dmpfc)) + plot_layout(guides = 'collect')  
+
+
+```
+
+# 10. Control analyses {.tabset}
+
+##10.1 Theory-of-Mind network
+Update the models by removing the 16 participants that completed a different version of the IDAQ (1-10). We create a function to do this:
+```{r}
+
+update_model <- function(model_old, region){
+  model_new <- update(model_old, newdata = DF.roi %>% filter(roi == region & !sub %in% sub_ex), seed = 41)
+  
+  m1 <- posterior_summary(model_old)[c("b_cent_IDAQ", "b_cent_IDAQ2") , "Estimate"]
+  m2 <- posterior_summary(model_new)[c("b_cent_IDAQ", "b_cent_IDAQ2") , "Estimate"]
+  
+  tibble(bias = round(100*((m1-m2)/m2), 2), predictor = c("b_cent_IDAQ", "b_cent_IDAQ2"))
+}
+```
+
+Calculate the difference (bias) per ToM region:
+```{r}
+rtpj_bias <- update_model(rtpj, "rtpj")
+ltpj_bias <- update_model(ltpj, "ltpj")
+prec_bias <- update_model(prec, "prec")
+vmpfc_bias <- update_model(vmpfc, "vmpfc")
+mmpfc_bias <- update_model(mmpfc, "mmpfc")
+dmpfc_bias <- update_model(dmpfc, "dmpfc")
+```
+
+##10.1 Pain Matrix
+Calculate the difference (bias) per Pain Matrix region:
+```{r}
+rs2_bias <- update_model(rtpj, "rs2")
+ls2_bias <- update_model(ltpj, "ls2")
+rinsula_bias <- update_model(prec, "rinsula")
+linsula_bias <- update_model(vmpfc, "linsula")
+rmfg_bias <- update_model(mmpfc, "rmfg")
+lmfg_bias <- update_model(dmpfc, "lmfg")
+amcc_bias <- update_model(dmpfc, "amcc")
+```
+
+```{r}
+sessionInfo()
+```
