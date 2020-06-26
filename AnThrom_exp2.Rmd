@@ -1,4 +1,6 @@
 ---
+title: "Exploring the relationship between anthropomorphism and Theory-of-Mind in brain and behaviour: Experiment 2"
+author: Ruud Hortensius and Michaela Kent
 output:
   html_notebook:
     number_sections: no
@@ -11,403 +13,232 @@ output:
 editor_options: 
   chunk_output_type: inline
 ---
-#**AnThroM**
-**Experiment 2: testing the relation between situationa and dispositional anthropomorphism and Theory-of-Mind**  
-by *Ruud Hortensius and Michaela Kent (University of Glasgow) - June 2020 - ...*
+Testing the relationship between situational and dispositional anthropomorphism and Theory-of-Mind   
+June 2020 - July 2020
 
 # 1. Details {.tabset}
 
 ## 1.1 Preregistration
 The preregistration can be found here:
 
-## 1.2 Data description
-[short description]
-```{r}
-
-```
-
-
-## 1.3 Libraries
+## 1.2 Libraries
 ```{r, echo = TRUE, message=FALSE}
-library(fs)
 library(psych)
 library(patchwork)
 library(tidyverse)
 source("R_rainclouds.R") #/Volumes/Project0255/code
 source("summarySE.R")
-theme_set(theme_classic(base_size = 20)) 
+theme_set(theme_classic(base_size = 10)) 
 ```
 
-# 2. Rating task {.tabset}
+## 1.3 Data description
+[short description]
 
-## 2.1 Events for the movie
+
+# 2. Load the data {.tabset}
+The data can be downloaded from the [OSF project page](https://osf.io/a8pyr/)
+
+## 2.1 Load the prolific export file
+```{r, echo = TRUE, message = FALSE}
+DF.demo <- list.files("data/pilot",pattern="\\prolific*", full.names=TRUE) %>% 
+  map_dfr(read_csv) %>%
+  filter(status == "APPROVED")
+```
+
+## 2.2 Load the psychopy/pavlovia files
+```{r, echo = TRUE, message = FALSE}
+DF.exp2 <- list.files("data/pilot",pattern="\\PARTICIPANT*", full.names=TRUE) %>% 
+  map_dfr(read_csv)
+events <- read_csv("/Users/rh/PsyCloud/Technician/1_AnThrom/Experiment_2/task/pilot/events_pilot.csv") #can be removed for main experiment, corrected in psychopy
+```
+
+## 2.3 Get the rating task data
+
+-After each of the 16 “mental” or “pain” scenes, we will pause the film and will ask the participant to rate the extent to which they believe the characters of the film (a stork and a cloud) possess certain capacities. Participants rate if the character is able to “choose and control its own actions”, “be aware of itself and its thoughts and feelings”, “do what it wants”, and whether the character has “preferences and plans” and “feelings” on a scale from 1 (not at all) to 7 (very much). These items correspond to the definitions used by Waytz and colleagues (2010; 2018) for “free will”, “consciousness”, “a mind of its own”, “intentions”, and the “experience emotions”. 
+
+-After each of the 16 “mental” or “pain” scenes, we will pause the film and participants will be asked to what extent they feel capable of “imagining what the cloud will do next” and “thinking about what the cloud is doing and why” on a scale from 1 (not at all) to 7 (very much). These items correspond to the definitions used for “understood the character” and “feel capable of predicting it’s future behaviour” in the study of Waytz, Morewedge and colleagues (2010).  A 7-point scale instead of a 10-point scale is used to allow for presentation alongside the situational anthropomorphism items. 
+
 ```{r}
-events <- read_csv("/Users/rh/PsyCloud/Technician/1_AnThrom/Experiment_2/task/pilot/events_pilot.csv")
-events_cloud = c(4,5,14)
-```
-
-## 2.2 Rating data for the movie
-Explain it:
-```{r, echo = TRUE, message=FALSE}
-DF.rating <- dir_ls(paste("/Users/rh/PsyCloud/Technician/1_AnThrom/Experiment_2/data/pilot"), regexp = "\\.csv$") %>% 
-  map_dfr(read_csv, .id = "id") %>%
-  select("please type in a series of digits", "eventnr", "event_type",  "measure", "item", "focus", "key_resp_1.keys", "key_resp_2.keys", "slider.response")  %>%
-  rename_at(1,~"sub",3) %>%
-  mutate_at(vars(-key_resp_1.keys, -key_resp_2.keys, -slider.response),as.factor) %>%
-  mutate(response = coalesce(key_resp_1.keys, key_resp_2.keys, slider.response)) %>%
-  select(sub, measure, item, focus, response) %>%
+DF.rating <- DF.exp2 %>%
+  select("prolific_id", "eventnrM","event_typeM", "measure", "item", "focus", "key_resp_1.keys", "key_resp_2.keys")  %>%
+  mutate_at(vars(-key_resp_1.keys, -key_resp_2.keys),as.factor) %>%
+  mutate(response = coalesce(key_resp_1.keys, key_resp_2.keys)) %>%
+  select(-key_resp_1.keys, -key_resp_2.keys) %>%
   filter(!is.na(response) & !is.na(focus)) %>%
-  group_by(sub) %>%
-  mutate(trial_nr = c(1:length(response))) %>%
-  left_join(., events, by = "trial_nr")
+  group_by(prolific_id) %>%
+  mutate(trial_nr = c(1:length(response))) %>% #can be removed for main experiment, corrected in psychopy
+  select(-event_typeM, -eventnrM) %>% #can be removed for main experiment, corrected in psychopy
+  left_join(., events, by = "trial_nr") %>% #can be removed for main experiment, corrected in psychopy
+  mutate_at(vars(-response),as.factor)
 ```
 
-## 2.3 Visualise
+## 2.4 Get the IDAQ task data
+Participants will be asked to complete the Individual Differences in Anthropomorphism Questionnaire (IDAQ; Waytz, Cacioppo, et al., 2010) at the end of the study. This questionnaire consists of 15 anthropomorphic items for which participants provide a rating on the extent that natural entities, non-human animals, and technological devices have “free will”, “consciousness”, “a mind of its own”, “intentions”, and can “experience emotions”. The questionnaire has 15 additional nonanthropomorphic items (IDAQ-NA) for which participants provide a rating of functional features of a stimulus (good-looking, active, useful, lethargic, durable; e.g. to what extent is the average camera lethargic?). Responses are rated on a scale from 0 (not at all) to 10 (very much). 
+
+```{r}
+DF.idaq <- DF.exp2 %>%
+  select("prolific_id", "ItemNr", "Question", "Scale",  "idaq_s.rt" , "idaq_s.response", "idaqs.rt" , "idaqs.response") %>%
+  mutate(idaq_resp = coalesce(idaq_s.response, idaqs.response)) %>%
+  mutate(idaq_rt = coalesce(idaq_s.rt, idaqs.rt)) %>%
+  filter(!is.na(idaq_resp)) %>%
+  select(-idaq_s.rt, -idaq_s.response, -idaqs.rt, -idaqs.response)
+```
+
+## 2.5 Get the false belief task data
+Participants will be asked to indicate if a short statement about the false-belief or false-photograph story is true (1) or false (2). 
+```{r}
+DF.fa <- DF.exp2 %>%
+  select("prolific_id", "p_b", "trials_fb.thisIndex",  "key_resp_fb.keys" , "key_resp_fb.rt", "CorrectAns")  %>%
+  rename(fa_resp = key_resp_fb.keys, item_number = trials_fb.thisIndex, rt = key_resp_fb.rt) %>%
+  mutate_at(vars(),as.factor) %>%
+  filter(!is.na(p_b)) %>%
+  mutate(acc = ifelse(fa_resp == CorrectAns, 1, 0)) 
+```
+
+## 2.5 Get the prediction data
+After 4:02 minutes the film will be paused, and participants will be asked to describe in one or two sentences what they think will happen next (to a maximum of 2000 characters including spaces). This serves as an attention check and a future exploratory measure.
+
+```{r}
+DF.prediction <- DF.exp2 %>%
+  select("prolific_id", "prediction", "key_resp_6.keys") %>%
+  filter(!is.na(key_resp_6.keys)) %>%
+  select(-key_resp_6.keys)
+```
+
+Participants will be asked to indicate if they have seen the film before (1-yes, 2-no).
+```{r}
+DF.seen <- DF.exp2 %>%
+  select("prolific_id", "key_resp_seen.keys") %>%
+  rename(seen = key_resp_seen.keys) %>%
+  filter(!is.na(seen)) 
+```
+
+# 3. Data exclusion: {.tabset}
+The following criteria are used to exclude participants:
+
+## 3.1 Attention check:
+Participants who fail the attention check, i.e. participant who do not make a prediction during the movie (no characters typed);
+
+```{r}
+excluded_participants <- DF.prediction %>% filter(is.na(prediction)) %>% select(prolific_id) 
+```
+
+## 3.2 No variability in ratings:
+Participants who show no variability in their ratings across the event numbers of the film, i.e. a standard deviation of <0.5;
 
 ```{r}
 DF.rating %>%
-  filter(event_nr != "end") %>%
-  group_by(sub, measure, focus, event_type) %>%
-  summarise(rating = mean(response)) %>%
-  ggplot(., aes(x=event_type, y=rating, fill = focus)) +
-  geom_point(aes(colour = event_type), position=position_jitter(width = .05), size = 1, shape = 21, colour = "Black") +
-  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
-  geom_boxplot(aes(x=event_type,y=rating),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
-  ylab("rating")+
-  xlab("mental or pain") +
-  scale_fill_manual(values=c("#0072B2", "#D55E00")) +
-  theme(legend.position="none") +
-  facet_wrap(~measure)
-```
-
-```{r}
-DF.rating %>%
-  filter(event_nr != "end") %>%
-  group_by(sub, measure) %>%
+  group_by(prolific_id, measure) %>%
   summarise(ratingSD = sd(response)) %>%
   ggplot(., aes(x=measure, y=ratingSD, fill = measure)) +
-  geom_point(aes(colour = measure), position=position_jitter(width = .05), size = 1, shape = 21, colour = "Black") +
-  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
+  geom_point(aes(colour = measure), position=position_jitter(width = .02), size = 1, shape = 21, colour = "Black") +
   geom_boxplot(aes(x=measure,y=ratingSD),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
-  ylab("rating")+
-  xlab("mental or pain") +
+  geom_hline(yintercept = 0.5, color = "grey", linetype = 2) +
+  annotate("text", x = 0.75, y = 0.6, label = "Preregistered exclusion criteria") +
+  ylab("Standard deviation rating")+
+  xlab("measure") +
+  ylim(0,4)+
   scale_fill_manual(values=c("#0072B2", "#D55E00")) +
   theme(legend.position="none") 
 ```
-
-
 ```{r}
-DF.rating <- dir_ls(paste("/Users/rh/PsyCloud/Technician/1_AnThrom/Experiment_2/data/pilot"), regexp = "\\.csv$") %>% 
-  map_dfr(read_csv, .id = "id") %>%
-  select("please type in a series of digits", "eventnr", "event_type",  "measure", "item", "focus", "key_resp_1.rt", "key_resp_2.rt", "slider.response")  %>%
-  rename_at(1,~"sub",3) %>%
-  mutate_at(vars(-key_resp_1.rt, -key_resp_2.rt, -slider.response),as.factor) %>%
-  mutate(response = coalesce(key_resp_1.rt, key_resp_2.rt, slider.response)) %>%
-  select(sub, measure, item, focus, response) %>%
-  filter(!is.na(response) & !is.na(focus)) %>%
-  group_by(sub) %>%
-  mutate(trial_nr = c(1:length(response))) %>%
-  left_join(., events, by = "trial_nr")
+DF.rating %>%
+  group_by(prolific_id, measure) %>%
+  summarise(ratingSD = sd(response)) %>%
+  filter(ratingSD <= 0.5) %>%
+  select(prolific_id)
+```
 
-test <- DF.rating %>%
-  filter(event_nr != "end") %>%
-  group_by(sub, measure) %>%
-  summarise(rating = mean(response)) %>%
-  ggplot(., aes(x=event_type, y=rating, fill = focus)) +
-  geom_point(aes(colour = event_type), position=position_jitter(width = .05), size = 1, shape = 21, colour = "Black") +
-  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
-  geom_boxplot(aes(x=event_type,y=rating),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
-  ylab("rating")+
-  xlab("mental or pain") +
+
+## 3.3 Click through:
+Participants who click through the rating task, i.e. with a mean response duration < 1sec, or through the IDAQ questionnaire, i.e. with total duration of < 2min; 
+
+## 3.4 Accuracy:
+Participants who have an accuracy of 50% or lower for the false belief task;
+```{r}
+DF.fa %>%
+  group_by(prolific_id, p_b) %>%
+  summarise(acc = mean(acc),
+            rt = mean(rt)) %>%
+  mutate_at(vars(-acc, -rt), as.factor) %>%
+  ggplot(., aes(x=p_b, y=acc, fill = p_b)) +
+  geom_point(aes(colour = p_b), position=position_jitter(width = .05), size = 1, shape = 21, colour = "Black") +
+  geom_boxplot(aes(x=p_b,y=acc),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+
+  ylab("accuracy (p)")+
+  xlab("belief (b) or photograph (p)") +
+  geom_hline(yintercept = 0.5, color = "grey", linetype = 2) +
+  annotate("text", x = 0.75, y = 0.53, label = "Preregistered exclusion criteria") +
   scale_fill_manual(values=c("#0072B2", "#D55E00")) +
   theme(legend.position="none") +
-  facet_wrap(~measure)
+  ylim(0, 1.3)
 ```
-
-
-# 3. False belief task {.tabset}
-
-## 3.1 Load the correct answers
-
-```{r}
-fa_ca <- read_csv("/Users/rh/PsyCloud/Technician/1_AnThrom/Experiment_2/task/false_belief_correct_answers.csv")  %>%
-  select("item_number", "CA") 
-```
-
-
-## 3.1 Load the data
-
-```{r, echo = TRUE, message=FALSE}
-DF.fa <- dir_ls(paste("/Users/rh/PsyCloud/Technician/1_AnThrom/Experiment_2/data/pilot"), regexp = "\\.csv$") %>% 
-  map_dfr(read_csv, .id = "id") %>%
-  select("please type in a series of digits", "p_b", "trials_fb.thisIndex",  "key_resp_fb.keys")  %>%
-  rename_at(1,~"sub",3) %>%
-  rename(fa_resp = key_resp_fb.keys, item_number = trials_fb.thisIndex) %>%
-  mutate_at(vars(),as.factor) %>%
-  filter(!is.na(fa_resp)) %>%
-  left_join(., fa_ca, by = "item_number") %>%
-  mutate(acc = ifelse(fa_resp == CA, 1, 0)) %>%
-  group_by(sub, p_b) %>%
-  summarise(acc = mean(acc)) %>%
-  ungroup()%>%
-  mutate_at(vars(-acc), as.factor)
-```
-
-## 3.2 Plot the data:
+## 3.5 Missing data: 
+Participants who do not finish the task or who have 5 or more missing responses for the False Belief task or IDAQ questionnaire will be excluded.
 
 ```{r}
 DF.fa %>%
+  group_by(prolific_id) %>%
+  summarise(missing = sum(is.na(fa_resp)))%>%
+  filter(missing >= 5) %>%
+  select(prolific_id) 
+```
+
+The incomplete sessions will be removed when combining the data frames. 
+
+# 4. Visualise data {.tabset}
+
+## 4.1 Rating task
+
+```{r}
+DF.rating %>%
+  group_by(prolific_id, measure, focus, event_typeM) %>%
+  summarise(rating = mean(response)) %>%
+  ggplot(., aes(x=event_typeM, y=rating, fill = focus)) +
+  geom_point(aes(colour = event_typeM), position=position_jitter(width = .05), size = 1, shape = 21, colour = "Black") +
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
+  geom_boxplot(aes(x=event_typeM,y=rating),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
+  ylab("rating")+
+  xlab("mental or pain") +
+  scale_fill_manual(values=c("#0072B2", "#D55E00")) +
+  #theme(legend.position="none") +
+  facet_wrap(~measure)
+```
+
+## 4.2 False belief:
+
+```{r}
+fb1 <- DF.fa %>%
+    group_by(prolific_id, p_b) %>%
+  summarise(acc = mean(acc),
+            rt = mean(rt)) %>%
   ggplot(., aes(x=p_b, y=acc, fill = p_b)) +
   geom_point(aes(colour = p_b), position=position_jitter(width = .05), size = 1, shape = 21, colour = "Black") +
-  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = TRUE, alpha = .75, colour = "Black") +
   geom_boxplot(aes(x=p_b,y=acc),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
+  #geom_point(data = DF.fa.sum, aes(x = p_b, y = acc), position = position_nudge(.3), colour = "BLACK")+
+  #geom_errorbar(data = DF.fa.sum, aes(x=p_b,y=acc, ymin = acc-ci, ymax = acc+ci), position=position_nudge(x = .3, y = 0), width = .05)+
   ylab("accuracy (p)")+
   xlab("belief (b) or photograph (p)") +
   scale_fill_manual(values=c("#0072B2", "#D55E00")) +
-  theme(legend.position="none") +
-  ylim(0, 1)
-```
-
-
-
-
-# 4. IDAQ {.tabset}
-
-## 4.1 Calculation of individual scores:
-
-Get the IDAQ data for all the participants:
-```{r, echo = TRUE, message=FALSE}
-idaq <- read_csv("/Users/rh/PsyCloud/Technician/1_AnThrom/Experiment_2/task/idaq_scale.csv") 
-
-#load data (/Volumes/Project0255/dataset_1/sourcedata/)
-DF.idaq  <- read_csv(file = "/Users/rh/PsyCloud/Technician/1_AnThrom/Experiment_2/data/IDAQ_test.csv") %>%
-  pivot_longer(cols = desert_lethargic:dog_goodlooking, names_to = "item", values_to = "response") %>%
-  group_by(session) %>%
-  filter(!is.na(check) & !is.na(ended)) %>%
-  mutate(itemnr = c(1:30)) %>%
-  left_join(., idaq, by = "itemnr") %>%
-  mutate(duration = (ended - created)/60) %>%
-  ungroup()  %>%
-  select(check, duration, itemnr, scale, response)
-```
-
-## 4.2 Data exclusion and missing responses
-
-Participants who click through the IDAQ questionnaire, i.e. with total duration of < 2 min, and/or who have 5 or more missing responses will be excluded;
-```{r}
-DF.idaq %>% filter(duration <= 2.3) %>% group_by(check) %>% count()
-DF.idaq %>% filter(is.na(response)<= ) %>% group_by(check) %>% count()
-
-is.na(titanic_train)
-
-tapply(DF.idaq %>% filter(duration <= 2.3,length))
-group_by(eye_color, gender) %>%
-  tally()
-
-DF.idaq %>%
-  add_count(check) %>%
-  filter(duration <= 2.3)
-
-?tally
-
-DF.idaq <- DF.idaq %>%
-  filter(!duration <= 2 | )
-```
-
-Participants who have 5 or more missing responses for the IDAQ questionnaire will be excluded
-```{r}
-DF.idaq <- DF.idaq %>%
-  filter(duration <= 2)
-
-```
-
-## 4.3 Reliability of IDAQ
-Check the reliability of the IDAQ scale:
-```{r}
-DF.idaq %>% 
-  filter(scale == "IDAQ") %>%
-  #filter(!sub %in% sub_ex) %>% 
-  select(-scale, -subscale)  %>%
-  spread(itemnr, value) %>%
-  select(-sub) %>%
-  alpha()
-```
-
-## 5.3 Reliability of IDAQ-NA
-Check the reliability of the IDAQ-NA scale:
-```{r}
-DF.idaq %>% 
-  filter(scale == "IDAQNA") %>%
-  filter(!sub %in%  sub_ex) %>% 
-  select(-scale, -subscale)  %>%
-  spread(itemnr, value) %>%
-  select(-sub) %>%
-  alpha(na.rm = TRUE)
-```
-
-## 5.4 IDAQ per subject
-Calculate the IDAQ per subject:
-```{r}
-DF.idaq <- DF.idaq %>%
-  group_by(sub, scale) %>%
-  summarise(score = sum(value, na.rm = TRUE)) %>%
-  ungroup()%>%
-  mutate_at(vars(-score),as.factor)
-```
-
-## 5.5 Visualise the scores
-Visualise the scores across the datasets and scales:
-```{r}
-#idaq_sum <- summarySEwithin(DF.idaq, measurevar="score", betweenvars="dataset", withinvars= "scale", idvar="sub")
-
-p <- DF.idaq %>%
-  group_by(sub, scale) %>%
-  filter(scale == "IDAQ") %>%
-  ggplot(.,aes(x=scale,y=score,fill=scale, group = scale))+
-  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
-  geom_point(aes(colour = scale), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
-  geom_boxplot(aes(x=scale,y=score),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
-  #geom_errorbar(data = idaq_sum, aes(x=scale,y=score, ymin = score-ci, ymax = score+ci), position=position_nudge(x = .3, y = 0), width = .05)+
-  scale_fill_brewer(palette = "Blues") +
-  scale_colour_brewer(palette = "Blues") +
-  theme_classic() + 
-  ylab(paste("score (0-150)")) + 
-  ggtitle(paste("IDAQ scores across scales")) +
   theme(legend.position="none") 
-p
 ```
 
-## 5.6 Median and interquartile range 
-Calculate the median IQR per dataset (table S2):
 ```{r}
-DF.idaq %>%
-  #filter(!sub %in%  sub_ex) %>% 
-  group_by(sub, scale) %>%
-  summarise(score = sum(score)) %>%
-  group_by(scale) %>%
-  summarise(median = median(score),
-            iqr = IQR(score))
+fb2 <- DF.fa %>%
+  group_by(prolific_id, p_b) %>%
+  summarise(acc = mean(acc),
+            rt = mean(rt)) %>%
+  ggplot(., aes(x=p_b, y=rt, fill = p_b)) +
+  geom_point(aes(colour = p_b), position=position_jitter(width = .05), size = 1, shape = 21, colour = "Black") +
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
+  geom_boxplot(aes(x=p_b,y=rt),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
+  ylab("reaction times (s)")+
+  xlab("belief (b) or photograph (p)") +
+  scale_fill_manual(values=c("#0072B2", "#D55E00")) +
+  theme(legend.position="none") +
+  ylim(0,6)
 ```
 
-# 6. Combine Data and Transformations {.tabset}
-
-
-## 6.1 Combine IDAQ scores and ROI data:
-Create one DF:
 ```{r}
-DF.roi <- DF.idaq %>% 
-  group_by(sub,dataset, scale) %>%
-  ungroup() %>% 
-  left_join(DF.roi, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
-  pivot_wider(names_from=scale, values_from = score) #
+fb1 + fb2
 ```
-
-## 6.2 Combine IDAQ scores and ROI data:
-Center the variables for the formal analysis:
-```{r}
-DF.roi$cent_IDAQNA <- scale(DF.roi$IDAQNA, scale = TRUE)
-DF.roi$cent_IDAQ <- scale(DF.roi$IDAQ, scale = TRUE)
-DF.roi <- DF.roi %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, scale =TRUE)) #scale per roi (analyses are done per roi)
-```
-
-## 6.3 Create a quadratic predictor:
-
-For the formal analysis we will test a linear and quadratic relationship between anthropomorphism and ToM :
-```{r}
-DF.roi$cent_IDAQ2 <- DF.roi$cent_IDAQ^2
-```
-
-# 7. IDAQ scores and ToM activity {.tabset}
-
-## 7.1 Plot ToM and IDAQ
-Create scatterplots with linear and non-linear lines: 
-```{r}
-p1 <- DF.roi %>%
-  filter(network == "tom") %>%
-  ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
-  geom_point(alpha=0.5,show.legend = FALSE) +
-  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
-  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
-  coord_fixed(ratio = 1/1) +
-  labs(
-    x="IDAQ score",
-    y="contrast (mental vs pain)"
-  ) + theme_classic()
-
-p2 <- DF.roi %>%
-  filter(network == "tom") %>%
-  ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
-  geom_point(alpha=0.5,show.legend = FALSE) +
-  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
-  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
-  coord_fixed(ratio = 1/1) +
-  labs(
-    x="IDAQ score",
-    y="contrast (mental vs pain)"
-  ) + theme_classic() +
-  facet_wrap(~roi)
-
-p1 + p2
-```
-
-## 7.2 ToM regression models:
-We run the models with uninformative (default) priors and create a function to run it for each region separately:
-```{r}
-reg_model <- function(region){
-  brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
-      data = DF.roi %>% filter(roi == region),
-      family = gaussian,
-      chains = 4,
-      iter = 4000,
-      seed = 42, #so the model is reproducible
-      file = paste0(region, ".RDS"))
-}
-```
-
-## 7.3
-Create plots (different way):
-```{r}
-tom_combined <- bind_rows("rtpj" = as_tibble(as.mcmc(rtpj,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE)),
-                          "ltpj" = as_tibble(as.mcmc(ltpj, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
-                          "prec" = as_tibble(as.mcmc(prec, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
-                          "vmpfc" = as_tibble(as.mcmc(vmpfc, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
-                          "mmpfc" = as_tibble(as.mcmc(mmpfc, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
-                          "dmpfc" = as_tibble(as.mcmc(dmpfc, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
-                          .id = "roi")
-
-tom_combined <- tom_combined %>%
-  pivot_longer(c("b_cent_IDAQ", "b_cent_IDAQ2"),names_to = "varIDAQ") %>%
-  mutate(roi = fct_relevel(roi, order[1:6]))
-```
-
-Plot the distributions:
-```{r}
-ggplot(data = tom_combined, aes(value, fill = varIDAQ)) +
-  geom_density(alpha = .5)+
-  geom_vline(xintercept = 0, color = "black", linetype = 2) +
-  ggtitle(paste("Posterior distributions for the Theory-of-Mind network")) + 
-  facet_wrap(~roi, ncol =1) +
-  coord_fixed(ratio = 1/40) +
-  theme_classic(base_size = 8) +
-  theme(strip.background = element_blank()) +
-  scale_fill_manual(values=c("#0072B2", "#D55E00"))+ 
-  theme(axis.text.y = element_blank())
-```
-
-
-Get the summaries (do some wrangling):
-```{r}
-# load required packages
-library(devtools)
-library(sjPlot)
-library(insight)
-library(httr)
-
-rtpj <- tab_model(rtpj)
-ltpj <- tab_model(ltpj)
-prec <- tab_model(prec)
-vmpfc <- tab_model(vmpfc)
-mmpfc <- tab_model(mmpfc)
-dmpfc <- tab_model(dmpfc)
-tab_model(rtpj,ltpj,prec,vmpfc,mmpfc,dmpfc, show.obs=FALSE, show.aic = TRUE)
-
