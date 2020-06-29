@@ -25,12 +25,12 @@ June 2020 - July 2020
 The preregistration can be found here:
 
 ## 1.2 Libraries
-```{r, echo = TRUE, message=FALSE}
+```{r}
+source("R_rainclouds.R") #/Volumes/Project0255/code
+source("summarySE.R")
 library(psych)
 library(patchwork)
 library(tidyverse)
-source("R_rainclouds.R") #/Volumes/Project0255/code
-source("summarySE.R")
 theme_set(theme_classic(base_size = 10)) 
 ```
 
@@ -327,13 +327,18 @@ DF.idaq <- DF.idaq %>% filter(!prolific_id %in% excluded_participants$prolific_i
 ## 5.1 Rating task
 
 ```{r}
+rating_summary <- summarySEwithin(DF.rating, measurevar="response", withinvars= c("focus","measure", "event_typeM"), idvar="prolific_id")
+
+
 DF.rating %>%
-  group_by(prolific_id, measure, focus, event_typeM) %>%
+  pgroup_by(prolific_id, measure, focus, event_typeM) %>%
   summarise(rating = mean(response)) %>%
   ggplot(., aes(x=event_typeM, y=rating, fill = focus)) +
   geom_point(aes(colour = event_typeM), position=position_jitter(width = .05), size = 1, shape = 21, colour = "Black") +
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
   geom_boxplot(aes(x=event_typeM,y=rating),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
+  geom_point(data = rating_summary, aes(x = event_typeM, y = rating), position = position_nudge(.3), colour = "BLACK")+
+  geom_errorbar(data = rating_summary, aes(x=event_typeM,y=rating, ymin = rating-ci, ymax = rating +ci), position=position_nudge(x = .3, y = 0), width = .05)+
   ylab("rating")+
   xlab("mental or pain") +
   scale_fill_manual(values=c("#0072B2", "#D55E00")) +

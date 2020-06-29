@@ -24,6 +24,8 @@ June 2019 - July 2020
 
 ## 1.1 Libraries
 ```{r, message=FALSE}
+source("R_rainclouds.R") 
+source("summarySE.R")
 library("psych")
 library("ordinal")
 library("brms")
@@ -33,8 +35,6 @@ library("easystats") #devtools::install_github("easystats/easystats")
 library("sjPlot")
 library("httr")
 library("tidyverse")
-source("R_rainclouds.R") 
-source("summarySE.R")
 theme_set(theme_classic(base_size = 15)) 
 options(mc.cores = parallel::detectCores()) #run on multiple cores)
 ```
