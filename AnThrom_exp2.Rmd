@@ -7,16 +7,19 @@ output:
     theme: default
     toc: yes
     toc_float: yes
+    code_folding: show
   html_document:
     df_print: paged
     toc: yes
+    toc_float: yes
+    code_folding: show
 editor_options: 
   chunk_output_type: inline
 ---
 Testing the relationship between situational and dispositional anthropomorphism and Theory-of-Mind   
 June 2020 - July 2020
 
-# 1. Details {.tabset}
+# 1. Details {.tabset .tabset-fade .tabset-pills}
 
 ## 1.1 Preregistration
 The preregistration can be found here:
@@ -34,15 +37,14 @@ theme_set(theme_classic(base_size = 10))
 ## 1.3 Data description
 [short description]
 
-
-# 2. Load the data {.tabset}
+# 2. Load the data {.tabset .tabset-fade .tabset-pills}
 The data can be downloaded from the [OSF project page](https://osf.io/a8pyr/)
 
 ## 2.1 Load the prolific export file
 ```{r, echo = TRUE, message = FALSE}
 DF.demo <- list.files("data/pilot",pattern="\\prolific*", full.names=TRUE) %>% 
-  map_dfr(read_csv) %>%
-  filter(status == "APPROVED")
+  map_dfr(read_csv) %>% 
+  rename(prolific_id = participant_id)
 ```
 
 ## 2.2 Load the psychopy/pavlovia files
@@ -60,16 +62,17 @@ events <- read_csv("/Users/rh/PsyCloud/Technician/1_AnThrom/Experiment_2/task/pi
 
 ```{r}
 DF.rating <- DF.exp2 %>%
-  select("prolific_id", "eventnrM","event_typeM", "measure", "item", "focus", "key_resp_1.keys", "key_resp_2.keys")  %>%
-  mutate_at(vars(-key_resp_1.keys, -key_resp_2.keys),as.factor) %>%
+  select("prolific_id", "eventnrM","event_typeM", "measure", "item", "focus", "key_resp_1.keys", "key_resp_2.keys", "key_resp_1.rt", "key_resp_2.rt")  %>%
+  mutate_at(vars(-key_resp_1.keys, -key_resp_2.keys, -key_resp_1.rt, -key_resp_2.rt),as.factor) %>%
   mutate(response = coalesce(key_resp_1.keys, key_resp_2.keys)) %>%
-  select(-key_resp_1.keys, -key_resp_2.keys) %>%
+  mutate(rt = coalesce(key_resp_1.rt, key_resp_2.rt)) %>%
+  select(-key_resp_1.keys, -key_resp_2.keys,-key_resp_1.rt, -key_resp_2.rt) %>%
   filter(!is.na(response) & !is.na(focus)) %>%
   group_by(prolific_id) %>%
   mutate(trial_nr = c(1:length(response))) %>% #can be removed for main experiment, corrected in psychopy
   select(-event_typeM, -eventnrM) %>% #can be removed for main experiment, corrected in psychopy
   left_join(., events, by = "trial_nr") %>% #can be removed for main experiment, corrected in psychopy
-  mutate_at(vars(-response),as.factor)
+  mutate_at(vars(-response, -rt),as.factor)
 ```
 
 ## 2.4 Get the IDAQ task data
@@ -77,11 +80,11 @@ Participants will be asked to complete the Individual Differences in Anthropomor
 
 ```{r}
 DF.idaq <- DF.exp2 %>%
-  select("prolific_id", "ItemNr", "Question", "Scale",  "idaq_s.rt" , "idaq_s.response", "idaqs.rt" , "idaqs.response") %>%
+    select("prolific_id", "ItemNr", "Question", "Scale",  "idaq_s.rt" , "idaq_s.response", "idaqs.rt" , "idaqs.response", "key_resp_8.rt", "key_resp_12.rt") %>%
   mutate(idaq_resp = coalesce(idaq_s.response, idaqs.response)) %>%
-  mutate(idaq_rt = coalesce(idaq_s.rt, idaqs.rt)) %>%
-  filter(!is.na(idaq_resp)) %>%
-  select(-idaq_s.rt, -idaq_s.response, -idaqs.rt, -idaqs.response)
+  mutate(idaq_rt = coalesce(idaq_s.rt, idaqs.rt, key_resp_8.rt, key_resp_12.rt)) %>%
+  filter(!is.na(idaq_rt)) %>%
+  select(-idaq_s.rt, -idaq_s.response, -idaqs.rt, -idaqs.response, -key_resp_8.rt, -key_resp_12.rt)
 ```
 
 ## 2.5 Get the false belief task data
@@ -95,7 +98,7 @@ DF.fa <- DF.exp2 %>%
   mutate(acc = ifelse(fa_resp == CorrectAns, 1, 0)) 
 ```
 
-## 2.5 Get the prediction data
+## 2.5 Get the control data
 After 4:02 minutes the film will be paused, and participants will be asked to describe in one or two sentences what they think will happen next (to a maximum of 2000 characters including spaces). This serves as an attention check and a future exploratory measure.
 
 ```{r}
@@ -113,17 +116,50 @@ DF.seen <- DF.exp2 %>%
   filter(!is.na(seen)) 
 ```
 
-# 3. Data exclusion: {.tabset}
+# 3. Sample {.tabset .tabset-fade .tabset-pills}
+
+## 3.1 Number of approved participants
+```{r}
+DF.demo %>% 
+  group_by(status) %>%
+  tally() %>%
+  knitr::kable(., caption = "Breakdown prolific")
+```
+
+## 3.2 Age
+NB. This will be updated after data collection to account for structure of the representational sample 
+```{r}
+DF.demo %>% 
+  filter(status == "APPROVED") %>% 
+  summarise(mean = mean(age),
+            SD = sd(age)) %>%
+  knitr::kable(., caption = "Age")
+```
+
+## 3.3 Male/female
+NB. This will be updated after data collection to account for structure of the representational sample 
+```{r}
+DF.demo %>% 
+  filter(status == "APPROVED") %>% 
+  group_by(Sex) %>%
+  tally() %>%
+  knitr::kable(., caption = "Sex")
+```
+
+# 4. Data exclusion {.tabset .tabset-fade .tabset-pills}
 The following criteria are used to exclude participants:
 
-## 3.1 Attention check:
+## 4.1 Attention check:
 Participants who fail the attention check, i.e. participant who do not make a prediction during the movie (no characters typed);
 
 ```{r}
-excluded_participants <- DF.prediction %>% filter(is.na(prediction)) %>% select(prolific_id) 
+excluded_participants <- DF.prediction %>% 
+  filter(is.na(prediction)) %>% 
+  select(prolific_id) %>% 
+  mutate(reason = "attention_check")
 ```
 
-## 3.2 No variability in ratings:
+## 4.2 No variability in ratings:
 Participants who show no variability in their ratings across the event numbers of the film, i.e. a standard deviation of <0.5;
 
 ```{r}
@@ -137,30 +173,93 @@ DF.rating %>%
   annotate("text", x = 0.75, y = 0.6, label = "Preregistered exclusion criteria") +
   ylab("Standard deviation rating")+
   xlab("measure") +
+  ggtitle("Variability of ratings during the rating task") +
   ylim(0,4)+
   scale_fill_manual(values=c("#0072B2", "#D55E00")) +
   theme(legend.position="none") 
 ```
+
+Update the exclude participants list:
 ```{r}
-DF.rating %>%
+excluded_participants <- DF.rating %>%
   group_by(prolific_id, measure) %>%
   summarise(ratingSD = sd(response)) %>%
   filter(ratingSD <= 0.5) %>%
-  select(prolific_id)
+  select(prolific_id) %>%
+  mutate(reason = "variability_rating") %>%
+  bind_rows(., excluded_participants)
 ```
 
 
-## 3.3 Click through:
-Participants who click through the rating task, i.e. with a mean response duration < 1sec, or through the IDAQ questionnaire, i.e. with total duration of < 2min; 
+## 4.3 Click through:
+Participants who click through the rating task, i.e. with a mean response duration < 1sec:
 
-## 3.4 Accuracy:
+```{r}
+ctR <- DF.rating %>%
+  group_by(prolific_id, measure) %>%
+  summarise(rt = mean(rt)) %>%
+  ggplot(., aes(x=measure, y=rt, fill = measure)) +
+  geom_point(aes(colour = measure), position=position_jitter(width = .02), size = 1, shape = 21, colour = "Black") +
+  geom_boxplot(aes(x=measure,y=rt),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
+  geom_hline(yintercept = 1, color = "grey", linetype = 2) +
+  #annotate("text", x = 0.75, y = 1.15, label = "Preregistered exclusion criteria") +
+  ylab("Mean reaction time")+
+  xlab("measure") +
+  ggtitle("Reaction time during the rating task") +
+  scale_fill_manual(values=c("#0072B2", "#D55E00")) +
+  theme(legend.position="none") 
+```
+
+Participants who click through the IDAQ questionnaire, i.e. with total duration of < 1min; 
+```{r}
+ctI <-DF.idaq %>%
+  group_by(prolific_id) %>%
+  summarise(total = sum(idaq_rt)) %>%
+  ggplot(., aes(x=1, y=total, fill = "blue")) +
+  geom_point(aes(colour = Scale), position=position_jitter(width = .001), size = 1, shape = 21, colour = "Black") +
+  geom_boxplot(aes(x=1,y=total),position=position_nudge(x = .005, y = 0),outlier.shape = NA, alpha = .5, width = .005, colour = "black") +
+  geom_hline(yintercept = 60, color = "grey", linetype = 2) +
+  #annotate("text", x = 1.0002, y = 70, label = "Preregistered exclusion criteria") +
+  ylab("Mean completion time (sec)")+
+  ggtitle("IDAQ completion time") +
+    scale_fill_manual(values=c("#0072B2", "#D55E00")) +
+  theme(legend.position="none",     
+        axis.text.x = element_blank(),     
+        axis.ticks.x = element_blank(),
+        axis.title.x = element_blank()) 
+ 
+ctR + ctI
+```
+
+Update the exclude participants list (rating task):
+```{r}
+excluded_participants <- DF.rating %>%
+  group_by(prolific_id, measure) %>%
+  summarise(rt = mean(rt))  %>%
+  filter(rt < 1) %>%
+  select(prolific_id) %>%
+  mutate(reason = "duration_rating") %>%
+  bind_rows(., excluded_participants)
+```
+
+Update the exclude participants list (IDAQ):
+```{r}
+excluded_participants <- DF.idaq %>%
+  group_by(prolific_id) %>%
+  summarise(total = sum(idaq_rt))  %>%
+  filter(total < 60) %>%
+  select(prolific_id) %>%
+  mutate(reason = "duration_idaq") %>%
+  bind_rows(., excluded_participants)
+```
+
+## 4.4 Accuracy:
 Participants who have an accuracy of 50% or lower for the false belief task;
 ```{r}
 DF.fa %>%
   group_by(prolific_id, p_b) %>%
-  summarise(acc = mean(acc),
-            rt = mean(rt)) %>%
-  mutate_at(vars(-acc, -rt), as.factor) %>%
+  summarise(acc = mean(acc)) %>%
+  mutate_at(vars(-acc), as.factor) %>%
   ggplot(., aes(x=p_b, y=acc, fill = p_b)) +
   geom_point(aes(colour = p_b), position=position_jitter(width = .05), size = 1, shape = 21, colour = "Black") +
   geom_boxplot(aes(x=p_b,y=acc),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black")+
@@ -172,22 +271,60 @@ DF.fa %>%
   theme(legend.position="none") +
   ylim(0, 1.3)
 ```
-## 3.5 Missing data: 
-Participants who do not finish the task or who have 5 or more missing responses for the False Belief task or IDAQ questionnaire will be excluded.
 
+Update the exclude participants list:
+```{r}
+excluded_participants <- DF.fa %>%
+  group_by(prolific_id, p_b) %>%
+  summarise(acc = mean(acc)) %>%
+  filter(acc <= 0.5 & p_b == "b") %>%
+  select(prolific_id) %>%
+  mutate(reason = "fa_accuracy") %>%
+  bind_rows(., excluded_participants)
+```
+
+## 4.5 Missing data: 
+Participants who have 5 or more missing responses for the False Belief task will be excluded.
 ```{r}
 DF.fa %>%
   group_by(prolific_id) %>%
   summarise(missing = sum(is.na(fa_resp)))%>%
   filter(missing >= 5) %>%
-  select(prolific_id) 
+  select(prolific_id) %>%
+  mutate(reason = "fa_missing") %>%
+  bind_rows(., excluded_participants)
 ```
 
-The incomplete sessions will be removed when combining the data frames. 
+Participants who do not finish the task. The false belief is after the IDAQ and rating task or before the IDAQ.
+```{r}
+idaq_sub <- DF.idaq %>% select(prolific_id) %>% unique()
+fa_sub <- DF.fa %>% select(prolific_id) %>% unique()
 
-# 4. Visualise data {.tabset}
+excluded_participants <- anti_join(idaq_sub, fa_sub, by = "prolific_id") %>%  mutate(reason = "incomplete") %>%
+  bind_rows(., excluded_participants)
+```
 
-## 4.1 Rating task
+## 4.6 Excluded participants:
+```{r}
+excluded_participants %>%
+  group_by(reason) %>% 
+  tally() %>% 
+  knitr::kable(., caption = "Excluded participants")
+```
+
+# 4.5 Update all the tasks 
+```{r}
+DF.demo <- DF.demo %>% filter(!prolific_id %in% excluded_participants$prolific_id)
+DF.rating <- DF.rating %>% filter(!prolific_id %in% excluded_participants$prolific_id)
+DF.prediction <- DF.prediction %>% filter(!prolific_id %in% excluded_participants$prolific_id)
+DF.seen <- DF.seen %>% filter(!prolific_id %in% excluded_participants$prolific_id)
+DF.fa <- DF.fa %>% filter(!prolific_id %in% excluded_participants$prolific_id)
+DF.idaq <- DF.idaq %>% filter(!prolific_id %in% excluded_participants$prolific_id)
+```
+
+# 5. Visualise data {.tabset .tabset-fade .tabset-pills}
+
+## 5.1 Rating task
 
 ```{r}
 DF.rating %>%
@@ -204,7 +341,7 @@ DF.rating %>%
   facet_wrap(~measure)
 ```
 
-## 4.2 False belief:
+## 5.2 False belief:
 
 ```{r}
 fb1 <- DF.fa %>%

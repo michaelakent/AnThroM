@@ -7,9 +7,12 @@ output:
     theme: default
     toc: yes
     toc_float: yes
+    code_folding: show
   html_document:
     df_print: paged
     toc: yes
+    toc_float: yes
+    code_folding: show
 editor_options: 
   chunk_output_type: inline
 ---
