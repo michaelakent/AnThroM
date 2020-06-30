@@ -403,7 +403,7 @@ brm(
     (1 + event_type * focus | sub) + (1 + focus | event_number),   
   data = DF.rating,  
   family = cumulative("logit"),
-  priors = priors2,
+  priors = priors1,
   file = "modelC1.RDS")
 ```
 
@@ -417,7 +417,7 @@ brm(
     (1 + event_type * focus | sub) + (1 + focus | event_number),   
   data = DF.rating,  
   family = cumulative("logit"),
-  priors = priors2,
+  priors = priors1,
   file = "modelC2.RDS")
 ```
 
