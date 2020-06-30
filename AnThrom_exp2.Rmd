@@ -396,26 +396,23 @@ For these control models, we will specify cumulative ordinal, category-specific,
 
 Model C1 - test if situational anthropomorphism ratings fluctuate over time, event, and focus:
 ```{r}
-DF.rating<-DF.rating %>% filter(measure == "anthropomorphism")
-
 brm(
-  cent_sitant ~ 1 + event_type * focus +
-    (1 + event_type * focus | sub) + (1 + focus | event_number),   
-  data = DF.rating,  
+  response ~ 1 + event_type * focus * event_nr +
+    (1 + event_type * focus | prolific_id) + (1 + focus | trial_nr),   
+  data = DF.rating %>% filter(measure == "anthropomorphism"),  
   family = cumulative("logit"),
   priors = priors1,
   file = "modelC1.RDS")
 ```
-
 
 ## 6.2 Control analysis 2 - effectance
 
 Model C2 - test if effectance ratings fluctuate over time, event, and focus:
 ```{r}
 brm(
-  cent_effectance ~ 1 + event_type + focus +
-    (1 + event_type * focus | sub) + (1 + focus | event_number),   
-  data = DF.rating,  
+  response ~ 1 + event_type * focus * event_nr +
+    (1 + event_type * focus | prolific_id) + (1 + focus | trial_nr),  
+  data = DF.rating %>% filter(measure == "effectance"),  
   family = cumulative("logit"),
   priors = priors1,
   file = "modelC2.RDS")
