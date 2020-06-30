@@ -242,3 +242,90 @@ fb2 <- DF.fa %>%
 ```{r}
 fb1 + fb2
 ```
+
+## 5.1 Models
+
+Model 1 - test the relationship between situational and dispositional anthropomorphism and effectance:
+```{r}
+priors1 <- c(set_prior("normal(0,1)", class = "b"))
+
+brm(formula = cent_effectance ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
+      data = DF.exp2,
+      family = gaussian,
+      priors = priors1,
+      chains = 4,
+      iter = 4000,
+      seed = 42, 
+      file = model1ef.RDS)
+```
+
+Model 2 - test the relationship between situational and dispositional anthropomorphism and false belief:
+```{r}
+brm(formula = cent_falsebelief ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
+      data = DF.exp2,
+      family = gaussian,
+      priors = priors1,
+      chains = 4,
+      iter = 4000,
+      seed = 42, 
+      file = model2fb.RDS)
+```
+
+## 5.2 Control analyses
+
+Model C1 - test if situational anthropomorphism ratings fluctuate over time, event, and focus:
+```{r}
+priors2 <- c(set_prior("normal(0,1)", class = "b"))
+
+brm(
+  cent_sitant ~ 1 + event_type * focus +
+    (1 + event_type * focus | sub) + (1 + focus | event_number),   
+  data = DF.rating,  
+  family = cumulative*("logit")**,
+  priors = priors2,
+  file = modelC1.RDS)
+```
+
+Model C2 - test if effectance ratings fluctuate over time, event, and focus:
+```{r}
+brm(
+  cent_effectance ~ 1 + event_type + focus +
+    (1 + event_type * focus | sub) + (1 + focus | event_number),   
+  data = DF.rating,  
+  family = cumulative*("logit")**,
+  priors = priors2,
+  file = modelC2.RDS)
+```
+
+Model C3 – test if dispositional anthropomorphism is positively related to situational anthropomorphism:
+```{r}
+brm(formula = cent_sitant ~ cent_disant, 
+      data = DF.exp2,
+      family = gaussian,
+      priors = priors2,
+      chains = 4,
+      iter = 4000,
+      seed = 42, 
+      file = modelC3.RDS)
+
+```
+
+Model C4 – test if false belief performance is positively related to effectance ratings:
+
+```{r}
+brm(formula = cent_effectance ~ cent_falsebelief, 
+      data = DF.exp2,
+      family = gaussian, 
+      priors = priors2,
+      chains = 4,
+      iter = 4000,
+      seed = 42, 
+      file = modelC3.RDS)
+```
+
+
+
+
+
+
+
