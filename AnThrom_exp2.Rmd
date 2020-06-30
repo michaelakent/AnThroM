@@ -22,7 +22,7 @@ June 2020 - July 2020
 # 1. Details {.tabset .tabset-fade .tabset-pills}
 
 ## 1.1 Preregistration
-The preregistration can be found here:
+The preregistration can be found here: [link]
 
 ## 1.2 Libraries
 ```{r, message=FALSE}
@@ -31,6 +31,7 @@ source("summarySE.R")
 library(psych)
 library(patchwork)
 library(tidyverse)
+library(kableExtra)
 library(ordinal)
 library(brms)
 options(mc.cores = parallel::detectCores()) 
@@ -55,7 +56,7 @@ DF.demo <- list.files("data/pilot",pattern="\\prolific*", full.names=TRUE) %>%
 ```{r, echo = TRUE, message = FALSE}
 DF.exp2 <- list.files("data/pilot",pattern="\\PARTICIPANT*", full.names=TRUE) %>% 
   map_dfr(read_csv)
-events <- read_csv("/Users/rh/PsyCloud/Technician/1_AnThrom/Experiment_2/task/pilot/events_pilot.csv") #can be removed for main experiment, corrected in psychopy
+events <- read_csv("events_pilot.csv") #can be removed for main experiment, corrected in psychopy
 ```
 
 ## 2.3 Get the rating task data
@@ -127,7 +128,8 @@ DF.seen <- DF.exp2 %>%
 DF.demo %>% 
   group_by(status) %>%
   tally() %>%
-  knitr::kable(., caption = "Breakdown prolific")
+  knitr::kable(., "html", caption = "Breakdown prolific") %>%
+  kable_styling("striped")
 ```
 
 ## 3.2 Age
@@ -137,7 +139,8 @@ DF.demo %>%
   filter(status == "APPROVED") %>% 
   summarise(mean = mean(age),
             SD = sd(age)) %>%
-  knitr::kable(., caption = "Age")
+  knitr::kable(., "html", caption = "Age") %>%
+  kable_styling("striped")
 ```
 
 ## 3.3 Male/female
@@ -147,13 +150,14 @@ DF.demo %>%
   filter(status == "APPROVED") %>% 
   group_by(Sex) %>%
   tally() %>%
-  knitr::kable(., caption = "Sex")
+  knitr::kable(., "html", caption = "Sex") %>%
+  kable_styling("striped")
 ```
 
 # 4. Data exclusion {.tabset .tabset-fade .tabset-pills}
 The following criteria are used to exclude participants:
 
-## 4.1 Attention check:
+## 4.1 Attention check
 Participants who fail the attention check, i.e. participant who do not make a prediction during the movie (no characters typed);
 
 ```{r}
@@ -163,7 +167,7 @@ excluded_participants <- DF.prediction %>%
   mutate(reason = "attention_check")
 ```
 
-## 4.2 No variability in ratings:
+## 4.2 No variability in ratings
 Participants who show no variability in their ratings across the event numbers of the film, i.e. a standard deviation of <0.5;
 
 ```{r}
@@ -194,7 +198,7 @@ excluded_participants <- DF.rating %>%
   bind_rows(., excluded_participants)
 ```
 
-## 4.3 Click through:
+## 4.3 Click through
 Participants who click through the rating task, i.e. with a mean response duration < 1sec:
 
 ```{r}
@@ -256,7 +260,7 @@ excluded_participants <- DF.idaq %>%
   bind_rows(., excluded_participants)
 ```
 
-## 4.4 Accuracy:
+## 4.4 Accuracy
 Participants who have an accuracy of 50% or lower for the false belief questions in the False Belief task;
 ```{r}
 DF.fa %>%
@@ -286,10 +290,10 @@ excluded_participants <- DF.fa %>%
   bind_rows(., excluded_participants)
 ```
 
-## 4.5 Missing data: 
+## 4.5 Missing data
 Participants who have 5 or more missing responses for the False Belief task will be excluded.
 ```{r}
-DF.fa %>%
+excluded_participants <- DF.fa %>%
   group_by(prolific_id) %>%
   summarise(missing = sum(is.na(fa_resp)))%>%
   filter(missing >= 5) %>%
@@ -307,12 +311,13 @@ excluded_participants <- anti_join(idaq_sub, fa_sub, by = "prolific_id") %>%  mu
   bind_rows(., excluded_participants)
 ```
 
-## 4.6 Excluded participants:
+## 4.6 Excluded participants
 ```{r}
 excluded_participants %>%
   group_by(reason) %>% 
   tally() %>% 
-  knitr::kable(., caption = "Excluded participants")
+  knitr::kable(., "html", caption = "Excluded participants") %>%
+  kable_styling("striped")
 ```
 
 ## 4.5 Update all the tasks 
@@ -325,57 +330,16 @@ DF.fa <- DF.fa %>% filter(!prolific_id %in% excluded_participants$prolific_id)
 DF.idaq <- DF.idaq %>% filter(!prolific_id %in% excluded_participants$prolific_id)
 ```
 
-# 5. Rating task analysis {.tabset .tabset-fade .tabset-pills} (Possibly change to data wrangling)
-To check if anthropomorphism and effectance ratings during the film fluctuate over time (1-16), event type (mental or pain), and focus (cloud or stork), we will run two Bayesian multilevel ordinal regression models.
+# 5. Data preparation {.tabset .tabset-fade .tabset-pills}
 
-Model C1 - test if situational anthropomorphism ratings fluctuate over time, event, and focus.  
-Model C2 - test if effectance ratings fluctuate over time, event, and focus.
-
-The dependent variable is anthropomorphism ratings during the film (sitant) for model C1, effectance ratings during the film (effectance) for model C2, with event_type (mental or pain) and focus (cloud or stork) as independent variables. Random effects include participants (sub) and event_number (1-16) and slopes are specified maximally . We expect that anthropomorphism and effectance ratings fluctuate over time (event_number), as well as differ between event_type (mental > pain), but not between focus (cloud and stork). 
-
-For these control models, we will specify cumulative ordinal, category-specific, and adjecent-category without category-specific effects, and unequal variances models (Bürkner & Vuorre, 2019).
-
-## 5.1 Situational anthropomorphism  and effectance indices 
-The 5 items will be averaged to create a situational anthropomorphism score (Waytz, Morewedge, et al., 2010). 
-The 2 items will be averaged to create an effectance score (Waytz, Morewedge, et al., 2010). 
+## 5.1 Order response
+For the multilevel ordinal regression models (C1-C2), the ratings will be ordered (1<2<3<4<5<6<7): 
 ```{r}
-order <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16")  
-
-
 DF.rating <- DF.rating %>% 
-  dplyr::group_by(prolific_id, measure, focus, event_nrM, event_typeM) %>%
-  dplyr::summarise(rating = mean(response)) %>%
-  mutate(event_nrM = factor(event_nrM, levels=c(1:16), ordered=TRUE)) #add contrast coding?
-
-  #mutate(event_nrM = v(event_nrM, order))
-
-
-rating_summary <- summarySEwithin(DF.rating, measurevar="rating", withinvars= c("focus","measure", "event_typeM", "event_nrM"), idvar="prolific_id")
-
-rating_summary %>% 
-  knitr::kable(., caption = "Descriptive statistics rating task")
+  mutate(response = factor(response, levels=c(1:7), ordered=TRUE)) 
 ```
 
-## 5.2 Visualisation 
-```{r}
-DF.rating %>%
-  filter(measure == "anthropomorphism") %>% 
-  ggplot(., aes(x = event_nrM, y = rating, colour = prolific_id)) +
-#geom_line(show.legend=FALSE,alpha=0.5) +
-  geom_line(data = rating_summary,  aes(event_nrM, rating), colour = "black", size = 2) +
-  theme_classic() +
-#  coord_fixed(ratio = 1/1) + 
-  scale_colour_brewer(palette = "Blues") +
-  #ylim(1,7)+
-  facet_wrap(focus~event_typeM) +
-  theme(
-    axis.title.y = element_blank(),
-    axis.title.x = element_blank()
-  )
-```
-
-
-## 5.3 Preparation
+## 5.3 Link function - function
 
 Before fitting these control models, we will establish which link function we need to use (following the procedure outlined by Stadler, 2017).
 ```{r}
@@ -399,71 +363,48 @@ cumulativemodelfit <- function(formula, data, links=c("logit", "probit", "cloglo
 }
 ```
 
-
+## 5.3 Link function - anthropomorphism
+Establish the link function for the anthropomorphism responses
 ```{r}
-cumulativemodelfit(rating ~ 1, data=DF.rating)
+cumulativemodelfit(response ~ 1, data=DF.rating %>% filter(measure == "anthropomorphism"))
 ```
 
-## 5.4 Priors
-Weakly informative priors 
+## 5.4 Link function - effectance
+Establish the link function for the effectance responses
 ```{r}
-#priors1 <- c(set_prior("normal(0,1)", class = "b"))
+cumulativemodelfit(response ~ 1, data=DF.rating %>% filter(measure == "effectance"))
+```
+## 5.5 Priors
+The models will be run with weakly-informative priors, which avoids inappropriate inferences that can be the result when using non-informative priors without supplying strict information (Gelman, Jakulin, Pittau, & Su, 2008). 
+```{r}
+priors1 <- c(set_prior("normal(0,1)", class = "b"))
 ```
 
-Indices:
-Anthropomorphism:
-•	Situational anthropomorphism: 
-- The 5 items will be averaged to create a situational anthropomorphism score (Waytz, Morewedge, et al., 2010). 
+# 6. Control analyses C1 and C2 {.tabset .tabset-fade .tabset-pills}
 
-•	Dispositional anthropomorphism:
-We will sum the responses for the IDAQ and IDAQ-NA scale separately (Waytz, Cacioppo, et al., 2010). 
+To check if anthropomorphism and effectance ratings during the film fluctuate over time (1-16), event type (mental or pain), and focus (cloud or stork), we will run two Bayesian multilevel ordinal regression models.
 
-Theory-of-Mind:
-•	Effectance:
-The 2 items will be averaged to create an effectance score (Waytz, Morewedge, et al., 2010). 
+Model C1 - test if situational anthropomorphism ratings fluctuate over time, event, and focus.  
+Model C2 - test if effectance ratings fluctuate over time, event, and focus.
 
-•	False belief:
-Accuracy (percentage correct) for the false-belief and false-photograph stories will be calculated separately (Spunt et al., 2015).
+The dependent variable is anthropomorphism ratings (response) during the film for model C1, effectance ratings during the film for model C2, with event_type (mental or pain) and focus (cloud or stork) as independent variables. Random effects include participants (sub) and event_number (1-16) and slopes are specified maximally . We expect that anthropomorphism and effectance ratings fluctuate over time (event_number), as well as differ between event_type (mental > pain), but not between focus (cloud and stork). 
 
-All anthropomorphism and Theory-of-Mind indices will be centered and scaled before analyses. For the multilevel ordinal regression models (C1-C2), the ratings will be ordered (1<2<3<4<5<6<7). 
+For these control models, we will specify cumulative ordinal, category-specific, and adjecent-category without category-specific effects, and unequal variances models (Bürkner & Vuorre, 2019).
 
-## 5.2 Visualisation I 
-```{r}
-DF.rating %>%
-  dplyr::group_by(prolific_id, measure, focus, event_typeM) %>%
-  #dplyr::summarise(rating = mean(response)) %>%
-  ggplot(., aes(x=event_typeM, y=rating, fill = focus)) +
-  geom_point(aes(colour = event_typeM), position=position_jitter(width = .05), size = 1, shape = 21, colour = "Black") +
-  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
-  geom_boxplot(aes(x=event_typeM,y=rating),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
-  geom_point(data = rating_summary, aes(x = event_typeM, y = rating, fill = focus), position = position_nudge(.3), colour = "BLACK")+
-  geom_errorbar(data = rating_summary, aes(x=event_typeM,y=rating, ymin = rating-ci, ymax = rating +ci), position=position_nudge(x = .3, y = 0), width = .05)+
-  ylab("rating")+
-  xlab("mental or pain") +
-  scale_fill_manual(values=c("#0072B2", "#D55E00")) +
-  #theme(legend.position="none") +
-  facet_wrap(~measure)
-```
-
-# 6. Control analyses
 
 ## 6.1 Control analysis 1 - situational anthropomorphism
 
 Model C1 - test if situational anthropomorphism ratings fluctuate over time, event, and focus:
 ```{r}
-#DF.rating<-DF.rating %>% filter(measure == "anthropomorphism")
+DF.rating<-DF.rating %>% filter(measure == "anthropomorphism")
 
-#priors1 <- c(set_prior("normal(0,1)", class = "b"))
-
-#brm(
-#  cent_sitant ~ 1 + event_type * focus +
-#    (1 + event_type * focus | sub) + (1 + focus | event_number),   
-#  data = DF.rating,  
-#  family = cumulative("logit"),
-#  priors = priors2,
-#  file = modelC1.RDS)
-
-
+brm(
+  cent_sitant ~ 1 + event_type * focus +
+    (1 + event_type * focus | sub) + (1 + focus | event_number),   
+  data = DF.rating,  
+  family = cumulative("logit"),
+  priors = priors2,
+  file = "modelC1.RDS")
 ```
 
 
@@ -471,55 +412,118 @@ Model C1 - test if situational anthropomorphism ratings fluctuate over time, eve
 
 Model C2 - test if effectance ratings fluctuate over time, event, and focus:
 ```{r}
-#brm(
-#  cent_effectance ~ 1 + event_type + focus +
-#    (1 + event_type * focus | sub) + (1 + focus | event_number),   
-#  data = DF.rating,  
-#  family = cumulative("logit"),
-#  priors = priors2,
-#  file = modelC2.RDS)
+brm(
+  cent_effectance ~ 1 + event_type + focus +
+    (1 + event_type * focus | sub) + (1 + focus | event_number),   
+  data = DF.rating,  
+  family = cumulative("logit"),
+  priors = priors2,
+  file = "modelC2.RDS")
 ```
 
+## 6.3 Indices  
+For the main analyses we create situational and dispositional anthropomorphism and effectance indices.
 
-## 6.3 Control analysis 3 - dispositional anthropomorphism
+If the models C1 and C2 indicate that situational anthropomorphism and effectance ratings serve as a function of focus (cloud or stork), we will specify the main models for each focus separately (cloud and stork).
+
+•	Situational anthropomorphism: 
+The 5 items will be averaged to create a situational anthropomorphism score (Waytz, Morewedge, et al., 2010). 
+```{r}
+DF.rating <- DF.rating %>% 
+  dplyr::group_by(prolific_id, measure, focus, event_type) %>% #focus and event_type are included or excluded based on Model C1/C2
+  dplyr::summarise(rating = mean(as.numeric(response)))
+```
+
+•	Dispositional anthropomorphism:
+We will sum the responses for the IDAQ and IDAQ-NA scale separately (Waytz, Cacioppo, et al., 2010). 
+```{r}
+DF.idaq <- DF.idaq %>%
+  filter(!is.na(idaq_resp)) %>% 
+  dplyr::group_by(prolific_id, Scale) %>%
+  summarise(score = sum(idaq_resp)) 
+```
+
+Theory-of-Mind:
+•	Effectance:
+The 2 items will be averaged to create an effectance score (Waytz, Morewedge, et al., 2010). 
+[already calculated when calculated situational anthropomorphism score]
+
+•	False belief:
+Accuracy (percentage correct) for the false-belief and false-photograph stories will be calculated separately (Spunt et al., 2015).
+
+```{r}
+DF.fa <- DF.fa %>% 
+  dplyr::group_by(prolific_id, p_b) %>%
+  dplyr::summarise(acc = mean(acc, na.rm = TRUE)) 
+```
+
+## 6.4 One dataset with centered and scaled variables
+```{r}
+DF.exp2 <- DF.rating %>% 
+  left_join(DF.idaq, by = "prolific_id") %>% 
+  left_join(DF.fa, by = "prolific_id") %>% 
+  left_join(DF.seen, by = "prolific_id") %>% 
+  left_join(DF.prediction, by = "prolific_id") %>% 
+  filter(Scale == "IDAQ" & p_b == "b") %>% 
+  pivot_wider(names_from = measure, values_from = rating) %>% 
+  group_by(prolific_id) %>% 
+  mutate(cent_sitant = scale(anthropomorphism, scale = TRUE)) %>% 
+  mutate(cent_effectance = scale(effectance, scale = TRUE)) %>% 
+  ungroup() %>% 
+  mutate(cent_disant = scale(score, scale = TRUE)) %>% 
+  mutate(cent_falsebelief = scale(acc, scale = TRUE)) %>% 
+  select(-score, - acc, -Scale, -p_b, -anthropomorphism, -effectance)
+```
+
+# 7. Control analyses C3 and C4 {.tabset .tabset-fade .tabset-pills}
+
+## 7.1 Control analysis 3 - dispositional anthropomorphism
+
+To further validate the anthropomorphism and Theory-of-Mind indices, we will run two additional Bayesian regression models: 
 
 Model C3 – test if dispositional anthropomorphism is positively related to situational anthropomorphism:
 ```{r}
 brm(formula = cent_sitant ~ cent_disant, 
       data = DF.exp2,
       family = gaussian,
-      priors = priors2,
+      priors = priors1,
       chains = 4,
       iter = 4000,
       seed = 42, 
-      file = modelC3.RDS)
-
+      file = "modelC3.RDS")
 ```
 
-## 6.4 Control analysis 4 - false belief
+## 7.2 Control analysis 4 - false belief
 
 Model C4 – test if false belief performance is positively related to effectance ratings:
 ```{r}
 brm(formula = cent_effectance ~ cent_falsebelief, 
       data = DF.exp2,
       family = gaussian, 
-      priors = priors2,
+      priors = priors1,
       chains = 4,
       iter = 4000,
       seed = 42, 
-      file = modelC3.RDS)
+      file = "modelC3.RDS")
 ```
 
-# 7. Main analyses
+# 8. Main analyses {.tabset .tabset-fade .tabset-pills}
 
 Bayesian regression will be used to test a linear and non-linear (c.f. quadratic) relationship between situational and dispositional anthropomorphism and Theory-of-Mind. The following two models will be specified to test the main hypotheses:
 
-## 7.1 Model 1 
+## 8.1 Quadriatic 
+
+For the formal analysis we will test a linear and quadratic relationship between IDAQ and ToM network activity:
+```{r}
+DF.exp2$cent_disant2 <- DF.exp2$cent_disant^2
+DF.exp2$cent_sitant2 <- DF.exp2$cent_sitant^2
+
+```
+
+## 8.2 Model 1 - anthropomorphism and effectance
 
 Test the relationship between situational and dispositional anthropomorphism and effectance:
 ```{r}
-priors1 <- c(set_prior("normal(0,1)", class = "b"))
-
 brm(formula = cent_effectance ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
       data = DF.exp2,
       family = gaussian,
@@ -530,7 +534,7 @@ brm(formula = cent_effectance ~ cent_sitant + cent_sitant2 + cent_disant + cent_
       file = model1ef.RDS)
 ```
 
-## 7.2 Model 2 
+## 8.3 Model 2 - anthropomorphism and false belief
 
 Test the relationship between situational and dispositional anthropomorphism and false belief:
 ```{r}
@@ -543,53 +547,4 @@ brm(formula = cent_falsebelief ~ cent_sitant + cent_sitant2 + cent_disant + cent
       seed = 42, 
       file = model2fb.RDS)
 ```
-
-
-False belief analysis {.tabset .tabset-fade .tabset-pills}
-# 8. False belief:
-
-```{r}
-fb_summary <- summarySEwithin(DF.fa, measurevar="acc", withinvars= "p_b", idvar="prolific_id", na.rm=TRUE)
-
-fb1 <- DF.fa %>%
-  dplyr::group_by(prolific_id, p_b) %>%
-  dplyr::summarise(acc = mean(acc)) %>%
-  ggplot(., aes(x=p_b, y=acc, fill = p_b)) +
-  geom_point(aes(colour = p_b), position=position_jitter(width = .05), size = 1, shape = 21, colour = "Black") +
-  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = TRUE, alpha = .75, colour = "Black") +
-  geom_boxplot(aes(x=p_b,y=acc),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
-  geom_point(data = fb_summary, aes(x = p_b, y = acc, fill = p_b), position = position_nudge(.3), colour = "BLACK")+
-  geom_errorbar(data = fb_summary, aes(x=p_b,y=acc, ymin = acc-ci, ymax = acc +ci), position=position_nudge(x = .3, y = 0), width = .05)+
-    ylab("accuracy (p)")+
-  xlab("belief (b) or photograph (p)") +
-  scale_fill_manual(values=c("#0072B2", "#D55E00")) +
-  theme(legend.position="none") 
-```
-
-```{r}
-fb2 <- DF.fa %>%
-  dplyr::group_by(prolific_id, p_b) %>%
-  dplyr::summarise(rt = mean(rt)) %>%
-  ggplot(., aes(x=p_b, y=rt, fill = p_b)) +
-  geom_point(aes(colour = p_b), position=position_jitter(width = .05), size = 1, shape = 21, colour = "Black") +
-  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
-  geom_boxplot(aes(x=p_b,y=rt),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
-  ylab("reaction times (s)")+
-  xlab("belief (b) or photograph (p)") +
-  scale_fill_manual(values=c("#0072B2", "#D55E00")) +
-  theme(legend.position="none") +
-  ylim(0,6)
-```
-
-```{r}
-fb1 + fb2
-```
-
-
-
-
-
-
-
-
 
