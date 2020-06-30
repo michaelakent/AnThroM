@@ -194,7 +194,6 @@ excluded_participants <- DF.rating %>%
   bind_rows(., excluded_participants)
 ```
 
-
 ## 4.3 Click through:
 Participants who click through the rating task, i.e. with a mean response duration < 1sec:
 
@@ -258,7 +257,7 @@ excluded_participants <- DF.idaq %>%
 ```
 
 ## 4.4 Accuracy:
-Participants who have an accuracy of 50% or lower for the false belief task;
+Participants who have an accuracy of 50% or lower for the false belief questions in the False Belief task;
 ```{r}
 DF.fa %>%
   group_by(prolific_id, p_b) %>%
@@ -299,7 +298,7 @@ DF.fa %>%
   bind_rows(., excluded_participants)
 ```
 
-Participants who do not finish the task. The false belief is after the IDAQ and rating task or before the IDAQ.
+Participants who do not finish the task. The false belief task is either after the IDAQ and rating task or before the IDAQ.
 ```{r}
 idaq_sub <- DF.idaq %>% select(prolific_id) %>% unique()
 fa_sub <- DF.fa %>% select(prolific_id) %>% unique()
@@ -343,15 +342,12 @@ The 2 items will be averaged to create an effectance score (Waytz, Morewedge, et
 order <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16")  
 
 
-
 DF.rating <- DF.rating %>% 
   dplyr::group_by(prolific_id, measure, focus, event_nrM, event_typeM) %>%
   dplyr::summarise(rating = mean(response)) %>%
   mutate(event_nrM = factor(event_nrM, levels=c(1:16), ordered=TRUE)) #add contrast coding?
 
   #mutate(event_nrM = v(event_nrM, order))
-
-
 
 
 rating_summary <- summarySEwithin(DF.rating, measurevar="rating", withinvars= c("focus","measure", "event_typeM", "event_nrM"), idvar="prolific_id")
@@ -414,6 +410,8 @@ Model C1 - test if situational anthropomorphism ratings fluctuate over time, eve
 ```{r}
 #DF.rating<-DF.rating %>% filter(measure == "anthropomorphism")
 
+#priors2 <- c(set_prior("normal(0,1)", class = "b"))
+
 #brm(
 #  cent_sitant ~ 1 + event_type * focus +
 #    (1 + event_type * focus | sub) + (1 + focus | event_number),   
@@ -438,6 +436,36 @@ Model C2 - test if effectance ratings fluctuate over time, event, and focus:
 #  priors = priors2,
 #  file = modelC2.RDS)
 ```
+
+## 5. Control analysis 3 - dispositional anthropomorphism
+
+Model C3 – test if dispositional anthropomorphism is positively related to situational anthropomorphism:
+```{r}
+brm(formula = cent_sitant ~ cent_disant, 
+      data = DF.exp2,
+      family = gaussian,
+      priors = priors2,
+      chains = 4,
+      iter = 4000,
+      seed = 42, 
+      file = modelC3.RDS)
+
+```
+
+## 5. Control analysis 3 - false belief
+
+Model C4 – test if false belief performance is positively related to effectance ratings:
+```{r}
+brm(formula = cent_effectance ~ cent_falsebelief, 
+      data = DF.exp2,
+      family = gaussian, 
+      priors = priors2,
+      chains = 4,
+      iter = 4000,
+      seed = 42, 
+      file = modelC3.RDS)
+```
+
 
 Indices:
 Anthropomorphism:
@@ -474,9 +502,9 @@ DF.rating %>%
   facet_wrap(~measure)
 ```
 
-# 5. False belief analysis {.tabset .tabset-fade .tabset-pills}
+# 6. False belief analysis {.tabset .tabset-fade .tabset-pills}
 
-## 5.2 False belief:
+## 6.1 False belief:
 
 ```{r}
 fb_summary <- summarySEwithin(DF.fa, measurevar="acc", withinvars= "p_b", idvar="prolific_id", na.rm=TRUE)
@@ -515,9 +543,13 @@ fb2 <- DF.fa %>%
 fb1 + fb2
 ```
 
-## 5.1 Models
+# 7. Main analyses
 
-Model 1 - test the relationship between situational and dispositional anthropomorphism and effectance:
+Bayesian regression will be used to test a linear and non-linear (c.f. quadratic) relationship between situational and dispositional anthropomorphism and Theory-of-Mind. The following two models will be specified to test the main hypotheses:
+
+## 7.1 Model 1 
+
+Test the relationship between situational and dispositional anthropomorphism and effectance:
 ```{r}
 priors1 <- c(set_prior("normal(0,1)", class = "b"))
 
@@ -531,7 +563,9 @@ brm(formula = cent_effectance ~ cent_sitant + cent_sitant2 + cent_disant + cent_
       file = model1ef.RDS)
 ```
 
-Model 2 - test the relationship between situational and dispositional anthropomorphism and false belief:
+## 7.2 Model 2 
+
+Test the relationship between situational and dispositional anthropomorphism and false belief:
 ```{r}
 brm(formula = cent_falsebelief ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
       data = DF.exp2,
@@ -543,57 +577,6 @@ brm(formula = cent_falsebelief ~ cent_sitant + cent_sitant2 + cent_disant + cent
       file = model2fb.RDS)
 ```
 
-## 5.2 Control analyses
-
-Model C1 - test if situational anthropomorphism ratings fluctuate over time, event, and focus:
-```{r}
-priors2 <- c(set_prior("normal(0,1)", class = "b"))
-
-brm(
-  cent_sitant ~ 1 + event_type * focus +
-    (1 + event_type * focus | sub) + (1 + focus | event_number),   
-  data = DF.rating,  
-  family = cumulative*("logit")**,
-  priors = priors2,
-  file = modelC1.RDS)
-```
-
-Model C2 - test if effectance ratings fluctuate over time, event, and focus:
-```{r}
-brm(
-  cent_effectance ~ 1 + event_type + focus +
-    (1 + event_type * focus | sub) + (1 + focus | event_number),   
-  data = DF.rating,  
-  family = cumulative*("logit")**,
-  priors = priors2,
-  file = modelC2.RDS)
-```
-
-Model C3 – test if dispositional anthropomorphism is positively related to situational anthropomorphism:
-```{r}
-brm(formula = cent_sitant ~ cent_disant, 
-      data = DF.exp2,
-      family = gaussian,
-      priors = priors2,
-      chains = 4,
-      iter = 4000,
-      seed = 42, 
-      file = modelC3.RDS)
-
-```
-
-Model C4 – test if false belief performance is positively related to effectance ratings:
-
-```{r}
-brm(formula = cent_effectance ~ cent_falsebelief, 
-      data = DF.exp2,
-      family = gaussian, 
-      priors = priors2,
-      chains = 4,
-      iter = 4000,
-      seed = 42, 
-      file = modelC3.RDS)
-```
 
 
 
