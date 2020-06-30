@@ -2,14 +2,14 @@
 title: "Exploring the relationship between anthropomorphism and Theory-of-Mind in brain and behaviour: Experiment 2"
 author: Ruud Hortensius and Michaela Kent
 output:
-  html_document:
-    df_print: paged
-    toc: yes
-    toc_float: yes
-    code_folding: show
   html_notebook:
     number_sections: no
     theme: default
+    toc: yes
+    toc_float: yes
+    code_folding: show
+  html_document:
+    df_print: paged
     toc: yes
     toc_float: yes
     code_folding: show
@@ -325,7 +325,7 @@ DF.fa <- DF.fa %>% filter(!prolific_id %in% excluded_participants$prolific_id)
 DF.idaq <- DF.idaq %>% filter(!prolific_id %in% excluded_participants$prolific_id)
 ```
 
-# 5. Rating task analysis {.tabset .tabset-fade .tabset-pills}
+# 5. Rating task analysis {.tabset .tabset-fade .tabset-pills} (Possibly change to data wrangling)
 To check if anthropomorphism and effectance ratings during the film fluctuate over time (1-16), event type (mental or pain), and focus (cloud or stork), we will run two Bayesian multilevel ordinal regression models.
 
 Model C1 - test if situational anthropomorphism ratings fluctuate over time, event, and focus.  
@@ -404,68 +404,11 @@ cumulativemodelfit <- function(formula, data, links=c("logit", "probit", "cloglo
 cumulativemodelfit(rating ~ 1, data=DF.rating)
 ```
 
-## 5. Control analysis 1 - situational anthropomorphism
-
-Model C1 - test if situational anthropomorphism ratings fluctuate over time, event, and focus:
+## 5.4 Priors
+Weakly informative priors 
 ```{r}
-#DF.rating<-DF.rating %>% filter(measure == "anthropomorphism")
-
-#priors2 <- c(set_prior("normal(0,1)", class = "b"))
-
-#brm(
-#  cent_sitant ~ 1 + event_type * focus +
-#    (1 + event_type * focus | sub) + (1 + focus | event_number),   
-#  data = DF.rating,  
-#  family = cumulative("logit"),
-#  priors = priors2,
-#  file = modelC1.RDS)
-
-
+#priors1 <- c(set_prior("normal(0,1)", class = "b"))
 ```
-
-
-## 5. Control analysis 2 - effectance
-
-Model C2 - test if effectance ratings fluctuate over time, event, and focus:
-```{r}
-#brm(
-#  cent_effectance ~ 1 + event_type + focus +
-#    (1 + event_type * focus | sub) + (1 + focus | event_number),   
-#  data = DF.rating,  
-#  family = cumulative("logit"),
-#  priors = priors2,
-#  file = modelC2.RDS)
-```
-
-## 5. Control analysis 3 - dispositional anthropomorphism
-
-Model C3 – test if dispositional anthropomorphism is positively related to situational anthropomorphism:
-```{r}
-brm(formula = cent_sitant ~ cent_disant, 
-      data = DF.exp2,
-      family = gaussian,
-      priors = priors2,
-      chains = 4,
-      iter = 4000,
-      seed = 42, 
-      file = modelC3.RDS)
-
-```
-
-## 5. Control analysis 3 - false belief
-
-Model C4 – test if false belief performance is positively related to effectance ratings:
-```{r}
-brm(formula = cent_effectance ~ cent_falsebelief, 
-      data = DF.exp2,
-      family = gaussian, 
-      priors = priors2,
-      chains = 4,
-      iter = 4000,
-      seed = 42, 
-      file = modelC3.RDS)
-```
-
 
 Indices:
 Anthropomorphism:
@@ -502,9 +445,108 @@ DF.rating %>%
   facet_wrap(~measure)
 ```
 
-# 6. False belief analysis {.tabset .tabset-fade .tabset-pills}
+# 6. Control analyses
 
-## 6.1 False belief:
+## 6.1 Control analysis 1 - situational anthropomorphism
+
+Model C1 - test if situational anthropomorphism ratings fluctuate over time, event, and focus:
+```{r}
+#DF.rating<-DF.rating %>% filter(measure == "anthropomorphism")
+
+#priors1 <- c(set_prior("normal(0,1)", class = "b"))
+
+#brm(
+#  cent_sitant ~ 1 + event_type * focus +
+#    (1 + event_type * focus | sub) + (1 + focus | event_number),   
+#  data = DF.rating,  
+#  family = cumulative("logit"),
+#  priors = priors2,
+#  file = modelC1.RDS)
+
+
+```
+
+
+## 6.2 Control analysis 2 - effectance
+
+Model C2 - test if effectance ratings fluctuate over time, event, and focus:
+```{r}
+#brm(
+#  cent_effectance ~ 1 + event_type + focus +
+#    (1 + event_type * focus | sub) + (1 + focus | event_number),   
+#  data = DF.rating,  
+#  family = cumulative("logit"),
+#  priors = priors2,
+#  file = modelC2.RDS)
+```
+
+
+## 6.3 Control analysis 3 - dispositional anthropomorphism
+
+Model C3 – test if dispositional anthropomorphism is positively related to situational anthropomorphism:
+```{r}
+brm(formula = cent_sitant ~ cent_disant, 
+      data = DF.exp2,
+      family = gaussian,
+      priors = priors2,
+      chains = 4,
+      iter = 4000,
+      seed = 42, 
+      file = modelC3.RDS)
+
+```
+
+## 6.4 Control analysis 4 - false belief
+
+Model C4 – test if false belief performance is positively related to effectance ratings:
+```{r}
+brm(formula = cent_effectance ~ cent_falsebelief, 
+      data = DF.exp2,
+      family = gaussian, 
+      priors = priors2,
+      chains = 4,
+      iter = 4000,
+      seed = 42, 
+      file = modelC3.RDS)
+```
+
+# 7. Main analyses
+
+Bayesian regression will be used to test a linear and non-linear (c.f. quadratic) relationship between situational and dispositional anthropomorphism and Theory-of-Mind. The following two models will be specified to test the main hypotheses:
+
+## 7.1 Model 1 
+
+Test the relationship between situational and dispositional anthropomorphism and effectance:
+```{r}
+priors1 <- c(set_prior("normal(0,1)", class = "b"))
+
+brm(formula = cent_effectance ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
+      data = DF.exp2,
+      family = gaussian,
+      priors = priors1,
+      chains = 4,
+      iter = 4000,
+      seed = 42, 
+      file = model1ef.RDS)
+```
+
+## 7.2 Model 2 
+
+Test the relationship between situational and dispositional anthropomorphism and false belief:
+```{r}
+brm(formula = cent_falsebelief ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
+      data = DF.exp2,
+      family = gaussian,
+      priors = priors1,
+      chains = 4,
+      iter = 4000,
+      seed = 42, 
+      file = model2fb.RDS)
+```
+
+
+False belief analysis {.tabset .tabset-fade .tabset-pills}
+# 8. False belief:
 
 ```{r}
 fb_summary <- summarySEwithin(DF.fa, measurevar="acc", withinvars= "p_b", idvar="prolific_id", na.rm=TRUE)
@@ -543,39 +585,6 @@ fb2 <- DF.fa %>%
 fb1 + fb2
 ```
 
-# 7. Main analyses
-
-Bayesian regression will be used to test a linear and non-linear (c.f. quadratic) relationship between situational and dispositional anthropomorphism and Theory-of-Mind. The following two models will be specified to test the main hypotheses:
-
-## 7.1 Model 1 
-
-Test the relationship between situational and dispositional anthropomorphism and effectance:
-```{r}
-priors1 <- c(set_prior("normal(0,1)", class = "b"))
-
-brm(formula = cent_effectance ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
-      data = DF.exp2,
-      family = gaussian,
-      priors = priors1,
-      chains = 4,
-      iter = 4000,
-      seed = 42, 
-      file = model1ef.RDS)
-```
-
-## 7.2 Model 2 
-
-Test the relationship between situational and dispositional anthropomorphism and false belief:
-```{r}
-brm(formula = cent_falsebelief ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
-      data = DF.exp2,
-      family = gaussian,
-      priors = priors1,
-      chains = 4,
-      iter = 4000,
-      seed = 42, 
-      file = model2fb.RDS)
-```
 
 
 
