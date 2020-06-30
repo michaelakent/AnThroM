@@ -430,7 +430,7 @@ If the models C1 and C2 indicate that situational anthropomorphism and effectanc
 The 5 items will be averaged to create a situational anthropomorphism score (Waytz, Morewedge, et al., 2010). 
 ```{r}
 DF.rating <- DF.rating %>% 
-  dplyr::group_by(prolific_id, measure, focus, event_type) %>% #focus and event_type are included or excluded based on Model C1/C2
+  dplyr::group_by(prolific_id, measure) %>% #focus and event_type are included or excluded based on Model C1/C2
   dplyr::summarise(rating = mean(as.numeric(response)))
 ```
 
@@ -511,16 +511,46 @@ brm(formula = cent_effectance ~ cent_falsebelief,
 
 Bayesian regression will be used to test a linear and non-linear (c.f. quadratic) relationship between situational and dispositional anthropomorphism and Theory-of-Mind. The following two models will be specified to test the main hypotheses:
 
-## 8.1 Quadriatic 
+## 8.1 Quadriatic predictors
 
-For the formal analysis we will test a linear and quadratic relationship between IDAQ and ToM network activity:
+For the formal analysis we will test a linear and quadratic relationship:
 ```{r}
 DF.exp2$cent_disant2 <- DF.exp2$cent_disant^2
 DF.exp2$cent_sitant2 <- DF.exp2$cent_sitant^2
-
 ```
 
-## 8.2 Model 1 - anthropomorphism and effectance
+## 8.2 Visualise the relationship between situational and dispositional anthropomorphism and Theory-of-Mind
+
+```{r, echo=FALSE}
+p1 <- DF.exp2 %>%
+  pivot_longer(cols = c(cent_disant, cent_sitant), names_to = "measure",  values_to = "value") %>% 
+  ggplot(aes(x=value, y=cent_falsebelief)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
+  coord_fixed(ratio = 1/1) +
+  labs(
+    x="Anthropomorphism",
+    y="False belief accuracy") +
+  facet_wrap(~measure)
+
+p2 <- DF.exp2 %>%
+  pivot_longer(cols = c(cent_disant, cent_sitant), names_to = "measure",  values_to = "value") %>% 
+  ggplot(aes(x=value, y=cent_effectance)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
+  coord_fixed(ratio = 1/1) +
+  labs(
+    x="Anthropomorphism",
+    y="False belief accuracy") +
+  facet_wrap(~measure)
+
+p1 / p2
+```
+
+
+## 8.3 Model 1 - anthropomorphism and effectance
 
 Test the relationship between situational and dispositional anthropomorphism and effectance:
 ```{r}
@@ -534,7 +564,8 @@ brm(formula = cent_effectance ~ cent_sitant + cent_sitant2 + cent_disant + cent_
       file = model1ef.RDS)
 ```
 
-## 8.3 Model 2 - anthropomorphism and false belief
+
+## 8.4 Model 2 - anthropomorphism and false belief
 
 Test the relationship between situational and dispositional anthropomorphism and false belief:
 ```{r}
