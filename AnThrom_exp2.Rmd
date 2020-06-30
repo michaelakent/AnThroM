@@ -463,10 +463,9 @@ DF.exp2 <- DF.rating %>%
   left_join(DF.prediction, by = "prolific_id") %>% 
   filter(Scale == "IDAQ" & p_b == "b") %>% 
   pivot_wider(names_from = measure, values_from = rating) %>% 
-  group_by(prolific_id) %>% 
+  ungroup() %>% 
   mutate(cent_sitant = scale(anthropomorphism, scale = TRUE)) %>% 
   mutate(cent_effectance = scale(effectance, scale = TRUE)) %>% 
-  ungroup() %>% 
   mutate(cent_disant = scale(score, scale = TRUE)) %>% 
   mutate(cent_falsebelief = scale(acc, scale = TRUE)) %>% 
   select(-score, - acc, -Scale, -p_b, -anthropomorphism, -effectance)
