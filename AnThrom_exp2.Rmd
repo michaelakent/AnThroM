@@ -2,14 +2,14 @@
 title: "Exploring the relationship between anthropomorphism and Theory-of-Mind in brain and behaviour: Experiment 2"
 author: Ruud Hortensius and Michaela Kent
 output:
-  html_notebook:
-    number_sections: no
-    theme: default
+  html_document:
+    df_print: paged
     toc: yes
     toc_float: yes
     code_folding: show
-  html_document:
-    df_print: paged
+  html_notebook:
+    number_sections: no
+    theme: default
     toc: yes
     toc_float: yes
     code_folding: show
@@ -395,7 +395,7 @@ For these control models, we will specify cumulative ordinal, category-specific,
 ## 6.1 Control analysis 1 - situational anthropomorphism
 
 Model C1 - test if situational anthropomorphism ratings fluctuate over time, event, and focus:
-```{r}
+```{r, eval=FALSE}
 brm(
   response ~ 1 + event_type * focus * event_nr +
     (1 + event_type * focus | prolific_id) + (1 + focus | trial_nr),   
@@ -408,7 +408,7 @@ brm(
 ## 6.2 Control analysis 2 - effectance
 
 Model C2 - test if effectance ratings fluctuate over time, event, and focus:
-```{r}
+```{r, eval=FALSE}
 brm(
   response ~ 1 + event_type * focus * event_nr +
     (1 + event_type * focus | prolific_id) + (1 + focus | trial_nr),  
@@ -478,7 +478,7 @@ DF.exp2 <- DF.rating %>%
 To further validate the anthropomorphism and Theory-of-Mind indices, we will run two additional Bayesian regression models: 
 
 Model C3 – test if dispositional anthropomorphism is positively related to situational anthropomorphism:
-```{r}
+```{r, eval=FALSE}
 brm(formula = cent_sitant ~ cent_disant, 
       data = DF.exp2,
       family = gaussian,
@@ -492,7 +492,7 @@ brm(formula = cent_sitant ~ cent_disant,
 ## 7.2 Control analysis 4 - false belief
 
 Model C4 – test if false belief performance is positively related to effectance ratings:
-```{r}
+```{r, eval=FALSE}
 brm(formula = cent_effectance ~ cent_falsebelief, 
       data = DF.exp2,
       family = gaussian, 
@@ -515,10 +515,22 @@ DF.exp2$cent_disant2 <- DF.exp2$cent_disant^2
 DF.exp2$cent_sitant2 <- DF.exp2$cent_sitant^2
 ```
 
-## 8.2 Visualise the relationship between situational and dispositional anthropomorphism and Theory-of-Mind
+## 8.2 Visualise the relationship
 
 ```{r, echo=FALSE}
 p1 <- DF.exp2 %>%
+  pivot_longer(cols = c(cent_disant, cent_sitant), names_to = "measure",  values_to = "value") %>% 
+  ggplot(aes(x=value, y=cent_effectance)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
+  coord_fixed(ratio = 1/1) +
+  labs(
+    x="Anthropomorphism",
+    y="Effectance") +
+  facet_wrap(~measure)
+
+p2 <- DF.exp2 %>%
   pivot_longer(cols = c(cent_disant, cent_sitant), names_to = "measure",  values_to = "value") %>% 
   ggplot(aes(x=value, y=cent_falsebelief)) +
   geom_point(alpha=0.5,show.legend = FALSE) +
@@ -530,26 +542,15 @@ p1 <- DF.exp2 %>%
     y="False belief accuracy") +
   facet_wrap(~measure)
 
-p2 <- DF.exp2 %>%
-  pivot_longer(cols = c(cent_disant, cent_sitant), names_to = "measure",  values_to = "value") %>% 
-  ggplot(aes(x=value, y=cent_effectance)) +
-  geom_point(alpha=0.5,show.legend = FALSE) +
-  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
-  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
-  coord_fixed(ratio = 1/1) +
-  labs(
-    x="Anthropomorphism",
-    y="False belief accuracy") +
-  facet_wrap(~measure)
 
-p1 / p2
+p1 | p2
 ```
 
 
 ## 8.3 Model 1 - anthropomorphism and effectance
 
 Test the relationship between situational and dispositional anthropomorphism and effectance:
-```{r}
+```{r, eval=FALSE}
 brm(formula = cent_effectance ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
       data = DF.exp2,
       family = gaussian,
@@ -564,7 +565,7 @@ brm(formula = cent_effectance ~ cent_sitant + cent_sitant2 + cent_disant + cent_
 ## 8.4 Model 2 - anthropomorphism and false belief
 
 Test the relationship between situational and dispositional anthropomorphism and false belief:
-```{r}
+```{r, eval=FALSE}
 brm(formula = cent_falsebelief ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
       data = DF.exp2,
       family = gaussian,
