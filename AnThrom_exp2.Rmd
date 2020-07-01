@@ -396,12 +396,15 @@ For these control models, we will specify cumulative ordinal, category-specific,
 
 Model C1 - test if situational anthropomorphism ratings fluctuate over time, event, and focus:
 ```{r, eval=FALSE}
+
+priors1 <- set_prior("normal(0,1)", class = "b")
+
 brm(
   response ~ 1 + event_type * focus * event_nr +
     (1 + event_type * focus | prolific_id) + (1 + focus | trial_nr),   
   data = DF.rating %>% filter(measure == "anthropomorphism"),  
   family = cumulative("logit"),
-  priors = priors1,
+  prior = priors1,
   file = "modelC1.RDS")
 ```
 
@@ -414,7 +417,7 @@ brm(
     (1 + event_type * focus | prolific_id) + (1 + focus | trial_nr),  
   data = DF.rating %>% filter(measure == "effectance"),  
   family = cumulative("logit"),
-  priors = priors1,
+  prior = priors1,
   file = "modelC2.RDS")
 ```
 
@@ -482,7 +485,7 @@ Model C3 – test if dispositional anthropomorphism is positively related to sit
 brm(formula = cent_sitant ~ cent_disant, 
       data = DF.exp2,
       family = gaussian,
-      priors = priors1,
+      prior = priors1,
       chains = 4,
       iter = 4000,
       seed = 42, 
@@ -496,7 +499,7 @@ Model C4 – test if false belief performance is positively related to effectanc
 brm(formula = cent_effectance ~ cent_falsebelief, 
       data = DF.exp2,
       family = gaussian, 
-      priors = priors1,
+      prior = priors1,
       chains = 4,
       iter = 4000,
       seed = 42, 
@@ -554,7 +557,7 @@ Test the relationship between situational and dispositional anthropomorphism and
 brm(formula = cent_effectance ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
       data = DF.exp2,
       family = gaussian,
-      priors = priors1,
+      prior = priors1,
       chains = 4,
       iter = 4000,
       seed = 42, 
@@ -569,7 +572,7 @@ Test the relationship between situational and dispositional anthropomorphism and
 brm(formula = cent_falsebelief ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
       data = DF.exp2,
       family = gaussian,
-      priors = priors1,
+      prior = priors1,
       chains = 4,
       iter = 4000,
       seed = 42, 
