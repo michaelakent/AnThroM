@@ -575,4 +575,3 @@ model1fb <- brm(formula = cent_falsebelief ~ cent_sitant + cent_sitant2 + cent_d
       seed = 42, 
       file = model2fb.RDS)
 ```
-
