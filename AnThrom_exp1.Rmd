@@ -1302,8 +1302,6 @@ DF.roi <- DF.roi %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, sc
 ## 7.1 Plot ToM and IDAQ
 Create scatterplots with linear and non-linear lines for ToM network: 
 ```{r}
-
-
 F1D <- DF.roi %>%
   filter(network == "tom") %>%
   ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
@@ -1359,7 +1357,7 @@ reg_model <- function(region){
       chains = 4,
       iter = 4000,
       seed = 42, #so the model is reproducible
-      file = paste0(region, ".RDS"))
+      file = paste0("models/regions/", region, ".RDS", sep = ""))
 }
 ```
 
