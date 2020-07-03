@@ -2,14 +2,14 @@
 title: "Exploring the relationship between anthropomorphism and Theory-of-Mind in brain and behaviour: Experiment 2"
 author: Ruud Hortensius and Michaela Kent
 output:
-  html_notebook:
-    number_sections: no
-    theme: default
+  html_document:
+    df_print: paged
     toc: yes
     toc_float: yes
     code_folding: show
-  html_document:
-    df_print: paged
+  html_notebook:
+    number_sections: no
+    theme: default
     toc: yes
     toc_float: yes
     code_folding: show
@@ -34,6 +34,9 @@ library(tidyverse)
 library(kableExtra)
 library(ordinal)
 library(brms)
+library("easystats") #devtools::install_github("easystats/easystats")
+library("sjPlot")
+library("httr")
 options(mc.cores = parallel::detectCores()) 
 theme_set(theme_classic(base_size = 10)) 
 options("scipen"=10, "digits"=4) 
@@ -607,7 +610,7 @@ summary(model2fb)
 Use sjPlot to create html tables following [procedure outlined here](https://strengejacke.github.io/sjPlot/articles/tab_bayes.html):
 ```{r}
 tab_model(
-  model1ef, model1fb,
+  model1ef, model2fb,
   show.se = TRUE, 
   pred.labels = c("Intercept", "linear situational", "quadratic situational", "linear dispositional", "quadratic dispositional"),
   dv.labels = c("effectance", "false belief"),
@@ -618,10 +621,10 @@ tab_model(
 ## 9.2 Posterior plots:
 Create plots based on [this tutorial](https://www.rensvandeschoot.com/tutorials/r-linear-regression-bayesian-using-brms/):
 ```{r}
-tom_combined <- bind_rows("effectance" = as_tibble(as.mcmc(model1ef,  pars = c("cent_sitant", "cent_sitant2", "cent_disant", "cent_disant2"), combine_chains = TRUE)),
-                          "falsebelief" = as_tibble(as.mcmc(model1fb, pars = c("cent_sitant", "cent_sitant2", "cent_disant", "cent_disant2"),combine_chains = TRUE)),
+tom_combined <- bind_rows("effectance" = as_tibble(as.mcmc(model1ef,  pars = c("b_cent_sitant", "b_cent_sitant2", "b_cent_disant", "b_cent_disant2"), combine_chains = TRUE)),
+                          "falsebelief" = as_tibble(as.mcmc(model2fb, pars = c("b_cent_sitant", "b_cent_sitant2", "b_cent_disant", "b_cent_disant2"),combine_chains = TRUE)),
                           .id = "tom") %>%
-  rename(linear_situational = cent_sitant, quadratic_situational = cent_sitant2, linear_dispositional = cent_disant, quadratic_dispositional = cent_disant2) %>%
+  dplyr::rename(linear_situational = b_cent_sitant, quadratic_situational = b_cent_sitant2, linear_dispositional = b_cent_disant, quadratic_dispositional = b_cent_disant2) %>%
   pivot_longer(c("linear_situational", "quadratic_situational", "linear_dispositional", "quadratic_dispositional"),names_to = "varAnthro")
 ```
 
@@ -629,17 +632,14 @@ Plot the distributions:
 ```{r}
 p9 <- tom_combined %>%
   mutate_at(vars(-value),as.factor) %>%
-  rename(predictor = varAnthro) %>%
+  dplyr::rename(predictor = varAnthro) %>%
   ggplot(., aes(value, fill = predictor)) +
   geom_density(alpha = .5)+
   geom_vline(xintercept = 0, color = "black", linetype = 2) +
   ggtitle(paste("Posterior distributions for the Theory-of-Mind measures")) + 
   facet_wrap(~tom, ncol =1) +
-  coord_fixed(ratio = 1/40) +
-  theme_classic(base_size = 8) +
   theme(strip.background = element_blank()) +
-  scale_fill_manual(values=c("#0072B2", "#D55E00"))+ 
-  theme(axis.text.y = element_blank())
+  scale_fill_manual(values=c("#0072B2", "#000033", "#D55E00", "#660000"))
 p9
 ```
 
@@ -668,31 +668,51 @@ comp_model <- function(name, model_formula, priors_def){
 ## 10.1 Incremental models for effectance
 We start with the simple intercept-only model, followed by a linear situational predictor model, and a quadratic dispositional predictor model, and a combined model/  
 ```{r}
-model1ef_i<- comp_model("model1ef_i", cent_effectance ~ 1) 
-model1ef_s<- comp_model("model1ef_s", cent_effectance ~ cent_sitant) #prediction 1
-model1ef_d <- comp_model("model1ef_s", cent_effectance ~ cent_disant2) #prediction 2
-model1ef_sd <- comp_model("model1ef_s", cent_effectance ~ cent_sitant + cent_disant2) #prediction 3
+model1ef_i <- brm(formula = cent_effectance ~ 1,
+      data = DF.exp2,
+      family = gaussian,
+      chains = 4,
+      iter = 4000,
+      seed = 42, 
+      file = "experiment2/models/model1ef_i.RDS")
+
+model1ef_s <- comp_model("model1ef_s", cent_effectance ~ cent_sitant) #prediction 1
+model1ef_d <- comp_model("model1ef_d", cent_effectance ~ cent_disant2) #prediction 2
+model1ef_sd <- comp_model("model1ef_sd", cent_effectance ~ cent_sitant + cent_disant2) #prediction 3
 ```
 
 ## 10.2 Incremental models for false belief
 We start with the simple intercept-only model, followed by a linear situational predictor model, and a quadratic dispositional predictor model, and a combined model/  
 ```{r}
-model2fb_i<- comp_model("model2fb_i", cent_effectance ~ 1) 
-model2fb_s<- comp_model("model2fb_s", cent_effectance ~ cent_sitant) #prediction 1
-model2fb_d <- comp_model("model2fb_s", cent_effectance ~ cent_disant2) #prediction 2
-model2fb_sd <- comp_model("model2fb_s", cent_effectance ~ cent_sitant + cent_disant2) #prediction 3
+model2fb_i <-  brm(formula = cent_falsebelief ~ 1,
+      data = DF.exp2,
+      family = gaussian,
+      chains = 4,
+      iter = 4000,
+      seed = 42, 
+      file = "experiment2/models/model2fb_i.RDS")
+
+model2fb_s<- comp_model("model2fb_s", cent_falsebelief ~ cent_sitant) #prediction 1
+model2fb_d <- comp_model("model2fb_d", cent_falsebelief ~ cent_disant2) #prediction 2
+model2fb_sd <- comp_model("model2fb_sd", cent_falsebelief ~ cent_sitant + cent_disant2) #prediction 3
 ```
 
-## 10.3 Effectance
+## 10.3 Effectance comparison
 
 ```{r}
 modelcomp_ef <- loo(model1ef_i, model1ef_s, model1ef_d, model1ef_sd, model1ef)
+save(modelcomp_ef, file="experiment2/models/modelcomp_ef.RData")
+load('experiment2/models/modelcomp_ef.RData')
+modelcomp_ef
 ```
 
-## 10.4 False belief
+## 10.4 False belief comparison
 
 ```{r}
 modelcomp_fb <- loo(model2fb_i, model2fb_s, model2fb_d, model2fb_sd, model2fb)
+save(modelcomp_fb, file="experiment2/models/modelcomp_fb.RData")
+load('experiment2/models/modelcomp_fb.RData')
+modelcomp_fb 
 ```
 
 # 11. HDI+ROPE decision rule {.tabset .tabset-fade .tabset-pills}
@@ -706,7 +726,7 @@ hdi_rope <- function(model){
   rope_model <- equivalence_test(model, range = rope, ci = 0.95) 
   plot(rope_model) + theme_classic() + 
     ggtitle(deparse(substitute(model))) + 
-    xlim(-0.15,0.15) +  
+    #xlim(-0.15,0.15) +  
     theme(axis.title.y = element_blank(), axis.title.x = element_blank()) 
 }
 ```
@@ -717,16 +737,16 @@ hdi_rope(model1ef)
 ```
 
 ## 11.3 Winning effectance model
-```{r}
-hdi_rope(modelef_winning) 
+```{r, eval = FALSE}
+hdi_rope(modelef_winning) #change the name based on LOO (remove eval = FALSE)
 ```
 
 ## 11.4 Full false belief model
 ```{r}
-hdi_rope(model1fb) 
+hdi_rope(model2fb) 
 ```
 
 ## 11.5 Winning false belief model
-```{r}
-hdi_rope(modelfb_winning) 
+```{r, eval = FALSE}
+hdi_rope(modelfb_winning) #change the name based on LOO (remove eval = FALSE)
 ```
