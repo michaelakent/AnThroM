@@ -659,7 +659,7 @@ comp_model <- function(name, model_formula, priors_def){
       family = gaussian,
       prior = priors1,
       chains = 4,
-      iter = 1000,
+      iter = 4000,
       seed = 42, #so the model is reproducible
       file = paste0("experiment2/models/", name, ".RDS", sep = ""))
 }
