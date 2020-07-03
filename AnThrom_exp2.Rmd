@@ -40,23 +40,23 @@ options("scipen"=10, "digits"=4)
 ```
 
 ## 1.3 Data description
-[short description]
+This Rmd is written based on pilot data (target sample size of n = 20). 
 
 # 2. Load the data {.tabset .tabset-fade .tabset-pills}
 The data can be downloaded from the [OSF project page](https://osf.io/a8pyr/)
 
 ## 2.1 Load the prolific export file
 ```{r, echo = TRUE, message = FALSE}
-DF.demo <- list.files("data/pilot",pattern="\\prolific*", full.names=TRUE) %>% 
-  map_dfr(read_csv) %>% 
-  rename(prolific_id = participant_id)
+DF.demo <- list.files("experiment2/data/pilot",pattern="\\prolific*", full.names=TRUE) %>% #change to "experiment2/data/main"
+  map_dfr(read_csv)
 ```
 
 ## 2.2 Load the psychopy/pavlovia files
 ```{r, echo = TRUE, message = FALSE}
-DF.exp2 <- list.files("data/pilot",pattern="\\PARTICIPANT*", full.names=TRUE) %>% 
-  map_dfr(read_csv)
-events <- read_csv("events_pilot.csv") #can be removed for main experiment, corrected in psychopy
+DF.exp2 <- list.files("experiment2/data/pilot",pattern="\\PARTICIPANT*", full.names=TRUE) %>% 
+  map_dfr(read_csv) %>% 
+  rename(participant_id = prolific_id)
+events <- read_csv("experiment2/events_pilot.csv") #can be removed for main experiment, corrected in psychopy
 ```
 
 ## 2.3 Get the rating task data
@@ -67,13 +67,13 @@ events <- read_csv("events_pilot.csv") #can be removed for main experiment, corr
 
 ```{r}
 DF.rating <- DF.exp2 %>%
-  select("prolific_id", "eventnrM","event_typeM", "measure", "item", "focus", "key_resp_1.keys", "key_resp_2.keys", "key_resp_1.rt", "key_resp_2.rt")  %>%
+  select("participant_id", "eventnrM","event_typeM", "measure", "item", "focus", "key_resp_1.keys", "key_resp_2.keys", "key_resp_1.rt", "key_resp_2.rt")  %>%
   mutate_at(vars(-key_resp_1.keys, -key_resp_2.keys, -key_resp_1.rt, -key_resp_2.rt),as.factor) %>%
   mutate(response = coalesce(key_resp_1.keys, key_resp_2.keys)) %>%
   mutate(rt = coalesce(key_resp_1.rt, key_resp_2.rt)) %>%
   select(-key_resp_1.keys, -key_resp_2.keys,-key_resp_1.rt, -key_resp_2.rt) %>%
   filter(!is.na(response) & !is.na(focus)) %>%
-  group_by(prolific_id) %>%
+  group_by(participant_id) %>%
   mutate(trial_nr = c(1:length(response))) %>% #can be removed for main experiment, corrected in psychopy
   select(-event_typeM, -eventnrM) %>% #can be removed for main experiment, corrected in psychopy
   left_join(., events, by = "trial_nr") %>% #can be removed for main experiment, corrected in psychopy
@@ -85,7 +85,7 @@ Participants will be asked to complete the Individual Differences in Anthropomor
 
 ```{r}
 DF.idaq <- DF.exp2 %>%
-    select("prolific_id", "ItemNr", "Question", "Scale",  "idaq_s.rt" , "idaq_s.response", "idaqs.rt" , "idaqs.response", "key_resp_8.rt", "key_resp_12.rt") %>%
+    select("participant_id", "ItemNr", "Question", "Scale",  "idaq_s.rt" , "idaq_s.response", "idaqs.rt" , "idaqs.response", "key_resp_8.rt", "key_resp_12.rt") %>%
   mutate(idaq_resp = coalesce(idaq_s.response, idaqs.response)) %>%
   mutate(idaq_rt = coalesce(idaq_s.rt, idaqs.rt, key_resp_8.rt, key_resp_12.rt)) %>%
   filter(!is.na(idaq_rt)) %>%
@@ -96,7 +96,7 @@ DF.idaq <- DF.exp2 %>%
 Participants will be asked to indicate if a short statement about the false-belief or false-photograph story is true (1) or false (2). 
 ```{r}
 DF.fa <- DF.exp2 %>%
-  select("prolific_id", "p_b", "trials_fb.thisIndex",  "key_resp_fb.keys" , "key_resp_fb.rt", "CorrectAns")  %>%
+  select("participant_id", "p_b", "trials_fb.thisIndex",  "key_resp_fb.keys" , "key_resp_fb.rt", "CorrectAns")  %>%
   rename(fa_resp = key_resp_fb.keys, item_number = trials_fb.thisIndex, rt = key_resp_fb.rt) %>%
   filter(!is.na(p_b)) %>%
   mutate(acc = ifelse(fa_resp == CorrectAns, 1, 0)) %>%
@@ -108,7 +108,7 @@ After 4:02 minutes the film will be paused, and participants will be asked to de
 
 ```{r}
 DF.prediction <- DF.exp2 %>%
-  select("prolific_id", "prediction", "key_resp_6.keys") %>%
+  select("participant_id", "prediction", "key_resp_6.keys") %>%
   filter(!is.na(key_resp_6.keys)) %>%
   select(-key_resp_6.keys)
 ```
@@ -116,7 +116,7 @@ DF.prediction <- DF.exp2 %>%
 Participants will be asked to indicate if they have seen the film before (1-yes, 2-no).
 ```{r}
 DF.seen <- DF.exp2 %>%
-  select("prolific_id", "key_resp_seen.keys") %>%
+  select("participant_id", "key_resp_seen.keys") %>%
   rename(seen = key_resp_seen.keys) %>%
   filter(!is.na(seen)) 
 ```
@@ -163,7 +163,7 @@ Participants who fail the attention check, i.e. participant who do not make a pr
 ```{r}
 excluded_participants <- DF.prediction %>% 
   filter(is.na(prediction)) %>% 
-  select(prolific_id) %>% 
+  select(participant_id) %>% 
   mutate(reason = "attention_check")
 ```
 
@@ -172,7 +172,7 @@ Participants who show no variability in their ratings across the event numbers o
 
 ```{r}
 DF.rating %>%
-  group_by(prolific_id, measure) %>%
+  group_by(participant_id, measure) %>%
   summarise(ratingSD = sd(response)) %>%
   ggplot(., aes(x=measure, y=ratingSD, fill = measure)) +
   geom_point(aes(colour = measure), position=position_jitter(width = .02), size = 1, shape = 21, colour = "Black") +
@@ -190,10 +190,10 @@ DF.rating %>%
 Update the exclude participants list:
 ```{r}
 excluded_participants <- DF.rating %>%
-  group_by(prolific_id, measure) %>%
+  group_by(participant_id, measure) %>%
   summarise(ratingSD = sd(response)) %>%
   filter(ratingSD <= 0.5) %>%
-  select(prolific_id) %>%
+  select(participant_id) %>%
   mutate(reason = "variability_rating") %>%
   bind_rows(., excluded_participants)
 ```
@@ -203,7 +203,7 @@ Participants who click through the rating task, i.e. with a mean response durati
 
 ```{r}
 ctR <- DF.rating %>%
-  group_by(prolific_id) %>%
+  group_by(participant_id) %>%
   summarise(rt = mean(rt)) %>%
   ggplot(., aes(x=1, y=rt, fill = "blue")) +
   geom_point(position=position_jitter(width = .02), size = 1, shape = 21, colour = "Black") +
@@ -223,7 +223,7 @@ ctR <- DF.rating %>%
 Participants who click through the IDAQ questionnaire, i.e. with total duration of < 1min; 
 ```{r}
 ctI <-DF.idaq %>%
-  group_by(prolific_id) %>%
+  group_by(participant_id) %>%
   summarise(total = sum(idaq_rt)) %>%
   ggplot(., aes(x=1, y=total, fill = "blue")) +
   geom_point( position=position_jitter(width = .02), size = 1, shape = 21, colour = "Black") +
@@ -244,10 +244,10 @@ ctR + ctI
 Update the exclude participants list (rating task):
 ```{r}
 excluded_participants <- DF.rating %>%
-  group_by(prolific_id, measure) %>%
+  group_by(participant_id, measure) %>%
   summarise(rt = mean(rt))  %>%
   filter(rt < 1) %>%
-  select(prolific_id) %>%
+  select(participant_id) %>%
   mutate(reason = "duration_rating") %>%
   bind_rows(., excluded_participants)
 ```
@@ -255,10 +255,10 @@ excluded_participants <- DF.rating %>%
 Update the exclude participants list (IDAQ):
 ```{r}
 excluded_participants <- DF.idaq %>%
-  group_by(prolific_id) %>%
+  group_by(participant_id) %>%
   summarise(total = sum(idaq_rt))  %>%
   filter(total < 60) %>%
-  select(prolific_id) %>%
+  select(participant_id) %>%
   mutate(reason = "duration_idaq") %>%
   bind_rows(., excluded_participants)
 ```
@@ -267,7 +267,7 @@ excluded_participants <- DF.idaq %>%
 Participants who have an accuracy of 50% or lower for the false belief questions in the False Belief task;
 ```{r}
 DF.fa %>%
-  group_by(prolific_id, p_b) %>%
+  group_by(participant_id, p_b) %>%
   summarise(acc = mean(acc)) %>%
   mutate_at(vars(-acc), as.factor) %>%
   ggplot(., aes(x=p_b, y=acc, fill = p_b)) +
@@ -285,10 +285,10 @@ DF.fa %>%
 Update the exclude participants list:
 ```{r}
 excluded_participants <- DF.fa %>%
-  group_by(prolific_id, p_b) %>%
+  group_by(participant_id, p_b) %>%
   summarise(acc = mean(acc)) %>%
   filter(acc <= 0.5 & p_b == "b") %>%
-  select(prolific_id) %>%
+  select(participant_id) %>%
   mutate(reason = "fa_accuracy") %>%
   bind_rows(., excluded_participants)
 ```
@@ -297,20 +297,20 @@ excluded_participants <- DF.fa %>%
 Participants who have 5 or more missing responses for the False Belief task will be excluded.
 ```{r}
 excluded_participants <- DF.fa %>%
-  group_by(prolific_id) %>%
+  group_by(participant_id) %>%
   summarise(missing = sum(is.na(fa_resp)))%>%
   filter(missing >= 5) %>%
-  select(prolific_id) %>%
+  select(participant_id) %>%
   mutate(reason = "fa_missing") %>%
   bind_rows(., excluded_participants)
 ```
 
 Participants who do not finish the task. The false belief task is either after the IDAQ and rating task or before the IDAQ.
 ```{r}
-idaq_sub <- DF.idaq %>% select(prolific_id) %>% unique()
-fa_sub <- DF.fa %>% select(prolific_id) %>% unique()
+idaq_sub <- DF.idaq %>% select(participant_id) %>% unique()
+fa_sub <- DF.fa %>% select(participant_id) %>% unique()
 
-excluded_participants <- anti_join(idaq_sub, fa_sub, by = "prolific_id") %>%  mutate(reason = "incomplete") %>%
+excluded_participants <- anti_join(idaq_sub, fa_sub, by = "participant_id") %>%  mutate(reason = "incomplete") %>%
   bind_rows(., excluded_participants)
 ```
 
@@ -325,12 +325,12 @@ excluded_participants %>%
 
 ## 4.5 Update all the tasks 
 ```{r}
-DF.demo <- DF.demo %>% filter(!prolific_id %in% excluded_participants$prolific_id)
-DF.rating <- DF.rating %>% filter(!prolific_id %in% excluded_participants$prolific_id)
-DF.prediction <- DF.prediction %>% filter(!prolific_id %in% excluded_participants$prolific_id)
-DF.seen <- DF.seen %>% filter(!prolific_id %in% excluded_participants$prolific_id)
-DF.fa <- DF.fa %>% filter(!prolific_id %in% excluded_participants$prolific_id) 
-DF.idaq <- DF.idaq %>% filter(!prolific_id %in% excluded_participants$prolific_id)
+DF.demo <- DF.demo %>% filter(!participant_id %in% excluded_participants$participant_id)
+DF.rating <- DF.rating %>% filter(!participant_id %in% excluded_participants$participant_id)
+DF.prediction <- DF.prediction %>% filter(!participant_id %in% excluded_participants$participant_id)
+DF.seen <- DF.seen %>% filter(!participant_id %in% excluded_participants$participant_id)
+DF.fa <- DF.fa %>% filter(!participant_id %in% excluded_participants$participant_id) 
+DF.idaq <- DF.idaq %>% filter(!participant_id %in% excluded_participants$participant_id)
 ```
 
 # 5. Indices {.tabset .tabset-fade .tabset-pills}
@@ -349,24 +349,24 @@ DF.mean <- DF.rating %>%
 
 p1 <- DF.rating %>%
   mutate(event_nr = factor(event_nr, levels=c(1:16), ordered=TRUE)) %>% 
-  dplyr::group_by(prolific_id, event_nr, measure) %>% #focus and event_type are included or excluded based on Model C1/C2
+  dplyr::group_by(participant_id, event_nr, measure) %>% #focus and event_type are included or excluded based on Model C1/C2
   dplyr::summarise(rating = mean(as.numeric(response))) %>% 
   ggplot(., aes(event_nr, rating)) +
-  geom_line(aes(group = prolific_id), alpha=0.2) +
+  geom_line(aes(group = participant_id), alpha=0.2) +
   geom_line(data = DF.mean, aes(group = 1), size = 1, color = 'red') +
   coord_fixed(ratio = 1/1) +
   facet_wrap(~measure)
 ```
 
 ```{r, echo=FALSE, warning=FALSE}
-DF.mean <- summarySEwithin(DF.rating, measurevar="response", withinvars= c("event_type", "focus","measure"), idvar="prolific_id")
+DF.mean <- summarySEwithin(DF.rating, measurevar="response", withinvars= c("event_type", "focus","measure"), idvar="participant_id")
 
 p2 <- DF.rating %>%
-  dplyr::group_by(prolific_id, event_type, focus, measure) %>% #focus and event_type are included or excluded based on Model C1/C2
+  dplyr::group_by(participant_id, event_type, focus, measure) %>% #focus and event_type are included or excluded based on Model C1/C2
   dplyr::summarise(rating = mean(as.numeric(response))) %>% 
   ggplot(.,aes(x = event_type, y=rating, fill = focus))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
-  geom_point(position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
+  geom_point(position=position_jitter(width = .05), size = .8, shape = 21, colour = "Black") +
   geom_boxplot(aes(x=event_type,y=rating),position=position_nudge(x = .12, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
   geom_point(data = DF.mean, aes(x = event_type, y = response), position = position_nudge(.3), colour = "BLACK")+
   geom_errorbar(data = DF.mean, aes(x=event_type,y=response, ymin = response-ci, ymax = response+ci), position=position_nudge(x = .3, y = 0), width = .05)+
@@ -382,7 +382,7 @@ p2
 
 ```{r}
 DF.rating <- DF.rating %>% 
-  dplyr::group_by(prolific_id, measure) %>% #focus and event_type are included or excluded based on Model C1/C2
+  dplyr::group_by(participant_id, measure) %>% #focus and event_type are included or excluded based on Model C1/C2
   dplyr::summarise(rating = mean(as.numeric(response)))  
 ```
 
@@ -393,7 +393,7 @@ DF.idaq %>%
   filter(!is.na(idaq_resp) & Scale == "IDAQ") %>%
   select(-Scale,-Question, -idaq_rt)  %>%
   pivot_wider(names_from = ItemNr, values_from = idaq_resp) %>%
-  select(-prolific_id) %>%
+  select(-participant_id) %>%
   psych::alpha(na.rm = TRUE) 
 ```
 
@@ -403,7 +403,7 @@ DF.idaq %>%
   filter(!is.na(idaq_resp) & Scale == "IDAQNA") %>%
   select(-Scale,-Question, -idaq_rt)  %>%
   pivot_wider(names_from = ItemNr, values_from = idaq_resp) %>%
-  select(-prolific_id) %>%
+  select(-participant_id) %>%
   psych::alpha(na.rm = TRUE)
 ```
 
@@ -411,17 +411,17 @@ We will sum the responses for the IDAQ and IDAQ-NA scale separately (Waytz, Caci
 ```{r}
 DF.idaq <- DF.idaq %>%
   filter(!is.na(idaq_resp)) %>% 
-  dplyr::group_by(prolific_id, Scale) %>%
+  dplyr::group_by(participant_id, Scale) %>%
   dplyr::summarise(score = sum(idaq_resp)) 
 ```
 
 Visualise the IDAQ scores
 ```{r, echo=FALSE}
-DF.mean <- summarySEwithin(DF.idaq, measurevar="score", withinvars= "Scale", idvar="prolific_id")
+DF.mean <- summarySEwithin(DF.idaq, measurevar="score", withinvars= "Scale", idvar="participant_id")
  
 p3 <- DF.idaq %>%
   filter(Scale == "IDAQ") %>%
-  group_by(prolific_id) %>%
+  group_by(participant_id) %>%
   ggplot(.,aes(x = 1, y=score, fill = "Black"))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
   geom_point(position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
@@ -446,12 +446,12 @@ Accuracy (percentage correct) for the false-belief and false-photograph stories 
 
 ```{r}
 DF.fa <- DF.fa %>% 
-  dplyr::group_by(prolific_id, p_b) %>%
+  dplyr::group_by(participant_id, p_b) %>%
   dplyr::summarise(acc = mean(acc, na.rm = TRUE)) 
 ```
 
 ```{r, echo=FALSE}
-DF.mean <- summarySEwithin(DF.fa, measurevar="acc", withinvars= "p_b", idvar="prolific_id")
+DF.mean <- summarySEwithin(DF.fa, measurevar="acc", withinvars= "p_b", idvar="participant_id")
  
 p4 <- DF.fa %>%
   ggplot(.,aes(x = p_b, y=acc, fill= p_b))+
@@ -467,16 +467,13 @@ p4 <- DF.fa %>%
   theme(legend.position="none")
 p4 
 ```
-
-
-
 ## 5.4 One dataset with centered and scaled variables
 ```{r}
 DF.exp2 <- DF.rating %>% 
-  left_join(DF.idaq, by = "prolific_id") %>% 
-  left_join(DF.fa, by = "prolific_id") %>% 
-  left_join(DF.seen, by = "prolific_id") %>% 
-  left_join(DF.prediction, by = "prolific_id") %>% 
+  left_join(DF.idaq, by = "participant_id") %>% 
+  left_join(DF.fa, by = "participant_id") %>% 
+  left_join(DF.seen, by = "participant_id") %>% 
+  left_join(DF.prediction, by = "participant_id") %>% 
   filter(Scale == "IDAQ" & p_b == "b") %>% 
   pivot_wider(names_from = measure, values_from = rating) %>% 
   ungroup() %>% 
@@ -487,12 +484,9 @@ DF.exp2 <- DF.rating %>%
   select(-score, - acc, -Scale, -p_b, -anthropomorphism, -effectance)
 ```
 
-# 6. Title {.tabset .tabset-fade .tabset-pills}
-
-## 6.1 Subtitle
+## 5.4 Visualise relationship between anthropomorphism indices
 
 Visualise if dispositional anthropomorphism is positively related to situational anthropomorphism:
-
 ```{r}
 p5 <- DF.exp2 %>%
   ggplot(aes(x=cent_sitant, y=cent_disant)) +
@@ -505,9 +499,9 @@ p5 <- DF.exp2 %>%
     y="Dispositional anthropomorphism")
 p5
 ```
+## 5.4 Visualise relationship between Theory-of-Mind indices
 
 Visualise if false belief performance is positively related to effectance ratings:
-
 ```{r}
 p6 <- DF.exp2 %>%
   ggplot(aes(x=cent_falsebelief, y=cent_effectance)) +
@@ -520,9 +514,10 @@ p6 <- DF.exp2 %>%
     y="Effectance")
 p6
 ```
+
 # 8. Main analyses {.tabset .tabset-fade .tabset-pills}
 
-Bayesian regression will be used to test a linear and non-linear (c.f. quadratic) relationship between situational and dispositional anthropomorphism and Theory-of-Mind. The following two models will be specified to test the main hypotheses:
+Bayesian regression will be used to test a linear and non-linear (c.f. quadratic) relationship between situational and dispositional anthropomorphism and Theory-of-Mind.
 
 ## 8.1 Quadriatic predictors
 
@@ -563,37 +558,175 @@ p8 <- DF.exp2 %>%
 p7 | p8
 ```
 
-## 8.3 Priors
+## 8.3 Set Priors
 The models will be run with weakly-informative priors, which avoids inappropriate inferences that can be the result when using non-informative priors without supplying strict information (Gelman, Jakulin, Pittau, & Su, 2008). 
 ```{r}
-priors1 <- c(set_prior("normal(0,1)", class = "b"))
+priors1 <- c(set_prior("normal(0,1)", class = "b"),
+             set_prior("student_t(3, -0.1, 2.5)", class = "Intercept"))
 ```
 
-## 8.4 Model 1 - anthropomorphism and effectance
+## 8.4 Full Model 1 - anthropomorphism and effectance
 
 Test the relationship between situational and dispositional anthropomorphism and effectance:
-```{r, eval=FALSE}
-model1ef <-brm(formula = cent_effectance ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
+```{r}
+model1ef <- brm(formula = cent_effectance ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
       data = DF.exp2,
       family = gaussian,
       prior = priors1,
       chains = 4,
       iter = 4000,
       seed = 42, 
-      file = model1ef.RDS)
+      file = "experiment2/models/model1ef.RDS")
 ```
 
+```{r}
+summary(model1ef)
+```
 
-## 8.5 Model 2 - anthropomorphism and false belief
+## 8.5 Full Model 2 - anthropomorphism and false belief
 
 Test the relationship between situational and dispositional anthropomorphism and false belief:
-```{r, eval=FALSE}
-model1fb <- brm(formula = cent_falsebelief ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
+```{r}
+model2fb <- brm(formula = cent_falsebelief ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
       data = DF.exp2,
       family = gaussian,
       prior = priors1,
       chains = 4,
       iter = 4000,
       seed = 42, 
-      file = model2fb.RDS)
+      file = "experiment2/models/model2fb.RDS")
+```
+
+```{r}
+summary(model2fb)
+```
+
+# 9. Posterior distribution {.tabset .tabset-fade .tabset-pills}
+
+## 9.1 Tab models:
+Use sjPlot to create html tables following [procedure outlined here](https://strengejacke.github.io/sjPlot/articles/tab_bayes.html):
+```{r}
+tab_model(
+  model1ef, model1fb,
+  show.se = TRUE, 
+  pred.labels = c("Intercept", "linear situational", "quadratic situational", "linear dispositional", "quadratic dispositional"),
+  dv.labels = c("effectance", "false belief"),
+  show.obs=FALSE
+)
+```
+
+## 9.2 Posterior plots:
+Create plots based on [this tutorial](https://www.rensvandeschoot.com/tutorials/r-linear-regression-bayesian-using-brms/):
+```{r}
+tom_combined <- bind_rows("effectance" = as_tibble(as.mcmc(model1ef,  pars = c("cent_sitant", "cent_sitant2", "cent_disant", "cent_disant2"), combine_chains = TRUE)),
+                          "falsebelief" = as_tibble(as.mcmc(model1fb, pars = c("cent_sitant", "cent_sitant2", "cent_disant", "cent_disant2"),combine_chains = TRUE)),
+                          .id = "tom") %>%
+  rename(linear_situational = cent_sitant, quadratic_situational = cent_sitant2, linear_dispositional = cent_disant, quadratic_dispositional = cent_disant2) %>%
+  pivot_longer(c("linear_situational", "quadratic_situational", "linear_dispositional", "quadratic_dispositional"),names_to = "varAnthro")
+```
+
+Plot the distributions:
+```{r}
+p9 <- tom_combined %>%
+  mutate_at(vars(-value),as.factor) %>%
+  rename(predictor = varAnthro) %>%
+  ggplot(., aes(value, fill = predictor)) +
+  geom_density(alpha = .5)+
+  geom_vline(xintercept = 0, color = "black", linetype = 2) +
+  ggtitle(paste("Posterior distributions for the Theory-of-Mind measures")) + 
+  facet_wrap(~tom, ncol =1) +
+  coord_fixed(ratio = 1/40) +
+  theme_classic(base_size = 8) +
+  theme(strip.background = element_blank()) +
+  scale_fill_manual(values=c("#0072B2", "#D55E00"))+ 
+  theme(axis.text.y = element_blank())
+p9
+```
+
+# 10. Model comparison {.tabset .tabset-fade .tabset-pills}
+
+We will run several models following the predictions:
+    
+    1.	There will be a linear and positive relationship between situational anthropomorphism and Theory-of-Mind (model1ef_s and model2fb_s). 
+    2.	There will be a quadratic relationship between dispositional anthropomorphism and Theory-of-Mind (model1ef_d and model2fb_d).
+    3.	Situational anthropomorphism will be a better predictor of Theory-of-Mind than dispositional anthropomorphism (combined and full model and model comparison).
+
+```{r}
+comp_model <- function(name, model_formula, priors_def){
+  
+  brm(formula = model_formula,
+      data = DF.exp2,
+      family = gaussian,
+      prior = priors1,
+      chains = 4,
+      iter = 1000,
+      seed = 42, #so the model is reproducible
+      file = paste0("experiment2/models/", name, ".RDS", sep = ""))
+}
+```
+
+## 10.1 Incremental models for effectance
+We start with the simple intercept-only model, followed by a linear situational predictor model, and a quadratic dispositional predictor model, and a combined model/  
+```{r}
+model1ef_i<- comp_model("model1ef_i", cent_effectance ~ 1) 
+model1ef_s<- comp_model("model1ef_s", cent_effectance ~ cent_sitant) #prediction 1
+model1ef_d <- comp_model("model1ef_s", cent_effectance ~ cent_disant2) #prediction 2
+model1ef_sd <- comp_model("model1ef_s", cent_effectance ~ cent_sitant + cent_disant2) #prediction 3
+```
+
+## 10.2 Incremental models for false belief
+We start with the simple intercept-only model, followed by a linear situational predictor model, and a quadratic dispositional predictor model, and a combined model/  
+```{r}
+model2fb_i<- comp_model("model2fb_i", cent_effectance ~ 1) 
+model2fb_s<- comp_model("model2fb_s", cent_effectance ~ cent_sitant) #prediction 1
+model2fb_d <- comp_model("model2fb_s", cent_effectance ~ cent_disant2) #prediction 2
+model2fb_sd <- comp_model("model2fb_s", cent_effectance ~ cent_sitant + cent_disant2) #prediction 3
+```
+
+## 10.3 Effectance
+
+```{r}
+modelcomp_ef <- loo(model1ef_i, model1ef_s, model1ef_d, model1ef_sd, model1ef)
+```
+
+## 10.4 False belief
+
+```{r}
+modelcomp_fb <- loo(model2fb_i, model2fb_s, model2fb_d, model2fb_sd, model2fb)
+```
+
+# 11. HDI+ROPE decision rule {.tabset .tabset-fade .tabset-pills}
+
+## 11.1 HDI+ROPE function
+
+Create a function for HDI+ROPE: 
+```{r}
+hdi_rope <- function(model){
+  rope <- rope_range(model)
+  rope_model <- equivalence_test(model, range = rope, ci = 0.95) 
+  plot(rope_model) + theme_classic() + 
+    ggtitle(deparse(substitute(model))) + 
+    xlim(-0.15,0.15) +  
+    theme(axis.title.y = element_blank(), axis.title.x = element_blank()) 
+}
+```
+
+## 11.2 Full effectance model
+```{r}
+hdi_rope(model1ef) 
+```
+
+## 11.3 Winning effectance model
+```{r}
+hdi_rope(modelef_winning) 
+```
+
+## 11.4 Full false belief model
+```{r}
+hdi_rope(model1fb) 
+```
+
+## 11.5 Winning false belief model
+```{r}
+hdi_rope(modelfb_winning) 
 ```
