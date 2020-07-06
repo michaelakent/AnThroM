@@ -749,7 +749,37 @@ lmv_plot
 
 # 11. HDI+ROPE decision rule {.tabset .tabset-fade .tabset-pills}
 
-## 11.1 HDI+ROPE function
+## 11.1 Re-run models for rope
+
+Multivariate models are not yet supported, so we will rerun the models one-by-one for effectance and false belief (full and winning model):
+
+Full effectance model:
+```{r}
+modelef <- brm(formula = cent_effectance ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
+      data = DF.exp2,
+      family = gaussian,
+      prior = priors1,
+      chains = 4,
+      iter = 4000,
+      seed = 42, 
+      file = "experiment2/models/modelef.RDS")
+```
+
+Full false belief model:
+```{r}
+modelfb <- brm(formula = cent_falsebelief ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
+      data = DF.exp2,
+      family = gaussian,
+      prior = priors1,
+      chains = 4,
+      iter = 4000,
+      seed = 42, 
+      file = "experiment2/models/modelfb.RDS")
+```
+
+Code for winning models based on LOO outcome.
+
+## 11.2 HDI+ROPE function
 
 Create a function for HDI+ROPE: 
 ```{r}
@@ -758,19 +788,28 @@ hdi_rope <- function(model){
   rope_model <- equivalence_test(model, range = rope, ci = 0.95) 
   plot(rope_model) + theme_classic() + 
     ggtitle(deparse(substitute(model))) + 
-    #xlim(-0.15,0.15) +  
     theme(axis.title.y = element_blank(), axis.title.x = element_blank()) 
 }
 ```
 
-## 11.2 Full  model
+## 11.3 Full model effectance
 ```{r}
-hdi_rope(model_f) 
+hdi_rope(modelef) 
 ```
 
-## 11.3 Winning  model
+## 11.4 Full  model false belief
+```{r}
+hdi_rope(modelfb) 
+```
+
+## 11.5 Winning  model effectance
 ```{r, eval = FALSE}
 hdi_rope(modelef_winning) #change the name based on LOO (remove eval = FALSE)
+```
+
+## 11.5 Winning  model effectance
+```{r, eval = FALSE}
+hdi_rope(modelfb_winning) #change the name based on LOO (remove eval = FALSE)
 ```
 
 ```{r}
