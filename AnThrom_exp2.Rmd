@@ -569,11 +569,12 @@ priors1 <- c(set_prior("normal(0,1)", class = "b"),
 ```
 
 ## 8.4 Visualise data for distribution
-```{r}
-DF.exp2 %>%
+```{r, echo=FALSE}
+p9 <- DF.exp2 %>%
   pivot_longer(cols = c("cent_effectance", "cent_falsebelief"), names_to = "dv") %>%
   ggplot(.) +
   geom_density(aes(x=value, group = dv, fill = dv), alpha = .1)
+p9
 ```
 
 ## 8.5 Specify the formula and family for the models
@@ -633,7 +634,7 @@ tom_combined <- as_tibble(as.mcmc(model_f, combine_chains = TRUE)) %>%
 
 Plot the distributions:
 ```{r}
-p9 <- tom_combined %>%
+p10 <- tom_combined %>%
   mutate_at(vars(-value),as.factor) %>%
   ggplot(., aes(value, fill = predictor)) +
   geom_density(alpha = .5)+
@@ -642,7 +643,7 @@ p9 <- tom_combined %>%
   facet_wrap(~dv, ncol =1) +
   theme(strip.background = element_blank()) +
   scale_fill_manual(values=c("#0072B2", "#000033", "#D55E00", "#660000"))
-p9
+p10
 ```
 
 # 10. Model comparison {.tabset .tabset-fade .tabset-pills}
@@ -730,7 +731,7 @@ lmv_dat <- lmv %>%
   data.frame() %>% 
   rownames_to_column(var = "model")
 
-lmv_plot <-  ggplot(lmv_dat) +
+p11 <-  ggplot(lmv_dat) +
   geom_pointrange(aes(x = reorder(model, -elpd_loo), y = elpd_loo,
                       ymin = elpd_loo - se_elpd_loo,
                       ymax = elpd_loo + se_elpd_loo,
@@ -743,7 +744,7 @@ lmv_plot <-  ggplot(lmv_dat) +
   scale_colour_brewer(palette = "Reds") 
 
   
-lmv_plot
+p11
 ```
 
 
