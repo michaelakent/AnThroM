@@ -352,7 +352,7 @@ DF.mean <- DF.rating %>%
 
 p1 <- DF.rating %>%
   mutate(event_nr = factor(event_nr, levels=c(1:16), ordered=TRUE)) %>% 
-  dplyr::group_by(participant_id, event_nr, measure) %>% #focus and event_type are included or excluded based on Model C1/C2
+  dplyr::group_by(participant_id, event_nr, measure) %>% #focus and event_type are included or excluded based on visualisation
   dplyr::summarise(rating = mean(as.numeric(response))) %>% 
   ggplot(., aes(event_nr, rating)) +
   geom_line(aes(group = participant_id), alpha=0.2) +
@@ -365,7 +365,7 @@ p1 <- DF.rating %>%
 DF.mean <- summarySEwithin(DF.rating, measurevar="response", withinvars= c("event_type", "focus","measure"), idvar="participant_id")
 
 p2 <- DF.rating %>%
-  dplyr::group_by(participant_id, event_type, focus, measure) %>% #focus and event_type are included or excluded based on Model C1/C2
+  dplyr::group_by(participant_id, event_type, focus, measure) %>% #focus and event_type are included or excluded based on visualisation
   dplyr::summarise(rating = mean(as.numeric(response))) %>% 
   ggplot(.,aes(x = event_type, y=rating, fill = focus))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
@@ -385,7 +385,7 @@ p2
 
 ```{r}
 DF.rating <- DF.rating %>% 
-  dplyr::group_by(participant_id, measure) %>% #focus and event_type are included or excluded based on Model C1/C2
+  dplyr::group_by(participant_id, measure) %>% #focus and event_type are included or excluded based on visualisation
   dplyr::summarise(rating = mean(as.numeric(response)))  
 ```
 
