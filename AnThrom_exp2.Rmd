@@ -40,6 +40,8 @@ library("httr")
 options(mc.cores = parallel::detectCores()) 
 theme_set(theme_classic(base_size = 10)) 
 options("scipen"=10, "digits"=4) 
+
+library(waffle)
 ```
 
 ## 1.3 Data description
@@ -49,17 +51,22 @@ This Rmd is written based on pilot data (target sample size of n = 20).
 The data can be downloaded from the [OSF project page](https://osf.io/a8pyr/)
 
 ## 2.1 Load the prolific export file
+Post-preregistration note: only information from the approved participants that completed all parts of the experiment are included, as returned and timed out participant don't necessarily provide consent ([explainer on Prolific:](https://researcher-help.prolific.co/hc/en-gb/articles/360009259434-Returned-submission-status) 
 ```{r, echo = TRUE, message = FALSE}
-DF.demo <- list.files("experiment2/data/pilot",pattern="\\prolific*", full.names=TRUE) %>% #change to "experiment2/data/main"
+DF.demo <- list.files("experiment2/data/main",pattern="\\prolific*", full.names=TRUE) %>% #change to "experiment2/data/main"
   map_dfr(read_csv)
+
+demo_sub <- DF.demo %>% select(participant_id) %>% unique()
+
 ```
 
 ## 2.2 Load the psychopy/pavlovia files
 ```{r, echo = TRUE, message = FALSE}
-DF.exp2 <- list.files("experiment2/data/pilot",pattern="\\PARTICIPANT*", full.names=TRUE) %>% 
+DF.exp2 <- list.files("experiment2/data/main",pattern="\\PARTICIPANT*", full.names=TRUE) %>% 
   map_dfr(read_csv) %>% 
-  rename(participant_id = prolific_id)
-events <- read_csv("experiment2/events_pilot.csv") #can be removed for main experiment, corrected in psychopy
+  rename(participant_id = prolific_id) %>%
+  filter(participant_id %in% DF.demo$participant_id)
+#events <- read_csv("experiment2/events_pilot.csv") #can be removed for main experiment, corrected in psychopy
 ```
 
 ## 2.3 Get the rating task data
@@ -70,16 +77,16 @@ events <- read_csv("experiment2/events_pilot.csv") #can be removed for main expe
 
 ```{r}
 DF.rating <- DF.exp2 %>%
-  select("participant_id", "eventnrM","event_typeM", "measure", "item", "focus", "key_resp_1.keys", "key_resp_2.keys", "key_resp_1.rt", "key_resp_2.rt")  %>%
+  select("participant_id", "eventnr","event_type", "measure", "item", "focus", "key_resp_1.keys", "key_resp_2.keys", "key_resp_1.rt", "key_resp_2.rt")  %>%
   mutate_at(vars(-key_resp_1.keys, -key_resp_2.keys, -key_resp_1.rt, -key_resp_2.rt),as.factor) %>%
   mutate(response = coalesce(key_resp_1.keys, key_resp_2.keys)) %>%
   mutate(rt = coalesce(key_resp_1.rt, key_resp_2.rt)) %>%
   select(-key_resp_1.keys, -key_resp_2.keys,-key_resp_1.rt, -key_resp_2.rt) %>%
   filter(!is.na(response) & !is.na(focus)) %>%
-  group_by(participant_id) %>%
-  mutate(trial_nr = c(1:length(response))) %>% #can be removed for main experiment, corrected in psychopy
-  select(-event_typeM, -eventnrM) %>% #can be removed for main experiment, corrected in psychopy
-  left_join(., events, by = "trial_nr") %>% #can be removed for main experiment, corrected in psychopy
+  dplyr::group_by(participant_id) %>%
+  #mutate(trial_nr = c(1:length(response))) %>% #can be removed for main experiment, corrected in psychopy
+  #select(-event_typeM, -eventnrM) %>% #can be removed for main experiment, corrected in psychopy
+  #left_join(., events, by = "trial_nr") %>% #can be removed for main experiment, corrected in psychopy
   mutate_at(vars(-response, -rt),as.factor) 
 ```
 
@@ -129,33 +136,80 @@ DF.seen <- DF.exp2 %>%
 ## 3.1 Number of approved participants
 ```{r}
 DF.demo %>% 
-  group_by(status) %>%
+  dplyr::group_by(status) %>%
   tally() %>%
   knitr::kable(., "html", caption = "Breakdown prolific") %>%
   kable_styling("striped")
 ```
 
 ## 3.2 Age
-NB. This will be updated after data collection to account for structure of the representational sample 
 ```{r}
 DF.demo %>% 
-  filter(status == "APPROVED") %>% 
-  summarise(mean = mean(age),
-            SD = sd(age)) %>%
+  mutate(age_bin = cut(age, breaks = c(18, 27, 37, 47, 57, 99), labels = c("18-27","28-37","38-47","48-57","58+"))) %>% 
+  dplyr::group_by(age_bin) %>% 
+  dplyr::summarise(
+    n = n()) %>%
   knitr::kable(., "html", caption = "Age") %>%
   kable_styling("striped")
 ```
 
 ## 3.3 Male/female
-NB. This will be updated after data collection to account for structure of the representational sample 
 ```{r}
 DF.demo %>% 
-  filter(status == "APPROVED") %>% 
-  group_by(Sex) %>%
+  dplyr::group_by(Sex) %>%
   tally() %>%
   knitr::kable(., "html", caption = "Sex") %>%
   kable_styling("striped")
 ```
+
+## 3.4 Ethnicity
+```{r}
+DF.demo %>% 
+  dplyr::group_by(`Ethnicity (Simplified)`) %>% 
+  dplyr::summarise(n = n()) %>%
+  knitr::kable(., "html", caption = "Ethnicity") %>%
+  kable_styling("striped")
+```
+
+## 3.5 Detailed break down of demographics
+```{r}
+s1 <- DF.demo %>% 
+  mutate(age_bin = cut(age, breaks = c(18, 27, 37, 47, 57, 99), 
+                       labels = c("18-27","28-37","38-47","48-57","58+"))) %>% 
+  filter(!is.na(age)) %>% 
+  dplyr::group_by(Sex, `Ethnicity (Simplified)`, age_bin) %>% 
+  dplyr::summarise(
+    n = n()) %>%
+  ggplot(aes(fill = Sex, values = n)) +
+  geom_waffle(size = 0.33, colour = "white", flip = TRUE) +
+  coord_equal() +
+  theme_enhance_waffle() +
+  theme(panel.grid = element_blank(), axis.ticks = element_blank(), axis.line = element_blank()) +
+  facet_wrap(~age_bin, ncol = 5) +
+  scale_fill_manual(values = c("#a40000", "#000666")) +
+  theme_enhance_waffle()
+s1
+```
+
+```{r}
+s2 <- DF.demo %>% 
+  mutate(age_bin = cut(age, breaks = c(18, 27, 37, 47, 57, 99), 
+                       labels = c("18-27","28-37","38-47","48-57","58+"))) %>% 
+  filter(!is.na(age)) %>% 
+  dplyr::group_by(`Ethnicity (Simplified)`, Sex, age_bin) %>% 
+  dplyr::summarise(
+    n = n()) %>%
+  ggplot(aes(values = n, fill=`Ethnicity (Simplified)`))  +
+  geom_waffle(size = 0.33, colour = "white", flip = TRUE) +
+  coord_equal() +
+  theme_enhance_waffle() +
+  theme(panel.grid = element_blank(), axis.ticks = element_blank(), axis.line = element_blank()) +
+  facet_wrap(Sex~age_bin, ncol = 5) +
+  scale_fill_manual(values = c("#cc0033", "#FF00CC", "#660066", "#9900FF", "#3300CC")) +
+  theme_enhance_waffle()
+s2
+```
+
 
 # 4. Data exclusion {.tabset .tabset-fade .tabset-pills}
 The following criteria are used to exclude participants:
@@ -163,9 +217,13 @@ The following criteria are used to exclude participants:
 ## 4.1 Attention check
 Participants who fail the attention check, i.e. participant who do not make a prediction during the movie (no characters typed);
 
+The following participant contacted us and indicated they pressed enter by mistake (there is no moving back option), we will not exclude this participant for not providing an answer (and 'failing' the attention check):
+
+    5efcbd96e3b6fa0b354cbf2a
+
 ```{r}
 excluded_participants <- DF.prediction %>% 
-  filter(is.na(prediction)) %>% 
+  filter(is.na(prediction) & participant_id != "5efcbd96e3b6fa0b354cbf2a") %>% 
   select(participant_id) %>% 
   mutate(reason = "attention_check")
 ```
@@ -175,8 +233,8 @@ Participants who show no variability in their ratings across the event numbers o
 
 ```{r}
 DF.rating %>%
-  group_by(participant_id, measure) %>%
-  summarise(ratingSD = sd(response)) %>%
+  dplyr::group_by(participant_id, measure) %>%
+  dplyr::summarise(ratingSD = sd(response)) %>%
   ggplot(., aes(x=measure, y=ratingSD, fill = measure)) +
   geom_point(aes(colour = measure), position=position_jitter(width = .02), size = 1, shape = 21, colour = "Black") +
   geom_boxplot(aes(x=measure,y=ratingSD),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
@@ -193,21 +251,20 @@ DF.rating %>%
 Update the exclude participants list:
 ```{r}
 excluded_participants <- DF.rating %>%
-  group_by(participant_id, measure) %>%
-  summarise(ratingSD = sd(response)) %>%
-  filter(ratingSD <= 0.5) %>%
-  select(participant_id) %>%
+  dplyr::group_by(participant_id, measure) %>%
+  dplyr::summarise(ratingSD = sd(response)) %>%
+  filter(ratingSD < 0.5) %>% #should be < not <= 
+  select(participant_id, ratingSD) %>%
   mutate(reason = "variability_rating") %>%
   bind_rows(., excluded_participants)
 ```
 
 ## 4.3 Click through
 Participants who click through the rating task, i.e. with a mean response duration < 1sec:
-
 ```{r}
 ctR <- DF.rating %>%
-  group_by(participant_id) %>%
-  summarise(rt = mean(rt)) %>%
+  dplyr::group_by(participant_id) %>%
+  dplyr::summarise(rt = mean(rt)) %>%
   ggplot(., aes(x=1, y=rt, fill = "blue")) +
   geom_point(position=position_jitter(width = .02), size = 1, shape = 21, colour = "Black") +
   geom_boxplot(aes(x=1,y=rt),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
@@ -226,8 +283,8 @@ ctR <- DF.rating %>%
 Participants who click through the IDAQ questionnaire, i.e. with total duration of < 1min; 
 ```{r}
 ctI <-DF.idaq %>%
-  group_by(participant_id) %>%
-  summarise(total = sum(idaq_rt)) %>%
+  dplyr::group_by(participant_id) %>%
+  dplyr::summarise(total = sum(idaq_rt)) %>%
   ggplot(., aes(x=1, y=total, fill = "blue")) +
   geom_point( position=position_jitter(width = .02), size = 1, shape = 21, colour = "Black") +
   geom_boxplot(aes(x=1,y=total),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") +
@@ -247,10 +304,10 @@ ctR + ctI
 Update the exclude participants list (rating task):
 ```{r}
 excluded_participants <- DF.rating %>%
-  group_by(participant_id, measure) %>%
-  summarise(rt = mean(rt))  %>%
+  dplyr::group_by(participant_id) %>% #removed the measure (as in plot), was included by mistake
+  dplyr::summarise(rt = mean(rt))  %>%
   filter(rt < 1) %>%
-  select(participant_id) %>%
+  select(participant_id, rt) %>%
   mutate(reason = "duration_rating") %>%
   bind_rows(., excluded_participants)
 ```
@@ -258,10 +315,10 @@ excluded_participants <- DF.rating %>%
 Update the exclude participants list (IDAQ):
 ```{r}
 excluded_participants <- DF.idaq %>%
-  group_by(participant_id) %>%
-  summarise(total = sum(idaq_rt))  %>%
+  dplyr::group_by(participant_id) %>%
+  dplyr::summarise(total = sum(idaq_rt))  %>%
   filter(total < 60) %>%
-  select(participant_id) %>%
+  select(participant_id, total) %>%
   mutate(reason = "duration_idaq") %>%
   bind_rows(., excluded_participants)
 ```
@@ -270,8 +327,8 @@ excluded_participants <- DF.idaq %>%
 Participants who have an accuracy of 50% or lower for the false belief questions in the False Belief task;
 ```{r}
 DF.fa %>%
-  group_by(participant_id, p_b) %>%
-  summarise(acc = mean(acc)) %>%
+  dplyr::group_by(participant_id, p_b) %>%
+  dplyr::summarise(acc = mean(acc, na.rm = TRUE)) %>% #na.rm was missing
   mutate_at(vars(-acc), as.factor) %>%
   ggplot(., aes(x=p_b, y=acc, fill = p_b)) +
   geom_point(aes(colour = p_b), position=position_jitter(width = .05), size = 1, shape = 21, colour = "Black") +
@@ -288,10 +345,10 @@ DF.fa %>%
 Update the exclude participants list:
 ```{r}
 excluded_participants <- DF.fa %>%
-  group_by(participant_id, p_b) %>%
-  summarise(acc = mean(acc)) %>%
+  dplyr::group_by(participant_id, p_b) %>%
+  dplyr::summarise(acc = mean(acc, na.rm = TRUE)) %>% #na.rm was missing
   filter(acc <= 0.5 & p_b == "b") %>%
-  select(participant_id) %>%
+  select(participant_id, acc) %>%
   mutate(reason = "fa_accuracy") %>%
   bind_rows(., excluded_participants)
 ```
@@ -300,27 +357,30 @@ excluded_participants <- DF.fa %>%
 Participants who have 5 or more missing responses for the False Belief task will be excluded.
 ```{r}
 excluded_participants <- DF.fa %>%
-  group_by(participant_id) %>%
-  summarise(missing = sum(is.na(fa_resp)))%>%
+  dplyr::group_by(participant_id) %>%
+  dplyr::summarise(missing = sum(is.na(fa_resp)))%>%
   filter(missing >= 5) %>%
-  select(participant_id) %>%
+  select(participant_id, missing) %>%
   mutate(reason = "fa_missing") %>%
   bind_rows(., excluded_participants)
 ```
 
-Participants who do not finish the task. The false belief task is either after the IDAQ and rating task or before the IDAQ.
+Participants who do not finish the task. The false belief task is either after the IDAQ and rating task or before the IDAQ. 
+
+Note: this is no longer needed (see section 2.1).
 ```{r}
-idaq_sub <- DF.idaq %>% select(participant_id) %>% unique()
+idaq_sub <- DF.idaq %>% select(participant_id) %>% unique() 
 fa_sub <- DF.fa %>% select(participant_id) %>% unique()
 
-excluded_participants <- anti_join(idaq_sub, fa_sub, by = "participant_id") %>%  mutate(reason = "incomplete") %>%
+excluded_participants <- anti_join(idaq_sub, fa_sub, by = "participant_id") %>%  
+  mutate(reason = "incomplete") %>%
   bind_rows(., excluded_participants)
 ```
 
 ## 4.6 Excluded participants
 ```{r}
 excluded_participants %>%
-  group_by(reason) %>% 
+  dplyr::group_by(reason) %>% 
   tally() %>% 
   knitr::kable(., "html", caption = "Excluded participants") %>%
   kable_styling("striped")
@@ -346,12 +406,12 @@ The 5 anthropomorphism items will be averaged to create a situational anthropomo
 Visualise if situational anthropomorphism and effectance ratings fluctuate over time, event, and focus
 ```{r, echo=FALSE, warning=FALSE}
 DF.mean <- DF.rating %>% 
-  mutate(event_nr = factor(event_nr, levels=c(1:16), ordered=TRUE)) %>% 
+  mutate(event_nr = factor(eventnr, levels=c(1:16), ordered=TRUE)) %>% 
   dplyr::group_by(event_nr, measure) %>%
   dplyr::summarise(rating = mean(response)) 
 
 p1 <- DF.rating %>%
-  mutate(event_nr = factor(event_nr, levels=c(1:16), ordered=TRUE)) %>% 
+  mutate(event_nr = factor(eventnr, levels=c(1:16), ordered=TRUE)) %>% 
   dplyr::group_by(participant_id, event_nr, measure) %>% #focus and event_type are included or excluded based on visualisation
   dplyr::summarise(rating = mean(as.numeric(response))) %>% 
   ggplot(., aes(event_nr, rating)) +
@@ -391,7 +451,7 @@ DF.rating <- DF.rating %>%
 
 ## 5.2	Dispositional anthropomorphism:
 Check the reliability of the IDAQ scale:
-```{r}
+```{r, eval = FALSE}
 DF.idaq %>% 
   filter(!is.na(idaq_resp) & Scale == "IDAQ") %>%
   select(-Scale,-Question, -idaq_rt)  %>%
@@ -401,7 +461,7 @@ DF.idaq %>%
 ```
 
 Check the reliability of the IDAQ-NA scale:
-```{r}
+```{r, eval = FALSE}
 DF.idaq %>% 
   filter(!is.na(idaq_resp) & Scale == "IDAQNA") %>%
   select(-Scale,-Question, -idaq_rt)  %>%
@@ -424,7 +484,7 @@ DF.mean <- summarySEwithin(DF.idaq, measurevar="score", withinvars= "Scale", idv
  
 p3 <- DF.idaq %>%
   filter(Scale == "IDAQ") %>%
-  group_by(participant_id) %>%
+  dplyr::group_by(participant_id) %>%
   ggplot(.,aes(x = 1, y=score, fill = "Black"))+
   geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, alpha = .75, colour = "Black") +
   geom_point(position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
@@ -444,13 +504,13 @@ p3 <- DF.idaq %>%
 p3
 ```
 
-## 5.3	False belief:
+## 5.3	False belief
 Accuracy (percentage correct) for the false-belief and false-photograph stories will be calculated separately (Spunt et al., 2015).
 
 ```{r}
 DF.fa <- DF.fa %>% 
   dplyr::group_by(participant_id, p_b) %>%
-  dplyr::summarise(acc = mean(acc, na.rm = TRUE)) 
+  dplyr::summarise(acc = mean(acc, na.rm = TRUE)) #na.rm was missing
 ```
 
 ```{r, echo=FALSE}
@@ -583,7 +643,7 @@ Family will be updated based on the distribution of the data
 Formula and family for effectance:
 ```{r}
 bf_ef <- bf(cent_effectance ~ 1 + cent_sitant + cent_sitant2 + cent_disant + cent_disant2) +
-   gaussian()
+   skew_normal()
 ```
 
 Formula and family for false belief:
@@ -660,7 +720,7 @@ Function to run the models:
 comp_model <- function(name, model_formula1, model_formula2){
   
   bf_ef <- bf(model_formula1) +
-   gaussian()
+   skew_normal()
   
   bf_fb <- bf(model_formula2) +
   skew_normal()
@@ -698,7 +758,7 @@ model_d <- comp_model("model_d", cent_effectance ~ cent_disant2, cent_falsebelie
 model_sd <- comp_model("model_sd", cent_effectance ~ cent_sitant + cent_disant2, cent_falsebelief ~ cent_sitant + cent_disant2) #prediction 3
 ```
 
-## 10.3 Model comparison
+## 10.2 Model comparison
 Add LOO to models and compare the models (code adapted from Richard Ramsey):
 ```{r}
 model_i <- add_criterion(model_i, "loo")
@@ -723,7 +783,7 @@ model_weights(model_i, model_s, model_d, model_sd, model_f,
   kable_styling("striped")
 ```
 
-## 10.4 Plot
+## 10.3 Plot
 
 Tabulate and then plot:
 ```{r}
