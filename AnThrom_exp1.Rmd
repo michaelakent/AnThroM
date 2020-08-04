@@ -2,14 +2,14 @@
 title: "Testing the relation between dispositional anthropomorphism and Theory-of-Mind network activation"
 author: Ruud Hortensius and Michaela Kent
 output:
-  html_notebook:
-    number_sections: no
-    theme: default
+  html_document:
+    df_print: paged
     toc: yes
     toc_float: yes
     code_folding: show
-  html_document:
-    df_print: paged
+  html_notebook:
+    number_sections: no
+    theme: default
     toc: yes
     toc_float: yes
     code_folding: show
@@ -26,17 +26,19 @@ June 2019 - July 2020
 ```{r, message=FALSE}
 source("R_rainclouds.R") 
 source("summarySE.R")
-library("psych")
-library("ordinal")
-library("brms")
-library("fs")
-library("patchwork") #devtools::install_github("thomasp85/patchwork")
-library("easystats") #devtools::install_github("easystats/easystats")
-library("sjPlot")
-library("httr")
-library("tidyverse")
+library(psych)
+library(ordinal)
+library(brms)
+library(fs)
+library(patchwork) #devtools::install_github("thomasp85/patchwork")
+library(easystats) #devtools::install_github("easystats/easystats")
+library(sjPlot)
+library(httr)
+library(kableExtra)
+library(tidyverse)
 theme_set(theme_classic(base_size = 15)) 
 options(mc.cores = parallel::detectCores()) #run on multiple cores)
+options("scipen"=10, "digits"=4) 
 ```
 
 Note: for the code chunk the language is listed, but all except for r chunks are executed in the terminal   
@@ -56,20 +58,24 @@ Data of the Theory-of-Mind functional localiser and Individual Differences in An
 Get info for table S1:
 ```{r}
 #load data
-DF.dataset1 <- read_tsv(file = "dataset_1/participants.tsv")
-DF.dataset2 <- read_tsv(file = "dataset_2/participants.tsv")
-DF.dataset3 <- read_tsv(file = "dataset_3/participants.tsv")
-DF.dataset4 <- read_tsv(file = "dataset_4/participants.tsv")
+DF.dataset1 <- read_tsv(file = "experiment1/dataset_1/participants.tsv")
+DF.dataset2 <- read_tsv(file = "experiment1/dataset_2/participants.tsv")
+DF.dataset3 <- read_tsv(file = "experiment1/dataset_3/participants.tsv")
+DF.dataset4 <- read_tsv(file = "experiment1/dataset_4/participants.tsv")
 
 #combine data
 bind_rows(DF.dataset1, DF.dataset2, DF.dataset3,  DF.dataset4, .id = "dataset") %>%
   group_by(dataset) %>% 
   summarise(mean = mean(age), 
-            sd = sd(age))
+            sd = sd(age)) %>% 
+  knitr::kable(., "html", caption = "Age") %>%
+  kable_styling("striped")
 
 bind_rows(DF.dataset1, DF.dataset2, DF.dataset3,  DF.dataset4, .id = "dataset") %>%
   group_by(dataset, sex) %>% 
-  tally()
+  tally() %>% 
+  knitr::kable(., "html", caption = "Sex") %>%
+  kable_styling("striped")
 ```
 
 ## 1.3 Neuroimaging procedure
@@ -348,19 +354,19 @@ modality <- "bold"
 Run the following code. Change the script below to load the group results for the different datasets:
 ```{r}
 #load data
-DF.dataset1  <- read_tsv(file = paste("dataset_1/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
+DF.dataset1  <- read_tsv(file = paste("experiment1/dataset_1/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
   gather("measure", "value", 2:46) %>%
   select("bids_name","measure", "value")
 
-DF.dataset2 <- read_tsv(file = paste("dataset_2/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
+DF.dataset2 <- read_tsv(file = paste("experiment1/dataset_2/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
   gather("measure", "value", 2:46) %>%
   select("bids_name","measure", "value")
 
-DF.dataset3 <- read_tsv(file = paste("dataset_3/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
+DF.dataset3 <- read_tsv(file = paste("experiment1/dataset_3/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
   gather("measure", "value", 2:46) %>%
   select("bids_name","measure", "value")
 
-DF.dataset4 <- read_tsv(file = paste("dataset_4/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
+DF.dataset4 <- read_tsv(file = paste("experiment1/dataset_4/derivatives/mriqc/group_", modality, ".tsv", sep ="")) %>%
   gather("measure", "value", 2:46) %>%
   select("bids_name","measure", "value") 
 
@@ -796,16 +802,16 @@ sub_ex = c(206:212, 219, 221:222, 224:225, 228, 231, 233:234)
 Get the IDAQ data for all the participants:
 ```{r}
 #load data 
-DF.d1  <- read_csv(file = "dataset_1/derivatives/IDAQ_dataset1.csv") %>%
+DF.d1  <- read_csv(file = "experiment1/dataset_1/derivatives/IDAQ_dataset1.csv") %>%
   gather("sub", "value", 4:32)
 
-DF.d2  <- read_csv(file = "dataset_2/derivatives/IDAQ_dataset2.csv") %>%
+DF.d2  <- read_csv(file = "experiment1/dataset_2/derivatives/IDAQ_dataset2.csv") %>%
   gather("sub", "value", 4:38) 
 
-DF.d3  <- read_csv(file = "dataset_3/derivatives/IDAQ_dataset3.csv") %>%
+DF.d3  <- read_csv(file = "experiment1/dataset_3/derivatives/IDAQ_dataset3.csv") %>%
   gather("sub", "value", 4:25) 
 
-DF.d4  <- read_csv(file = "dataset_4/derivatives/IDAQ_dataset4.csv") %>%
+DF.d4  <- read_csv(file = "experiment1/dataset_4/derivatives/IDAQ_dataset4.csv") %>%
   gather("sub", "value", 4:25) 
 
 DF.idaq <- bind_rows(DF.d1, DF.d2, DF.d3, DF.d4, .id = "dataset") %>%
@@ -872,7 +878,7 @@ FS1 <- DF.idaq %>%
   theme(legend.position="none") +
   facet_wrap(~scale)
 FS1
-ggsave("figures/S1.TIFF", plot = FS1, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("experiment1/figures/S1.TIFF", plot = FS1, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 
 ```
 
@@ -903,7 +909,7 @@ F1A <- DF.idaq %>%
       
   )
 F1A
-ggsave("figures/F1A.TIFF", plot = F1A, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("experiment1/figures/F1A.TIFF", plot = F1A, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 ## 5.6 Median and interquartile range per dataset
@@ -923,7 +929,7 @@ Create function to load the data for the different networks:
 ```{r}
 roi_extract <- function(datasetno, substart, subend, network, nroi) {
   
-  dir_ls(paste("dataset_", datasetno, "/derivatives/roi/", network, sep = ""), regexp = "\\.tsv$") %>% 
+  dir_ls(paste("experiment1/dataset_", datasetno, "/derivatives/roi/", network, sep = ""), regexp = "\\.tsv$") %>% 
     map_dfr(read.delim, sep = "\t", .id = "id", header = FALSE)  %>%
     mutate(dataset = datasetno) %>%
     mutate(network = network) %>%
@@ -992,7 +998,7 @@ FS2 <- DF.roi %>%
   facet_wrap(~dataset) 
 FS2
 
-ggsave("figures/S2.TIFF", plot = FS2, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("experiment1/figures/S2.TIFF", plot = FS2, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 Plot the ToM activity across regions (Figure 1C):
@@ -1017,7 +1023,7 @@ F1C <- DF.roi %>%
 
 F1C
 
-ggsave("figures/F1C.TIFF", plot = F1C, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("experiment1/figures/F1C.TIFF", plot = F1C, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 ## 6.3 Pain Matrix activation across datasets
@@ -1040,7 +1046,7 @@ FS3 <- DF.roi %>%
   theme(legend.position="none") +
   facet_wrap(~dataset)
 FS3
-ggsave("figures/S3.TIFF", plot = FS3, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("experiment1/figures/S3.TIFF", plot = FS3, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 ## 6.5 Combine IDAQ scores and ROI data:
@@ -1079,7 +1085,7 @@ F1D <- DF.roi %>%
 
 F1D 
 
-ggsave("figures/F1D.TIFF", plot = F1D, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("experiment1/figures/F1D.TIFF", plot = F1D, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 Create scatterplots with linear and non-linear lines for individual regions of ToM network: 
@@ -1099,7 +1105,7 @@ F1E <- DF.roi %>%
 
 F1E
 
-ggsave("figures/F1E.TIFF", plot = F1E, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("experiment1/figures/F1E.TIFF", plot = F1E, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 
 ```
 
@@ -1120,7 +1126,7 @@ reg_model <- function(region){
       chains = 4,
       iter = 4000,
       seed = 42, #so the model is reproducible
-      file = paste0("models/regions/", region, ".RDS", sep = ""))
+      file = paste0("experiment1/models/regions/", region, ".RDS", sep = ""))
 }
 ```
 
@@ -1194,7 +1200,7 @@ F2 <- tom_combined %>%
   theme(axis.text.y = element_blank())
 F2
 
-ggsave("figures/F2.TIFF", plot = F2, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("experiment1/figures/F2.TIFF", plot = F2, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 # 8. IDAQ scores and Pain Matrix activity {.tabset}
@@ -1216,7 +1222,7 @@ S4 <- DF.roi %>%
 
 S4 
 
-ggsave("figures/S4.TIFF", plot = S4, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("experiment1/figures/S4.TIFF", plot = S4, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 Create scatterplots with linear and non-linear lines for individual regions of the Pain Matrix: 
@@ -1236,7 +1242,7 @@ S5 <- DF.roi %>%
 
 S5 
 
-ggsave("figures/S5.TIFF", plot = S5, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("experiment1/figures/S5.TIFF", plot = S5, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 
@@ -1312,7 +1318,7 @@ S6 <- pain_combined %>%
 
 S6 
 
-ggsave("figures/S6.TIFF", plot = S6, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("experiment1/figures/S6.TIFF", plot = S6, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 
@@ -1327,7 +1333,7 @@ tom <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
       chains = 4,
       iter = 4000,
       seed = 42, #so the model is reproducible
-      file = "models/control/tom.RDS")
+      file = "experiment1/models/regions/tom.RDS")
 ```
 
 Summary:
@@ -1344,7 +1350,7 @@ pain <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
       chains = 4,
       iter = 4000,
       seed = 42, #so the model is reproducible
-      file = "models/control/pain.RDS")
+      file = "models/regions/pain.RDS")
 ```
 
 Summary:
