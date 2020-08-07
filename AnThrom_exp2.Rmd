@@ -349,7 +349,7 @@ DF.fa %>%
 ```
 
 Update the exclude participants list:
-```{r}
+```{r, eval=FALSE}
 excluded_participants <- DF.fa %>%
   dplyr::group_by(participant_id, p_b) %>%
   dplyr::summarise(acc = mean(acc, na.rm = TRUE)) %>% #na.rm was missing
@@ -506,6 +506,8 @@ DF.idaq %>%
 
 Visualise the IDAQ scores
 ```{r, echo=FALSE}
+theme_set(theme_classic(base_size = 20)) 
+
 DF.mean <- summarySEwithin(DF.idaq, measurevar="score", withinvars= "Scale", idvar="participant_id")
  
 p3 <- DF.idaq %>%
@@ -520,7 +522,7 @@ p3 <- DF.idaq %>%
   scale_fill_brewer(palette = "Greys") +
   scale_colour_brewer(palette = "Greys") +
   coord_fixed(ratio = 1/90) + 
-  ylab(paste("Dispositional anthropomorphism (0-150)")) + 
+  ylab(paste("Dispositional anthropomorphism")) + 
   theme(legend.position="none") +
   theme(
     axis.title.x = element_blank(),
@@ -528,7 +530,7 @@ p3 <- DF.idaq %>%
     axis.ticks.x = element_blank()
   )
 p3
-ggsave("experiment2/figures/1B.TIFF", plot = p3, width = 24.7, height = 8, units = "cm", dpi = 300)
+ggsave("experiment2/figures/1B.TIFF", plot = p3, width = 24.7, height = 12, units = "cm", dpi = 300)
 
 ```
 
@@ -562,6 +564,7 @@ Plot for MS without .5 exclusion criteria (don't run 4.4):
 ```{r}
 DF.mean <- summarySEwithin(DF.fa, measurevar="acc", withinvars= "p_b", idvar="participant_id") %>% 
   filter(p_b == "b") 
+theme_set(theme_classic(base_size = 20)) 
 
 p4b <- DF.fa %>%
   filter(p_b == "b") %>%
@@ -575,7 +578,7 @@ p4b <- DF.fa %>%
   scale_fill_brewer(palette = "Blues") +
   scale_colour_brewer(palette = "Blues") +
   ylab("accuracy on false belief trials (p)")+
-  scale_y_continuous(name="accuracy on false belief trials (p)", limits=c(0, 1.1), breaks=c(0, 0.25, 0.5, 0.75, 1)) +
+  scale_y_continuous(name="Accuracy on false belief trials", limits=c(0, 1.1), breaks=c(0, 0.25, 0.5, 0.75, 1)) +
   theme(legend.position="none") +
   coord_fixed(ratio = 1/1) + 
   #ylim(0,1.1) +
@@ -587,7 +590,7 @@ p4b <- DF.fa %>%
     axis.ticks.x = element_blank()
   )
 p4b
-ggsave("experiment2/figures/1C.TIFF", plot = p4b, width = 24.7, height = 8, units = "cm", dpi = 300)
+ggsave("experiment2/figures/1C.TIFF", plot = p4b, width = 24.7, height = 12, units = "cm", dpi = 300)
 
 ```
 
