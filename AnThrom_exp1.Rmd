@@ -990,7 +990,8 @@ FS2 <- DF.roi %>%
   geom_point(data = roi_sum %>% filter(network == "tom"), aes(x = roi, y = contrast), position = position_nudge(.3), colour = "BLACK")+
   geom_errorbar(data = roi_sum %>% filter(network == "tom"), aes(x=roi,y=contrast, ymin = contrast-ci, ymax = contrast+ci), position=position_nudge(x = .3, y = 0), width = .05)+
   #theme_classic() + 
-  ylab(paste("contrast estimates (mental > pain)")) + 
+  ylab("Contrast estimates (mental > pain)") + 
+  xlab("Region-of-interest") + 
   scale_fill_brewer(palette = "Blues") +
   scale_colour_brewer(palette = "Blues") + 
   ggtitle(paste("Theory-of-Mind network contrasts estimates across datasets and regions")) + 
@@ -1015,7 +1016,8 @@ F1C <- DF.roi %>%
   geom_point(data = roi_sum %>% filter(network == "tom"), aes(x = roi, y = contrast), position = position_nudge(.3), colour = "BLACK")+
   geom_errorbar(data = roi_sum %>% filter(network == "tom"), aes(x=roi,y=contrast, ymin = contrast-ci, ymax = contrast+ci), position=position_nudge(x = .3, y = 0), width = .05)+
   #theme_classic() + 
-  ylab(paste("Theory-of-Mind network activation")) + 
+  ylab("Theory-of-Mind network activation") + 
+  xlab("Region-of-interest") + 
   scale_fill_brewer(palette = "Blues") +
   scale_colour_brewer(palette = "Blues") + 
   #ggtitle(paste("Theory-of-Mind network contrasts estimates across datasets and regions")) + 
@@ -1039,7 +1041,8 @@ FS3 <- DF.roi %>%
   geom_point(data = roi_sum %>% filter(network == "pain"), aes(x = roi, y = contrast), position = position_nudge(.3), colour = "BLACK")+
   geom_errorbar(data = roi_sum %>% filter(network == "pain"), aes(x=roi,y=contrast, ymin = contrast-ci, ymax = contrast+ci), position=position_nudge(x = .3, y = 0), width = .05)+
   #theme_classic() + 
-  ylab(paste("contrast estimates (pain > mental)")) + 
+  ylab("Contrast estimates (pain > mental)") + 
+  xlab("Region-of-interest") + 
   scale_fill_brewer(palette = "Reds") +
   scale_colour_brewer(palette = "Reds") + 
   ggtitle(paste("Pain Matrix contrasts estimates across datasets and regions")) + 
@@ -1090,6 +1093,8 @@ ggsave("experiment1/figures/F1D.TIFF", plot = F1D, width = 24.7, height = 15.24,
 
 Create scatterplots with linear and non-linear lines for individual regions of ToM network: 
 ```{r}
+theme_set(theme_classic(base_size = 7)) 
+
 F1E <- DF.roi %>%
   filter(network == "tom") %>%
   ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
@@ -1100,12 +1105,12 @@ F1E <- DF.roi %>%
   facet_wrap(~roi, ncol = 6) +
   labs(
     x="Dispositional anthropomorphism",
-    y="Theory-of-Mind network activation"
-  ) + theme_classic() 
+    y="Contrast estimates"
+  ) #+ theme_classic() 
 
 F1E
 
-ggsave("experiment1/figures/F1E.TIFF", plot = F1E, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("experiment1/figures/F1E.TIFF", plot = F1E, width = 20, height = 6, units = "cm", dpi = 300)
 
 ```
 

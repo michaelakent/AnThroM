@@ -37,7 +37,7 @@ library(brms)
 library(easystats) #devtools::install_github("easystats/easystats")
 library(sjPlot)
 library(httr)
-library(waffle)
+library(waffle) #devtools::install_github("hrbrmstr/waffle")
 options(mc.cores = parallel::detectCores()) 
 theme_set(theme_classic(base_size = 10)) 
 options("scipen"=10, "digits"=4) 
@@ -171,7 +171,7 @@ DF.demo %>%
   kable_styling("striped")
 ```
 
-## 3.5 Detailed break down of demographics
+## 3.5 Detailed breakdown of demographics
 ```{r}
 s1 <- DF.demo %>% 
   mutate(age_bin = cut(age, breaks = c(18, 27, 37, 47, 57, 99), 
@@ -189,6 +189,9 @@ s1 <- DF.demo %>%
   scale_fill_manual(values = c("#a40000", "#000666")) +
   theme_enhance_waffle()
 s1
+
+ggsave("experiment2/figures/S1.TIFF", plot = s1, width = 24.7, height = 5.08, units = "cm", dpi = 300)
+
 ```
 
 ```{r}
@@ -208,6 +211,9 @@ s2 <- DF.demo %>%
   scale_fill_manual(values = c("#cc0033", "#FF00CC", "#660066", "#9900FF", "#3300CC")) +
   theme_enhance_waffle()
 s2
+
+ggsave("experiment2/figures/S2.TIFF", plot = s2, width = 24.7, height = 7, units = "cm", dpi = 300)
+
 ```
 
 
@@ -410,6 +416,11 @@ DF.mean <- DF.rating %>%
   dplyr::group_by(event_nr, measure) %>%
   dplyr::summarise(rating = mean(response)) 
 
+#DF.mean <- summarySEwithin(DF.rating, measurevar="response", withinvars= c("measure", "eventnr"), #idvar="participant_id")
+
+#DF.mean$l <- DF.mean$response - DF.mean$ci
+#DF.mean$h <- DF.mean$response + DF.mean$ci
+
 p1 <- DF.rating %>%
   mutate(event_nr = factor(eventnr, levels=c(1:16), ordered=TRUE)) %>% 
   dplyr::group_by(participant_id, event_nr, measure) %>% #focus and event_type are included or excluded based on visualisation
@@ -418,7 +429,12 @@ p1 <- DF.rating %>%
   geom_line(aes(group = participant_id), alpha=0.2) +
   geom_line(data = DF.mean, aes(group = 1), size = 1, color = 'red') +
   coord_fixed(ratio = 1/1) +
-  facet_wrap(~measure)
+  facet_wrap(~measure) +
+  scale_x_discrete(name ="event number") +
+  scale_y_continuous(name="rating (1-7)", limits=c(1, 7), breaks=c(1:7))
+
+ggsave("experiment2/figures/P1.TIFF", plot = p1, width = 24.7, height = 5.08, units = "cm", dpi = 300)
+
 ```
 
 ```{r, echo=FALSE, warning=FALSE}
@@ -435,7 +451,12 @@ p2 <- DF.rating %>%
   geom_errorbar(data = DF.mean, aes(x=event_type,y=response, ymin = response-ci, ymax = response+ci), position=position_nudge(x = .3, y = 0), width = .05)+
   scale_fill_manual(values=c("#0072B2", "#D55E00")) +
   ylab(paste("Rating (1-7)")) + 
-  facet_wrap(~measure)
+  facet_wrap(~measure) +
+  scale_x_discrete(name ="event type") +
+  scale_y_continuous(name="rating (1-7)", limits=c(1, 7), breaks=c(1:7))
+
+ggsave("experiment2/figures/P2.TIFF", plot = p2, width = 18, height = 5.08, units = "cm", dpi = 300)
+
 ```
 
 ```{r, echo=FALSE}
@@ -476,6 +497,11 @@ DF.idaq <- DF.idaq %>%
   filter(!is.na(idaq_resp)) %>% 
   dplyr::group_by(participant_id, Scale) %>%
   dplyr::summarise(score = sum(idaq_resp)) 
+
+DF.idaq %>%
+  dplyr::group_by(Scale) %>%
+  dplyr::summarise(median = median(score),
+            iqr = IQR(score))
 ```
 
 Visualise the IDAQ scores
@@ -561,6 +587,8 @@ p5 <- DF.exp2 %>%
     x="Situational anthropomorphism",
     y="Dispositional anthropomorphism")
 p5
+
+cor.test(DF.exp2$cent_sitant, DF.exp2$cent_disant)
 ```
 ## 5.4 Visualise relationship between Theory-of-Mind indices
 
@@ -576,13 +604,16 @@ p6 <- DF.exp2 %>%
     x="False Belief",
     y="Effectance")
 p6
+
+cor.test(DF.exp2$cent_falsebelief, DF.exp2$cent_effectance)
+write.csv(DF.exp2, "exp2.csv")
 ```
 
-# 8. Analyses {.tabset .tabset-fade .tabset-pills}
+# 6. Analyses {.tabset .tabset-fade .tabset-pills}
 
 Bayesian regression will be used to test a linear and non-linear (c.f. quadratic) relationship between situational and dispositional anthropomorphism and Theory-of-Mind.
 
-## 8.1 Quadriatic predictors
+## 6.1 Quadriatic predictors
 
 For the formal analysis we will test a linear and quadratic relationship:
 ```{r}
@@ -590,7 +621,7 @@ DF.exp2$cent_disant2 <- DF.exp2$cent_disant^2
 DF.exp2$cent_sitant2 <- DF.exp2$cent_sitant^2
 ```
 
-## 8.2 Visualise the relationship
+## 6.2 Visualise the relationship
 
 ```{r, echo=FALSE}
 p7 <- DF.exp2 %>%
@@ -621,14 +652,14 @@ p8 <- DF.exp2 %>%
 p7 | p8
 ```
 
-## 8.3 Set Priors
+## 6.3 Set Priors
 The models will be run with weakly-informative priors, which avoids inappropriate inferences that can be the result when using non-informative priors without supplying strict information (Gelman, Jakulin, Pittau, & Su, 2008). 
 ```{r}
 priors1 <- c(set_prior("normal(0,1)", class = "b"),
              set_prior("student_t(3, -0.1, 2.5)", class = "Intercept"))
 ```
 
-## 8.4 Visualise data for distribution
+## 6.4 Visualise data for distribution
 ```{r, echo=FALSE}
 p9 <- DF.exp2 %>%
   pivot_longer(cols = c("cent_effectance", "cent_falsebelief"), names_to = "dv") %>%
@@ -637,7 +668,7 @@ p9 <- DF.exp2 %>%
 p9
 ```
 
-## 8.5 Specify the formula and family for the models
+## 6.5 Specify the formula and family for the models
 Family will be updated based on the distribution of the data
 
 Formula and family for effectance:
@@ -652,7 +683,7 @@ bf_fb <- bf(cent_falsebelief ~ 1 + cent_sitant + cent_sitant2 + cent_disant + ce
   skew_normal()
 ```
 
-## 8.6 Run full multivariate model
+## 6.6 Run full multivariate model
 Test the relationship between situational and dispositional anthropomorphism and effectance, and false belief:
 ```{r}
 model_f <- brm(bf_ef + bf_fb, 
@@ -669,9 +700,9 @@ Get the summary:
 summary(model_f)
 ```
 
-# 9. Posterior distribution {.tabset .tabset-fade .tabset-pills}
+# 7. Posterior distribution {.tabset .tabset-fade .tabset-pills}
 
-## 9.1 Tab models:
+## 7.1 Tab models:
 Use sjPlot to create html tables following [procedure outlined here](https://strengejacke.github.io/sjPlot/articles/tab_bayes.html):
 ```{r}
 tab_model(
@@ -683,7 +714,7 @@ tab_model(
 )
 ```
 
-## 9.2 Posterior plots:
+## 7.2 Posterior plots:
 Create plots based on [this tutorial](https://www.rensvandeschoot.com/tutorials/r-linear-regression-bayesian-using-brms/):
 ```{r}
 tom_combined <- as_tibble(as.mcmc(model_f, combine_chains = TRUE)) %>% 
@@ -706,7 +737,7 @@ p10 <- tom_combined %>%
 p10
 ```
 
-# 10. Model comparison {.tabset .tabset-fade .tabset-pills}
+# 8. Model comparison {.tabset .tabset-fade .tabset-pills}
 
 We will run several models following the predictions:
     
@@ -714,7 +745,7 @@ We will run several models following the predictions:
     2.	There will be a quadratic relationship between dispositional anthropomorphism and Theory-of-Mind (model_d).
     3.	Situational anthropomorphism will be a better predictor of Theory-of-Mind than dispositional anthropomorphism (combined and full model and model comparison).
 
-## 10.1 Incremental models
+## 8.1 Incremental models
 Function to run the models:
 ```{r}
 comp_model <- function(name, model_formula1, model_formula2){
@@ -758,7 +789,7 @@ model_d <- comp_model("model_d", cent_effectance ~ cent_disant2, cent_falsebelie
 model_sd <- comp_model("model_sd", cent_effectance ~ cent_sitant + cent_disant2, cent_falsebelief ~ cent_sitant + cent_disant2) #prediction 3
 ```
 
-## 10.2 Model comparison
+## 8.2 Model comparison
 Add LOO to models and compare the models (code adapted from Richard Ramsey):
 ```{r}
 model_i <- add_criterion(model_i, "loo")
@@ -783,7 +814,7 @@ model_weights(model_i, model_s, model_d, model_sd, model_f,
   kable_styling("striped")
 ```
 
-## 10.3 Plot
+## 8.3 Plot
 
 Tabulate and then plot:
 ```{r}
@@ -808,9 +839,9 @@ p11
 ```
 
 
-# 11. HDI+ROPE decision rule {.tabset .tabset-fade .tabset-pills}
+# 9. HDI+ROPE decision rule {.tabset .tabset-fade .tabset-pills}
 
-## 11.1 Re-run models for rope
+## 9.1 Re-run models for rope
 
 Multivariate models are not yet supported, so we will rerun the models one-by-one for effectance and false belief (full and winning model):
 
@@ -840,7 +871,7 @@ modelfb <- brm(formula = cent_falsebelief ~ cent_sitant + cent_sitant2 + cent_di
 
 Code for winning models based on LOO outcome.
 
-## 11.2 HDI+ROPE function
+## 9.2 HDI+ROPE function
 
 Create a function for HDI+ROPE: 
 ```{r}
@@ -853,22 +884,22 @@ hdi_rope <- function(model){
 }
 ```
 
-## 11.3 Full model effectance
+## 9.3 Full model effectance
 ```{r}
 hdi_rope(modelef) 
 ```
 
-## 11.4 Full  model false belief
+## 9.4 Full  model false belief
 ```{r}
 hdi_rope(modelfb) 
 ```
 
-## 11.5 Winning  model effectance
+## 9.5 Winning  model effectance
 ```{r, eval = FALSE}
 hdi_rope(modelef_winning) #change the name based on LOO (remove eval = FALSE)
 ```
 
-## 11.5 Winning  model effectance
+## 9.5 Winning  model effectance
 ```{r, eval = FALSE}
 hdi_rope(modelfb_winning) #change the name based on LOO (remove eval = FALSE)
 ```
