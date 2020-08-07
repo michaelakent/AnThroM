@@ -433,7 +433,7 @@ p1 <- DF.rating %>%
   scale_x_discrete(name ="event number") +
   scale_y_continuous(name="rating (1-7)", limits=c(1, 7), breaks=c(1:7))
 
-ggsave("experiment2/figures/P1.TIFF", plot = p1, width = 24.7, height = 5.08, units = "cm", dpi = 300)
+ggsave("experiment2/figures/1A.TIFF", plot = p1, width = 24.7, height = 5.08, units = "cm", dpi = 300)
 
 ```
 
@@ -455,7 +455,7 @@ p2 <- DF.rating %>%
   scale_x_discrete(name ="event type") +
   scale_y_continuous(name="rating (1-7)", limits=c(1, 7), breaks=c(1:7))
 
-ggsave("experiment2/figures/P2.TIFF", plot = p2, width = 18, height = 5.08, units = "cm", dpi = 300)
+ggsave("experiment2/figures/1As.TIFF", plot = p2, width = 18, height = 5.08, units = "cm", dpi = 300)
 
 ```
 
@@ -528,6 +528,8 @@ p3 <- DF.idaq %>%
     axis.ticks.x = element_blank()
   )
 p3
+ggsave("experiment2/figures/1B.TIFF", plot = p3, width = 24.7, height = 8, units = "cm", dpi = 300)
+
 ```
 
 ## 5.3	False belief
@@ -553,9 +555,43 @@ p4 <- DF.fa %>%
   scale_fill_manual(values=c("#0072B2", "#D55E00")) +
   ylab("accuracy (p)")+
   xlab("belief (b) or photograph (p)") +
-  theme(legend.position="none")
+  theme(legend.position="none") 
 p4 
 ```
+Plot for MS without .5 exclusion criteria (don't run 4.4):
+```{r}
+DF.mean <- summarySEwithin(DF.fa, measurevar="acc", withinvars= "p_b", idvar="participant_id") %>% 
+  filter(p_b == "b") 
+
+p4b <- DF.fa %>%
+  filter(p_b == "b") %>%
+  ggplot(.,aes(x = 1, y=acc, fill = "Black"))+
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = TRUE, alpha = .75, colour = "Black") +
+  geom_point(position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
+  geom_boxplot(aes(x=1,y=acc),position=position_nudge(x = .12, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
+  geom_point(data = DF.mean, aes(x = 1, y = acc), position = position_nudge(.3), colour = "BLACK")+
+  geom_errorbar(data = DF.mean, aes(x=1,y=acc, ymin = acc-ci, ymax = acc+ci), position=position_nudge(x = .3, y = 0), width = .05)+
+  #ylim(0, 1.3) + 
+  scale_fill_brewer(palette = "Blues") +
+  scale_colour_brewer(palette = "Blues") +
+  ylab("accuracy on false belief trials (p)")+
+  scale_y_continuous(name="accuracy on false belief trials (p)", limits=c(0, 1.1), breaks=c(0, 0.25, 0.5, 0.75, 1)) +
+  theme(legend.position="none") +
+  coord_fixed(ratio = 1/1) + 
+  #ylim(0,1.1) +
+  geom_hline(yintercept = 0.5, color = "grey", linetype = 2) + 
+  theme(legend.position="none") +
+  theme(
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+p4b
+ggsave("experiment2/figures/1C.TIFF", plot = p4b, width = 24.7, height = 8, units = "cm", dpi = 300)
+
+```
+
+
 ## 5.4 One dataset with centered and scaled variables
 ```{r}
 DF.exp2 <- DF.rating %>% 
@@ -625,7 +661,9 @@ DF.exp2$cent_sitant2 <- DF.exp2$cent_sitant^2
 
 ```{r, echo=FALSE}
 p7 <- DF.exp2 %>%
-  pivot_longer(cols = c(cent_disant, cent_sitant), names_to = "measure",  values_to = "value") %>% 
+  dplyr::rename(situational = cent_sitant, dispositional = cent_disant) %>% 
+  pivot_longer(cols = c(situational, dispositional), names_to = "measure",  values_to = "value") %>%
+  mutate(measure = fct_relevel(measure, c("situational", "dispositional"))) %>% 
   ggplot(aes(x=value, y=cent_effectance)) +
   geom_point(alpha=0.5,show.legend = FALSE) +
   geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
@@ -637,7 +675,8 @@ p7 <- DF.exp2 %>%
   facet_wrap(~measure)
 
 p8 <- DF.exp2 %>%
-  pivot_longer(cols = c(cent_disant, cent_sitant), names_to = "measure",  values_to = "value") %>% 
+  dplyr::rename(situational = cent_sitant, dispositional = cent_disant) %>% 
+  pivot_longer(cols = c(situational, dispositional), names_to = "measure",  values_to = "value") %>%   mutate(measure = fct_relevel(measure, c("situational", "dispositional"))) %>% 
   ggplot(aes(x=value, y=cent_falsebelief)) +
   geom_point(alpha=0.5,show.legend = FALSE) +
   geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
@@ -650,6 +689,10 @@ p8 <- DF.exp2 %>%
 
 
 p7 | p8
+ggsave("experiment2/figures/1Da.TIFF", plot = p7, width = 24.7, height = 5.08, units = "cm", dpi = 300)
+ggsave("experiment2/figures/1Db.TIFF", plot = p8, width = 24.7, height = 5.08, units = "cm", dpi = 300)
+
+
 ```
 
 ## 6.3 Set Priors
