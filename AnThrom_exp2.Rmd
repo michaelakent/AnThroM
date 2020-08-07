@@ -950,6 +950,47 @@ hdi_rope(modelef_winning) #change the name based on LOO (remove eval = FALSE)
 hdi_rope(modelfb_winning) #change the name based on LOO (remove eval = FALSE)
 ```
 
+
+## 9.6 Alternative figure using ggplot to show rope based on [http://mjskay.github.io/tidybayes/articles/tidy-brms.html#posterior-predictions-kruschke-style-1]
+```{r}
+combined_models <-
+  bind_rows("modelef" = as_tibble(as.mcmc(modelef,
+  pars = c("b_cent_sitant", "b_cent_sitant2", "b_cent_disant", "b_cent_disant2"),
+  combine_chains = TRUE)),
+  "modelfb" = as_tibble(as.mcmc(modelfb,
+  pars = c("b_cent_sitant", "b_cent_sitant2", "b_cent_disant", "b_cent_disant2"),
+  combine_chains = TRUE)),
+  .id = "model")
+
+modelnames <- list('modelef'="effectance",'modelfb'="false belief")
+model_labeller <- function(variable,value){
+  return(modelnames[value])
+}
+
+colours2 <- c(
+  "Reject"="green3",
+  "Undecided"="gold",
+  "Accept"="red2"
+)
+
+combined_models3 %>%
+  pivot_longer(c("b_cent_sitant", "b_cent_sitant2", "b_cent_disant", "b_cent_disant2"),names_to = "var_anth") %>%
+  mutate(Decision= ifelse(model=="modelef"&var_anth=="b_cent_sitant", "Reject",
+                          ifelse(var_anth=="b_cent_disant"|model=="modelfb"&var_anth=="b_cent_sitant","Undecided", 
+                          ifelse(model=="modelfb"&var_anth=="b_cent_sitant2", "Undecided",
+                          ifelse(model=="modelfb"&var_anth=="b_cent_disant2", "Accept",
+                          ifelse(model=="modelef"&var_anth=="b_cent_disant2"|model=="modelef"&var_anth=="b_cent_sitant2", "Accept", "NA"))))))%>%
+  group_by("Decision")%>%
+  ggplot(aes(y = var_anth, x = value,fill=Decision)) +
+  stat_halfeye(alpha=0.5) +
+  scale_y_discrete(labels=c("b_cent_sitant"="situational linear","b_cent_sitant2"="situational quadratic","b_cent_disant"="dispositional linear","b_cent_disant2"="dispositional quadratic")) +
+  geom_vline(xintercept = c(-.1, .1), linetype = "dashed") +
+  labs(y = "Model", x="") +
+  scale_fill_manual(values=colours2)+
+  facet_wrap(~model,labeller = model_labeller)
+```
+
+
 ```{r}
 sessionInfo()
 ```
