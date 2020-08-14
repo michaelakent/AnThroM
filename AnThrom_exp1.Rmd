@@ -1183,7 +1183,7 @@ tom_combined <- bind_rows("rtpj" = as_tibble(as.mcmc(rtpj,  pars = c("b_cent_IDA
 order <- c("rtpj", "ltpj", "prec", "vmpfc","mmpfc","dmpfc", "rs2", "ls2", "rinsula", "linsula", "rmfg", "lmfg", "amcc")  
 
 tom_combined <- tom_combined %>%
-  rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
+  dplyr::rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
   pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
   mutate(roi = fct_relevel(roi, order[1:6]))
 ```
@@ -1192,7 +1192,7 @@ Plot the distributions:
 ```{r}
 F2 <- tom_combined %>%
   mutate_at(vars(-value),as.factor) %>%
-  rename(predictor = varIDAQ) %>%
+  dplyr::rename(predictor = varIDAQ) %>%
   ggplot(., aes(value, fill = predictor)) +
   geom_density(alpha = .5)+
   geom_vline(xintercept = 0, color = "black", linetype = 2) +
@@ -1300,7 +1300,7 @@ pain_combined <- bind_rows("rs2" = as_tibble(as.mcmc(rs2,  pars = c("b_cent_IDAQ
                           .id = "roi")
 
 pain_combined <- pain_combined %>%
-  rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
+  dplyr::rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
   pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
   mutate(roi = fct_relevel(roi, order[7:13]))
 ```
@@ -1309,7 +1309,7 @@ Plot the distributions:
 ```{r}
 S6 <- pain_combined %>%
   mutate_at(vars(-value),as.factor) %>%
-  rename(predictor = varIDAQ) %>%
+  dplyr::rename(predictor = varIDAQ) %>%
   ggplot(., aes(value, fill = predictor)) +
   geom_density(alpha = .5)+
   geom_vline(xintercept = 0, color = "black", linetype = 2) +
@@ -1347,7 +1347,7 @@ summary(tom)
 ```
 
 ## 9.2 Pain Matrix:
-All ToM regions combined:
+All pain matrix regions combined:
 ```{r}
 pain <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
       data = DF.roi %>% filter(network == "pain"),
@@ -1355,7 +1355,7 @@ pain <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
       chains = 4,
       iter = 4000,
       seed = 42, #so the model is reproducible
-      file = "models/regions/pain.RDS")
+      file = "experiment1/models/regions/pain.RDS")
 ```
 
 Summary:
@@ -1380,18 +1380,18 @@ tab_model(
 
 ```{r}
 tom_all <- bind_rows("all" = as_tibble(as.mcmc(tom,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE), .id = "network")  %>%
-                        rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
+                        dplyr::rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
                         pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
                         mutate(network = "tom"))
 
 pain_all <- bind_rows("all" = as_tibble(as.mcmc(pain,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE), .id = "network")  %>%
-                        rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
+                        dplyr::rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
                         pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
                         mutate(network = "pain"))
 
 tom_all %>% bind_rows(., pain_all) %>%
   mutate_at(vars(-value),as.factor) %>%
-  rename(predictor = varIDAQ) %>%
+  dplyr::rename(predictor = varIDAQ) %>%
   ggplot(., aes(value, fill = predictor)) +
   geom_density(alpha = .5)+
   geom_vline(xintercept = 0, color = "black", linetype = 2) +

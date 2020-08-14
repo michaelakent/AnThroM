@@ -64,7 +64,7 @@ demo_sub <- DF.demo %>% select(participant_id) %>% unique()
 ```{r, echo = TRUE, message = FALSE}
 DF.exp2 <- list.files("experiment2/data/main",pattern="\\PARTICIPANT*", full.names=TRUE) %>% 
   map_dfr(read_csv) %>% 
-  rename(participant_id = prolific_id) %>%
+  #rename(participant_id = prolific_id) %>% #already renamed using anolific script: https://github.com/rhortensius/anolific
   filter(participant_id %in% DF.demo$participant_id)
 #events <- read_csv("experiment2/events_pilot.csv") #can be removed for main experiment, corrected in psychopy
 ```
@@ -225,11 +225,12 @@ Participants who fail the attention check, i.e. participant who do not make a pr
 
 The following participant contacted us and indicated they pressed enter by mistake (there is no moving back option), we will not exclude this participant for not providing an answer (and 'failing' the attention check):
 
-    5efcbd96e3b6fa0b354cbf2a
+    ead376fb11cc52e3a7637c428bd2875f0178adb5f50638150d80ab9f5ac28046
+
 
 ```{r}
 excluded_participants <- DF.prediction %>% 
-  filter(is.na(prediction) & participant_id != "5efcbd96e3b6fa0b354cbf2a") %>% 
+  filter(is.na(prediction) & participant_id != "ead376fb11cc52e3a7637c428bd2875f0178adb5f50638150d80ab9f5ac28046") %>% 
   select(participant_id) %>% 
   mutate(reason = "attention_check")
 ```
@@ -349,7 +350,7 @@ DF.fa %>%
 ```
 
 Update the exclude participants list:
-```{r, eval=FALSE}
+```{r}
 excluded_participants <- DF.fa %>%
   dplyr::group_by(participant_id, p_b) %>%
   dplyr::summarise(acc = mean(acc, na.rm = TRUE)) %>% #na.rm was missing
@@ -925,8 +926,16 @@ hdi_rope <- function(model){
   rope <- rope_range(model)
   rope_model <- equivalence_test(model, range = rope, ci = 0.95) 
   plot(rope_model) + theme_classic() + 
+    theme_set(theme_classic(base_size = 20)) +
+    coord_fixed(ratio = 1/5) +
     ggtitle(deparse(substitute(model))) + 
-    theme(axis.title.y = element_blank(), axis.title.x = element_blank()) 
+    theme(axis.title.y = element_blank(), axis.title.x = element_blank())  +
+    ggtitle("DV: False belief accuracy") +
+    scale_y_discrete(labels = c("Situational (quadratic)", "Situational (linear)", "Dispositional (quadratic)", "Dispositional (linear)")) +
+  #theme(legend.position="none") +
+      scale_x_continuous(limits=c(-0.2, 0.6), breaks=c(-0.2,0, 0.2))
+
+    
 }
 ```
 
@@ -949,7 +958,6 @@ hdi_rope(modelef_winning) #change the name based on LOO (remove eval = FALSE)
 ```{r, eval = FALSE}
 hdi_rope(modelfb_winning) #change the name based on LOO (remove eval = FALSE)
 ```
-
 
 ## 9.6 Alternative figure using ggplot to show rope based on [http://mjskay.github.io/tidybayes/articles/tidy-brms.html#posterior-predictions-kruschke-style-1]
 ```{r}
@@ -989,6 +997,7 @@ combined_models3 %>%
   scale_fill_manual(values=colours2)+
   facet_wrap(~model,labeller = model_labeller)
 ```
+
 
 
 ```{r}
