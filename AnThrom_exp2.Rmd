@@ -998,7 +998,23 @@ combined_models3 %>%
   facet_wrap(~model,labeller = model_labeller)
 ```
 
+# 10. Control models {.tabset .tabset-fade .tabset-pills}
 
+## 10.1 Re-run effectance model without participants that have seen the film
+
+```{r}
+modelef_new <- update(modelef, newdata = DF.exp2 %>% filter(seen == 2), seed = 41)
+summary(modelef_new)
+hdi_rope(modelef_new) 
+```
+
+## 10.2 Re-run false belief model without participants that have seen the film
+
+```{r}
+modelfb_new <- update(modelfb, newdata = DF.exp2 %>% filter(seen == 2), seed = 41)
+summary(modelfb_new)
+hdi_rope(modelfb_new) 
+```
 
 ```{r}
 sessionInfo()
