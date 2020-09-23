@@ -901,7 +901,7 @@ modelef <- brm(formula = cent_effectance ~ cent_sitant + cent_sitant2 + cent_dis
       chains = 4,
       iter = 4000,
       seed = 42, 
-      file = "experiment2/models/modelef.RDS")
+      file = "experiment2/models/modelef2.RDS")
 ```
 
 Full false belief model:
@@ -913,7 +913,7 @@ modelfb <- brm(formula = cent_falsebelief ~ cent_sitant + cent_sitant2 + cent_di
       chains = 4,
       iter = 4000,
       seed = 42, 
-      file = "experiment2/models/modelfb.RDS")
+      file = "experiment2/models/modelfb2.RDS")
 ```
 
 Code for winning models based on LOO outcome.
@@ -1000,20 +1000,36 @@ combined_models3 %>%
 
 # 10. Control models {.tabset .tabset-fade .tabset-pills}
 
-## 10.1 Re-run effectance model without participants that have seen the film
+## 10.1 Update effectance model to excluded participants who have seen the film
 
 ```{r}
-modelef_new <- update(modelef, newdata = DF.exp2 %>% filter(seen == 2), seed = 41)
-summary(modelef_new)
-hdi_rope(modelef_new) 
+modelef_seen <- update(modelef, newdata = DF.exp2 %>% filter(seen == 2), seed = 41)
+summary(modelef_seen)
+hdi_rope(modelef_seen) 
 ```
 
-## 10.2 Re-run false belief model without participants that have seen the film
+## 10.2 Update false belief model to exclude participants who have seen the film
 
 ```{r}
-modelfb_new <- update(modelfb, newdata = DF.exp2 %>% filter(seen == 2), seed = 41)
-summary(modelfb_new)
-hdi_rope(modelfb_new) 
+modelfb_seen <- update(modelfb, newdata = DF.exp2 %>% filter(seen == 2), seed = 41)
+summary(modelfb_seen)
+hdi_rope(modelfb_seen) 
+```
+
+## 10.3 Update effectance model without excluding participants 
+Don't run section 4.5.
+```{r}
+modelef_inc <- update(modelef, newdata = DF.exp2, seed = 41)
+summary(modelef_inc)
+hdi_rope(modelef_inc) 
+```
+
+## 10.4 Update false belief model without excluding participants 
+Don't run section 4.5.
+```{r}
+modelfb_inc <- update(modelfb, newdata = DF.exp2, seed = 41)
+summary(modelfb_inc)
+hdi_rope(modelfb_inc) 
 ```
 
 ```{r}
