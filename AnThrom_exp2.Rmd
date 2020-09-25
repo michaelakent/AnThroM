@@ -39,7 +39,7 @@ library(sjPlot)
 library(httr)
 library(waffle) #devtools::install_github("hrbrmstr/waffle")
 options(mc.cores = parallel::detectCores()) 
-theme_set(theme_classic(base_size = 10)) 
+theme_set(theme_classic(base_size = 7)) 
 options("scipen"=10, "digits"=4) 
 
 ```
@@ -626,6 +626,7 @@ p5 <- DF.exp2 %>%
   labs(
     x="Situational anthropomorphism",
     y="Dispositional anthropomorphism")
+  
 p5
 
 cor.test(DF.exp2$cent_sitant, DF.exp2$cent_disant)
@@ -639,11 +640,16 @@ p6 <- DF.exp2 %>%
   geom_point(alpha=0.5,show.legend = FALSE) +
   geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
   geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
-  coord_fixed(ratio = 1/1) +
+  coord_fixed(ratio = 1/1.5) +
   labs(
-    x="False Belief",
-    y="Effectance")
+    x="False Belief accuracy",
+    y="Effectance rating")
 p6
+
+patched <- p5 | p6
+
+ggsave("experiment2/figures/S11.TIFF", plot = patched, width = 12, height = 5.08, units = "cm", dpi = 300)
+
 
 cor.test(DF.exp2$cent_falsebelief, DF.exp2$cent_effectance)
 write.csv(DF.exp2, "exp2.csv")
@@ -883,6 +889,8 @@ p11 <-  ggplot(lmv_dat) +
 
   
 p11
+ggsave("experiment2/figures/S12.TIFF", plot = p11, width = 12, height = 5.08, units = "cm", dpi = 300)
+
 ```
 
 
@@ -1000,36 +1008,74 @@ combined_models3 %>%
 
 # 10. Control models {.tabset .tabset-fade .tabset-pills}
 
-## 10.1 Update effectance model to excluded participants who have seen the film
+## 10.1 Update the full model to excluded participants who have seen the film
 
 ```{r}
-modelef_seen <- update(modelef, newdata = DF.exp2 %>% filter(seen == 2), seed = 41)
-summary(modelef_seen)
-hdi_rope(modelef_seen) 
+model_f_seen <- update(model_f, newdata = DF.exp2 %>% filter(seen == 2), seed = 41)
+summary(model_f_seen)
 ```
 
-## 10.2 Update false belief model to exclude participants who have seen the film
+## 10.2 Posterior plots - first viewing
 
-```{r}
-modelfb_seen <- update(modelfb, newdata = DF.exp2 %>% filter(seen == 2), seed = 41)
-summary(modelfb_seen)
-hdi_rope(modelfb_seen) 
+```{r,eval=FALSE}
+tom_combined_seen <- as_tibble(as.mcmc(model_f_seen, combine_chains = TRUE)) %>% 
+  pivot_longer(cols = ends_with(c("ant", "ant2")), names_to = "varAnthro") %>% 
+  select(varAnthro, value) %>% 
+  separate(varAnthro, c("dv", "predictor"), sep = "_cent_")
 ```
 
-## 10.3 Update effectance model without excluding participants 
-Don't run section 4.5.
-```{r}
-modelef_inc <- update(modelef, newdata = DF.exp2, seed = 41)
-summary(modelef_inc)
-hdi_rope(modelef_inc) 
+Plot the distributions:
+```{r,eval=FALSE}
+p13 <- tom_combined_seen %>%
+  mutate_at(vars(-value),as.factor) %>%
+  bind_rows(tom_combined, .id = "model") %>% 
+  mutate(model= ifelse(model == 1,"first viewing","original")) %>% 
+  mutate(dv = ifelse(dv == "b_centfalsebelief", "false belief accuracy", "effectance rating")) %>% 
+  ggplot(., aes(value, fill = predictor, by = predictor)) +
+  geom_density(alpha = .5)+
+  geom_vline(xintercept = 0, color = "black", linetype = 2) +
+  ggtitle(paste("Posterior distributions for the original sample and first viewing only")) + 
+  facet_wrap(model~dv) +
+  theme(strip.background = element_blank()) +
+  scale_fill_manual(values=c("#0072B2", "#000033", "#D55E00", "#660000")) 
+p13
+
+ggsave("experiment2/figures/S13.TIFF", plot = p13, width = 12, height = 5.08, units = "cm", dpi = 300)
 ```
 
-## 10.4 Update false belief model without excluding participants 
-Don't run section 4.5.
+## 10.3 Update full model without excluding participants 
+Don't run section 4.5. 10.1 and 10.2 (eval=FALSE).
+```{r, eval=FALSE}
+model_f_inc <- update(model_f, newdata = DF.exp2, seed = 41)
+summary(model_f_inc)
+```
+
+## 10.4 Posterior plots - no exclusion 
+
 ```{r}
-modelfb_inc <- update(modelfb, newdata = DF.exp2, seed = 41)
-summary(modelfb_inc)
-hdi_rope(modelfb_inc) 
+tom_combined_full <- as_tibble(as.mcmc(model_f_inc, combine_chains = TRUE)) %>% 
+  pivot_longer(cols = ends_with(c("ant", "ant2")), names_to = "varAnthro") %>% 
+  select(varAnthro, value) %>% 
+  separate(varAnthro, c("dv", "predictor"), sep = "_cent_")
+```
+
+Plot the distributions:
+```{r}
+p14 <- tom_combined_full %>%
+  mutate_at(vars(-value),as.factor) %>%
+  bind_rows(tom_combined, .id = "model") %>% 
+  mutate(model= ifelse(model == 1,"without","with")) %>% 
+  mutate(dv = ifelse(dv == "b_centfalsebelief", "false belief accuracy", "effectance rating")) %>% 
+  ggplot(., aes(value, fill = predictor, by = predictor)) +
+  geom_density(alpha = .5)+
+  geom_vline(xintercept = 0, color = "black", linetype = 2) +
+  ggtitle(paste("Posterior distributions with and without exclusion criteria applied")) + 
+  facet_wrap(model~dv) +
+  theme(strip.background = element_blank()) +
+  scale_fill_manual(values=c("#0072B2", "#000033", "#D55E00", "#660000")) 
+p14
+
+ggsave("experiment2/figures/S14.TIFF", plot = p14, width = 30, height = 20, units = "cm", dpi = 300)
 ```
 
 ```{r}
