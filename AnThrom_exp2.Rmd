@@ -822,7 +822,7 @@ comp_model <- function(name, model_formula1, model_formula2){
 We start with the simple intercept-only model: 
 ```{r}
   bf_ef <- bf(cent_effectance ~ 1) +
-   gaussian()
+   skew_normal()
   
   bf_fb <- bf(cent_falsebelief ~ 1) +
   skew_normal()
