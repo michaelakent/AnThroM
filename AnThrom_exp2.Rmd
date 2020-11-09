@@ -410,6 +410,30 @@ For the main analyses we create situational and dispositional anthropomorphism a
 
 The 5 anthropomorphism items will be averaged to create a situational anthropomorphism score and the 2 effectance items will be averaged to create an effectance score score (Waytz, Morewedge, et al., 2010). 
 
+Calculate reliability anthropomorphism:
+```{r}
+DF.rating %>% 
+  filter(measure == "anthropomorphism") %>%
+  group_by(participant_id)%>%
+  mutate(ItemNr = c(1:length(response)))  %>%
+  select(-measure,-event_type, -rt, -focus, -item, -eventnr)  %>%
+  pivot_wider(names_from = ItemNr, values_from = response) %>%
+  select(-participant_id) %>%
+  psych::alpha(na.rm = TRUE) 
+```
+
+Calculate reliability effectance:
+```{r}
+DF.rating %>% 
+  filter(measure == "effectance") %>%
+  group_by(participant_id)%>%
+  mutate(ItemNr = c(1:length(response)))  %>%
+  select(-measure,-event_type, -rt, -focus, -item, -eventnr)  %>%
+  pivot_wider(names_from = ItemNr, values_from = response) %>%
+  select(-participant_id) %>%
+  psych::alpha(na.rm = TRUE) 
+```
+
 Visualise if situational anthropomorphism and effectance ratings fluctuate over time, event, and focus
 ```{r, echo=FALSE, warning=FALSE}
 DF.mean <- DF.rating %>% 
