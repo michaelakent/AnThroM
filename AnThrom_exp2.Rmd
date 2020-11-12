@@ -420,6 +420,8 @@ DF.rating %>%
   pivot_wider(names_from = ItemNr, values_from = response) %>%
   select(-participant_id) %>%
   psych::alpha(na.rm = TRUE) 
+
+alpha.ci(0.9838,145,241,p.val=.05,digits=5)
 ```
 
 Calculate reliability effectance:
@@ -432,6 +434,8 @@ DF.rating %>%
   pivot_wider(names_from = ItemNr, values_from = response) %>%
   select(-participant_id) %>%
   psych::alpha(na.rm = TRUE) 
+
+alpha.ci(0.9626,145,241,p.val=.05,digits=5)
 ```
 
 Visualise if situational anthropomorphism and effectance ratings fluctuate over time, event, and focus
