@@ -16,13 +16,14 @@ output:
 editor_options: 
   chunk_output_type: inline
 ---
-Testing the relationship between situational and dispositional anthropomorphism and Theory-of-Mind   
-June 2020 - July 2020
+#### Project AnThroM: experiment 2
+Exploring the relationship between anthropomorphism and Theory-of-Mind in brain and behaviour: Experiment 2 behaviour
+June 2019 - November 2020
 
 # 1. Details {.tabset .tabset-fade .tabset-pills}
 
 ## 1.1 Preregistration
-The preregistration can be found here: [link]
+The preregistration can be found here: https://osf.io/tuq4a
 
 ## 1.2 Libraries
 ```{r, message=FALSE}
@@ -41,14 +42,13 @@ library(waffle) #devtools::install_github("hrbrmstr/waffle")
 options(mc.cores = parallel::detectCores()) 
 theme_set(theme_classic(base_size = 7)) 
 options("scipen"=10, "digits"=4) 
-
 ```
 
 ## 1.3 Data description
 This Rmd is written based on pilot data (target sample size of n = 20). 
 
 # 2. Load the data {.tabset .tabset-fade .tabset-pills}
-The data can be downloaded from the [OSF project page](https://osf.io/a8pyr/)
+The data can be downloaded from the [OSF project page](https://osf.io/a8pyr/). Data is anonymised using the [anolific script](https://github.com/rhortensius/anolific). 
 
 ## 2.1 Load the prolific export file
 Post-preregistration note: only information from the approved participants that completed all parts of the experiment are included, as returned and timed out participant don't necessarily provide consent ([explainer on Prolific:](https://researcher-help.prolific.co/hc/en-gb/articles/360009259434-Returned-submission-status) 
@@ -57,7 +57,6 @@ DF.demo <- list.files("experiment2/data/main",pattern="\\prolific*", full.names=
   map_dfr(read_csv)
 
 demo_sub <- DF.demo %>% select(participant_id) %>% unique()
-
 ```
 
 ## 2.2 Load the psychopy/pavlovia files
@@ -70,11 +69,9 @@ DF.exp2 <- list.files("experiment2/data/main",pattern="\\PARTICIPANT*", full.nam
 ```
 
 ## 2.3 Get the rating task data
-
 -After each of the 16 “mental” or “pain” scenes, we will pause the film and will ask the participant to rate the extent to which they believe the characters of the film (a stork and a cloud) possess certain capacities. Participants rate if the character is able to “choose and control its own actions”, “be aware of itself and its thoughts and feelings”, “do what it wants”, and whether the character has “preferences and plans” and “feelings” on a scale from 1 (not at all) to 7 (very much). These items correspond to the definitions used by Waytz and colleagues (2010; 2018) for “free will”, “consciousness”, “a mind of its own”, “intentions”, and the “experience emotions”. 
 
 -After each of the 16 “mental” or “pain” scenes, we will pause the film and participants will be asked to what extent they feel capable of “imagining what the cloud will do next” and “thinking about what the cloud is doing and why” on a scale from 1 (not at all) to 7 (very much). These items correspond to the definitions used for “understood the character” and “feel capable of predicting it’s future behaviour” in the study of Waytz, Morewedge and colleagues (2010).  A 7-point scale instead of a 10-point scale is used to allow for presentation alongside the situational anthropomorphism items. 
-
 ```{r}
 DF.rating <- DF.exp2 %>%
   select("participant_id", "eventnr","event_type", "measure", "item", "focus", "key_resp_1.keys", "key_resp_2.keys", "key_resp_1.rt", "key_resp_2.rt")  %>%
@@ -92,7 +89,6 @@ DF.rating <- DF.exp2 %>%
 
 ## 2.4 Get the IDAQ task data
 Participants will be asked to complete the Individual Differences in Anthropomorphism Questionnaire (IDAQ; Waytz, Cacioppo, et al., 2010) at the end of the study. This questionnaire consists of 15 anthropomorphic items for which participants provide a rating on the extent that natural entities, non-human animals, and technological devices have “free will”, “consciousness”, “a mind of its own”, “intentions”, and can “experience emotions”. The questionnaire has 15 additional nonanthropomorphic items (IDAQ-NA) for which participants provide a rating of functional features of a stimulus (good-looking, active, useful, lethargic, durable; e.g. to what extent is the average camera lethargic?). Responses are rated on a scale from 0 (not at all) to 10 (very much). 
-
 ```{r}
 DF.idaq <- DF.exp2 %>%
     select("participant_id", "ItemNr", "Question", "Scale",  "idaq_s.rt" , "idaq_s.response", "idaqs.rt" , "idaqs.response", "key_resp_8.rt", "key_resp_12.rt") %>%
@@ -115,7 +111,6 @@ DF.fa <- DF.exp2 %>%
 
 ## 2.5 Get the control data
 After 4:02 minutes the film will be paused, and participants will be asked to describe in one or two sentences what they think will happen next (to a maximum of 2000 characters including spaces). This serves as an attention check and a future exploratory measure.
-
 ```{r}
 DF.prediction <- DF.exp2 %>%
   select("participant_id", "prediction", "key_resp_6.keys") %>%
@@ -191,7 +186,6 @@ s1 <- DF.demo %>%
 s1
 
 ggsave("experiment2/figures/S1.TIFF", plot = s1, width = 24.7, height = 5.08, units = "cm", dpi = 300)
-
 ```
 
 ```{r}
@@ -213,9 +207,7 @@ s2 <- DF.demo %>%
 s2
 
 ggsave("experiment2/figures/S2.TIFF", plot = s2, width = 24.7, height = 7, units = "cm", dpi = 300)
-
 ```
-
 
 # 4. Data exclusion {.tabset .tabset-fade .tabset-pills}
 The following criteria are used to exclude participants:
@@ -227,7 +219,6 @@ The following participant contacted us and indicated they pressed enter by mista
 
     ead376fb11cc52e3a7637c428bd2875f0178adb5f50638150d80ab9f5ac28046
 
-
 ```{r}
 excluded_participants <- DF.prediction %>% 
   filter(is.na(prediction) & participant_id != "ead376fb11cc52e3a7637c428bd2875f0178adb5f50638150d80ab9f5ac28046") %>% 
@@ -237,7 +228,6 @@ excluded_participants <- DF.prediction %>%
 
 ## 4.2 No variability in ratings
 Participants who show no variability in their ratings across the event numbers of the film, i.e. a standard deviation of <0.5;
-
 ```{r}
 DF.rating %>%
   dplyr::group_by(participant_id, measure) %>%
@@ -375,7 +365,7 @@ excluded_participants <- DF.fa %>%
 Participants who do not finish the task. The false belief task is either after the IDAQ and rating task or before the IDAQ. 
 
 Note: this is no longer needed (see section 2.1).
-```{r}
+```{r, eval=FALSE}
 idaq_sub <- DF.idaq %>% select(participant_id) %>% unique() 
 fa_sub <- DF.fa %>% select(participant_id) %>% unique()
 
@@ -407,7 +397,6 @@ DF.idaq <- DF.idaq %>% filter(!participant_id %in% excluded_participants$partici
 For the main analyses we create situational and dispositional anthropomorphism and Theory-of-Mind indices.
 
 ## 5.1 Situational anthropomorphism and effectance ratings
-
 The 5 anthropomorphism items will be averaged to create a situational anthropomorphism score and the 2 effectance items will be averaged to create an effectance score score (Waytz, Morewedge, et al., 2010). 
 
 Calculate reliability anthropomorphism:
@@ -445,11 +434,6 @@ DF.mean <- DF.rating %>%
   dplyr::group_by(event_nr, measure) %>%
   dplyr::summarise(rating = mean(response)) 
 
-#DF.mean <- summarySEwithin(DF.rating, measurevar="response", withinvars= c("measure", "eventnr"), #idvar="participant_id")
-
-#DF.mean$l <- DF.mean$response - DF.mean$ci
-#DF.mean$h <- DF.mean$response + DF.mean$ci
-
 p1 <- DF.rating %>%
   mutate(event_nr = factor(eventnr, levels=c(1:16), ordered=TRUE)) %>% 
   dplyr::group_by(participant_id, event_nr, measure) %>% #focus and event_type are included or excluded based on visualisation
@@ -463,7 +447,6 @@ p1 <- DF.rating %>%
   scale_y_continuous(name="rating (1-7)", limits=c(1, 7), breaks=c(1:7))
 
 ggsave("experiment2/figures/1A.TIFF", plot = p1, width = 24.7, height = 5.08, units = "cm", dpi = 300)
-
 ```
 
 ```{r, echo=FALSE, warning=FALSE}
@@ -485,7 +468,6 @@ p2 <- DF.rating %>%
   scale_y_continuous(name="rating (1-7)", limits=c(1, 7), breaks=c(1:7))
 
 ggsave("experiment2/figures/1As.TIFF", plot = p2, width = 18, height = 5.08, units = "cm", dpi = 300)
-
 ```
 
 ```{r, echo=FALSE}
@@ -560,12 +542,10 @@ p3 <- DF.idaq %>%
   )
 p3
 ggsave("experiment2/figures/1B.TIFF", plot = p3, width = 24.7, height = 12, units = "cm", dpi = 300)
-
 ```
 
 ## 5.3	False belief
 Accuracy (percentage correct) for the false-belief and false-photograph stories will be calculated separately (Spunt et al., 2015).
-
 ```{r}
 DF.fa <- DF.fa %>% 
   dplyr::group_by(participant_id, p_b) %>%
@@ -589,7 +569,8 @@ p4 <- DF.fa %>%
   theme(legend.position="none") 
 p4 
 ```
-Plot for MS without .5 exclusion criteria (don't run 4.4):
+
+Plot for manuscript without .5 exclusion criteria (don't run 4.4):
 ```{r}
 DF.mean <- summarySEwithin(DF.fa, measurevar="acc", withinvars= "p_b", idvar="participant_id") %>% 
   filter(p_b == "b") 
@@ -620,9 +601,7 @@ p4b <- DF.fa %>%
   )
 p4b
 ggsave("experiment2/figures/1C.TIFF", plot = p4b, width = 24.7, height = 12, units = "cm", dpi = 300)
-
 ```
-
 
 ## 5.4 One dataset with centered and scaled variables
 ```{r}
@@ -642,7 +621,6 @@ DF.exp2 <- DF.rating %>%
 ```
 
 ## 5.4 Visualise relationship between anthropomorphism indices
-
 Visualise if dispositional anthropomorphism is positively related to situational anthropomorphism:
 ```{r}
 p5 <- DF.exp2 %>%
@@ -659,8 +637,8 @@ p5
 
 cor.test(DF.exp2$cent_sitant, DF.exp2$cent_disant)
 ```
-## 5.4 Visualise relationship between Theory-of-Mind indices
 
+## 5.4 Visualise relationship between Theory-of-Mind indices
 Visualise if false belief performance is positively related to effectance ratings:
 ```{r}
 p6 <- DF.exp2 %>%
@@ -678,17 +656,13 @@ patched <- p5 | p6
 
 ggsave("experiment2/figures/S11.TIFF", plot = patched, width = 12, height = 5.08, units = "cm", dpi = 300)
 
-
 cor.test(DF.exp2$cent_falsebelief, DF.exp2$cent_effectance)
-write.csv(DF.exp2, "exp2.csv")
 ```
 
 # 6. Analyses {.tabset .tabset-fade .tabset-pills}
-
 Bayesian regression will be used to test a linear and non-linear (c.f. quadratic) relationship between situational and dispositional anthropomorphism and Theory-of-Mind.
 
 ## 6.1 Quadriatic predictors
-
 For the formal analysis we will test a linear and quadratic relationship:
 ```{r}
 DF.exp2$cent_disant2 <- DF.exp2$cent_disant^2
@@ -696,7 +670,6 @@ DF.exp2$cent_sitant2 <- DF.exp2$cent_sitant^2
 ```
 
 ## 6.2 Visualise the relationship
-
 ```{r, echo=FALSE}
 p7 <- DF.exp2 %>%
   dplyr::rename(situational = cent_sitant, dispositional = cent_disant) %>% 
@@ -725,12 +698,9 @@ p8 <- DF.exp2 %>%
     y="False belief accuracy") +
   facet_wrap(~measure)
 
-
 p7 | p8
 ggsave("experiment2/figures/1Da.TIFF", plot = p7, width = 24.7, height = 5.08, units = "cm", dpi = 300)
 ggsave("experiment2/figures/1Db.TIFF", plot = p8, width = 24.7, height = 5.08, units = "cm", dpi = 300)
-
-
 ```
 
 ## 6.3 Set Priors
@@ -819,7 +789,6 @@ p10
 ```
 
 # 8. Model comparison {.tabset .tabset-fade .tabset-pills}
-
 We will run several models following the predictions:
     
     1.	There will be a linear and positive relationship between situational anthropomorphism and Theory-of-Mind (model_s). 
@@ -896,7 +865,6 @@ model_weights(model_i, model_s, model_d, model_sd, model_f,
 ```
 
 ## 8.3 Plot
-
 Tabulate and then plot:
 ```{r}
 lmv_dat <- lmv %>%
@@ -918,14 +886,11 @@ p11 <-  ggplot(lmv_dat) +
   
 p11
 ggsave("experiment2/figures/S12.TIFF", plot = p11, width = 12, height = 5.08, units = "cm", dpi = 300)
-
 ```
-
 
 # 9. HDI+ROPE decision rule {.tabset .tabset-fade .tabset-pills}
 
 ## 9.1 Re-run models for rope
-
 Multivariate models are not yet supported, so we will rerun the models one-by-one for effectance and false belief (full and winning model):
 
 Full effectance model:
@@ -955,7 +920,6 @@ modelfb <- brm(formula = cent_falsebelief ~ cent_sitant + cent_sitant2 + cent_di
 Code for winning models based on LOO outcome.
 
 ## 9.2 HDI+ROPE function
-
 Create a function for HDI+ROPE: 
 ```{r}
 hdi_rope <- function(model){
@@ -970,8 +934,6 @@ hdi_rope <- function(model){
     scale_y_discrete(labels = c("Situational (quadratic)", "Situational (linear)", "Dispositional (quadratic)", "Dispositional (linear)")) +
   #theme(legend.position="none") +
       scale_x_continuous(limits=c(-0.2, 0.6), breaks=c(-0.2,0, 0.2))
-
-    
 }
 ```
 
@@ -1037,14 +999,12 @@ combined_models3 %>%
 # 10. Control models {.tabset .tabset-fade .tabset-pills}
 
 ## 10.1 Update the full model to excluded participants who have seen the film
-
 ```{r}
 model_f_seen <- update(model_f, newdata = DF.exp2 %>% filter(seen == 2), seed = 41)
 summary(model_f_seen)
 ```
 
 ## 10.2 Posterior plots - first viewing
-
 ```{r,eval=FALSE}
 tom_combined_seen <- as_tibble(as.mcmc(model_f_seen, combine_chains = TRUE)) %>% 
   pivot_longer(cols = ends_with(c("ant", "ant2")), names_to = "varAnthro") %>% 
@@ -1079,7 +1039,6 @@ summary(model_f_inc)
 ```
 
 ## 10.4 Posterior plots - no exclusion 
-
 ```{r}
 tom_combined_full <- as_tibble(as.mcmc(model_f_inc, combine_chains = TRUE)) %>% 
   pivot_longer(cols = ends_with(c("ant", "ant2")), names_to = "varAnthro") %>% 

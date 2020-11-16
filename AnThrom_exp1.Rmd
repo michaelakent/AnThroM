@@ -1,5 +1,5 @@
 ---
-title: "Testing the relation between dispositional anthropomorphism and Theory-of-Mind network activation"
+title: "Exploring the relationship between anthropomorphism and Theory-of-Mind in brain and behaviour: Experiment 1"
 author: Ruud Hortensius and Michaela Kent
 output:
   html_document:
@@ -16,9 +16,9 @@ output:
 editor_options: 
   chunk_output_type: inline
 ---
-
 #### Project AnThroM: experiment 1 
-June 2019 - July 2020
+Exploring the relationship between anthropomorphism and Theory-of-Mind in brain and behaviour: fmri
+June 2019 - November 2020
 
 # 1. Details {.tabset}
 
