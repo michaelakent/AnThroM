@@ -24,8 +24,8 @@ June 2019 - November 2020
 
 ## 1.1 Libraries
 ```{r, message=FALSE}
-source("R_rainclouds.R") 
-source("summarySE.R")
+source("dependencies/R_rainclouds.R") 
+source("dependencies/summarySE.R")
 library(psych)
 library(ordinal)
 library(brms)
@@ -44,7 +44,6 @@ options("scipen"=10, "digits"=4)
 Note: for the code chunk the language is listed, but all except for r chunks are executed in the terminal   
 
 ## 1.2 Data description
-
 Data of the Theory-of-Mind functional localiser and Individual Differences in Anthropomorphism Questionnaire are from five different studies.
   
  Dataset_1: Bangor Imaging Unit; EMBOTS; *n*=29 (including 1 pilot scan); full dataset and publication: [Cross...Hortensius (2019)   PTRB](https://royalsocietypublishing.org/doi/10.1098/rstb.2018.0034).  
@@ -79,8 +78,7 @@ bind_rows(DF.dataset1, DF.dataset2, DF.dataset3,  DF.dataset4, .id = "dataset") 
 ```
 
 ## 1.3 Neuroimaging procedure
- 
- All participants completed a Theory-of-Mind localiser ([Jacoby et al., 2016](https://www.sciencedirect.com/science/article/pii/S1053811915010472); [Richardson et al. 2018](https://www.nature.com/articles/s41467-018-03399-2)) and an anatomical scan either in the same session or in two seperate sessions. During the localiser participants passively viewed a short 5.6 min animated film ([Partly Cloudy](https://www.pixar.com/partly-cloudy#partly-cloudy-1)). This movie includes scenes depicting pain (e.g. an alligator biting the main character) and events that trigger mentalizing (e.g. the main character revealing its intention). For dataset_3 and dataset_4 a fieldmap was collected as well. At the end of each experiment participants completed the Individual Differences in Anthropomorphism Questionnaire (IDAQ) ([Waytz et al., 2010](https://journals.sagepub.com/doi/full/10.1177/1745691610369336)). 
+All participants completed a Theory-of-Mind localiser ([Jacoby et al., 2016](https://www.sciencedirect.com/science/article/pii/S1053811915010472); [Richardson et al. 2018](https://www.nature.com/articles/s41467-018-03399-2)) and an anatomical scan either in the same session or in two seperate sessions. During the localiser participants passively viewed a short 5.6 min animated film ([Partly Cloudy](https://www.pixar.com/partly-cloudy#partly-cloudy-1)). This movie includes scenes depicting pain (e.g. an alligator biting the main character) and events that trigger mentalizing (e.g. the main character revealing its intention). For dataset_3 and dataset_4 a fieldmap was collected as well. At the end of each experiment participants completed the Individual Differences in Anthropomorphism Questionnaire (IDAQ) ([Waytz et al., 2010](https://journals.sagepub.com/doi/full/10.1177/1745691610369336)). 
  
 - BOLD:   
  Dataset_1: 3x3x3.5mm voxels, 32 slices, repetition time = 2s, echo time = 30ms  
@@ -1112,7 +1110,6 @@ F1E <- DF.roi %>%
 F1E
 
 ggsave("experiment1/figures/F1E.TIFF", plot = F1E, width = 20, height = 6, units = "cm", dpi = 300)
-
 ```
 
 
@@ -1407,7 +1404,6 @@ tom_all %>% bind_rows(., pain_all) %>%
 ## 9.5 HDI+ROPE decision rule
 
 ```{r}
-
 hdi_rope <- function(model){
   rope <- rope_range(model)
   rope_model <- equivalence_test(model, range = rope, ci = 0.95) 
@@ -1481,7 +1477,6 @@ s6 <- tom_combined_updated %>%
 s6
 
 ggsave("experiment1/figures/s6.TIFF", plot = s6, width = 24.7, height = 15.24, units = "cm", dpi = 300)
-
 ```
 
 ##10.1 Pain Matrix

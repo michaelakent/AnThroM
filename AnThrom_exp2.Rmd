@@ -27,8 +27,8 @@ The preregistration can be found here: https://osf.io/tuq4a
 
 ## 1.2 Libraries
 ```{r, message=FALSE}
-source("R_rainclouds.R") 
-source("summarySE.R")
+source("dependencies/R_rainclouds.R") 
+source("dependencies/summarySE.R")
 library(psych)
 library(patchwork)
 library(tidyverse)
