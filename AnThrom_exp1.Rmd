@@ -1427,6 +1427,128 @@ hdi_rope(tom) + hdi_rope(pain) + plot_layout(guides = 'collect')
 
 ```
 
+## 9.6 HDI+ROPE using ggplot based on [http://mjskay.github.io/tidybayes/articles/tidy-brms.html#posterior-predictions-kruschke-style-1]
+
+Pain and tom networks
+```{r}
+#check required packages and make sure necessary ones are loaded
+#library(dplyr)
+#library(magrittr)
+#library(forcats)
+#library(purrr)
+#library(tidyr)
+#library(modelr)
+#library(ggdist) 
+#library(tidybayes)
+#library(ggplot2)
+#library(cowplot)
+#library(rstan)
+#library(brms)
+#library(ggrepel)
+#library(RColorBrewer)
+#library(gganimate)
+#library(see)
+
+get_variables(tom)
+
+tom_pain <-
+  bind_rows("tom" = as_tibble(as.mcmc(tom,
+  pars = c( "b_cent_IDAQ","b_cent_IDAQ2"),
+  combine_chains = TRUE)),
+  "pain" = as_tibble(as.mcmc(pain,
+  pars = c( "b_cent_IDAQ","b_cent_IDAQ2"),
+  combine_chains = TRUE)),
+  .id = "network")
+
+modelnames <- list('tom'="tom",'pain'="pain")
+model_labeller <- function(variable,value){
+  return(modelnames[value])
+}
+
+colours2 <- c(
+  "Reject"="green3",
+  "Undecided"="gold",
+  "Accept"="red2"
+)
+
+tom_pain_gg <- tom_pain %>%
+  pivot_longer(c("b_cent_IDAQ","b_cent_IDAQ2"),names_to = "predictor") %>%
+  mutate(Decision= ifelse(network=="tom","Undecided",
+                          ifelse(network=="pain","Accept","NA"))) %>%
+  group_by("Decision")%>%
+  ggplot(aes(y = predictor, x = value,fill=Decision)) +
+  stat_halfeye(alpha=0.5) +
+  geom_vline(xintercept = c(-.1, .1), linetype = "dashed") +
+  labs(y = "Predictor", x="") +
+  scale_y_discrete(labels=c("b_cent_IDAQ"="linear","b_cent_IDAQ2"="quadratic")) +
+  theme_classic() +
+  scale_fill_manual(values=colours2)+
+  theme_set(theme_classic(base_size = 15))+
+  facet_wrap(~network,labeller = model_labeller)
+
+tom_pain_gg
+
+ggsave("experiment1/figures/HDIROPE_PainTom.TIFF", width = 24,height = 16, plot = tom_pain_gg, units = "cm", dpi = 300)
+```
+
+All regions
+```{r}
+
+order2 <- c("rtpj", "ltpj", "prec", "vmpfc","mmpfc","dmpfc")  
+
+DF.roi <- DF.roi %>%
+  mutate_at(vars(-contrast),as.factor) %>%
+  group_by(sub, dataset) %>%
+  mutate(roi = fct_relevel(roi, order))
+
+modelnames <- list('rtpj'="rtpj",'ltpj'="ltpj",'prec'="prec",'dmpfc'="dmpfc",'vmpfc'="vmpfc",'mmpfc'="mmpfc")
+model_labeller <- function(variable,value){
+  return(modelnames[value])
+}
+
+tom_all_regions <-
+  bind_rows("rtpj" = as_tibble(as.mcmc(rtpj,
+  pars = c( "b_cent_IDAQ","b_cent_IDAQ2"),
+  combine_chains = TRUE)),
+  "ltpj" = as_tibble(as.mcmc(ltpj,
+  pars = c( "b_cent_IDAQ","b_cent_IDAQ2"),
+  combine_chains = TRUE)),
+  "prec" = as_tibble(as.mcmc(prec,
+  pars = c( "b_cent_IDAQ","b_cent_IDAQ2"),
+  combine_chains = TRUE)),
+  "vmpfc" = as_tibble(as.mcmc(vmpfc,
+  pars = c( "b_cent_IDAQ","b_cent_IDAQ2"),
+  combine_chains = TRUE)),
+  "mmpfc" = as_tibble(as.mcmc(mmpfc,
+  pars = c( "b_cent_IDAQ","b_cent_IDAQ2"),
+  combine_chains = TRUE)),
+  "dmpfc" = as_tibble(as.mcmc(dmpfc,
+  pars = c( "b_cent_IDAQ","b_cent_IDAQ2"),
+  combine_chains = TRUE)),
+  .id = "region")
+
+tom_all_gg <- tom_all_regions %>%
+  pivot_longer(c("b_cent_IDAQ","b_cent_IDAQ2"),names_to = "predictor") %>%
+  mutate(Decision= ifelse(region=="rtpj"|region=="ltpj"|region=="prec"|region=="vmpfc"|region=="mmpfc"|region=="dmpfc","Undecided",
+                          ifelse("NA"))) %>%
+  group_by("Decision")%>%
+  mutate(region = as.factor(region),
+            region = reorder_within(region, order2)) %>%
+  ggplot(aes(y = predictor, x = value,fill=Decision)) +
+  stat_halfeye(alpha=0.5) +
+  geom_vline(xintercept = c(-.1, .1), linetype = "dashed") +
+  labs(y = "Predictor", x="") +
+  scale_y_discrete(labels=c("b_cent_IDAQ"="linear","b_cent_IDAQ2"="quadratic")) +
+  theme_classic() +
+  scale_fill_manual(values=colours2)+
+  theme_set(theme_classic(base_size = 15))+
+  facet_wrap(~region,labeller = model_labeller)
+
+tom_all_gg
+
+ggsave("experiment1/figures/HDIROPE_TomRegions.TIFF", width = 24,height = 16, plot = tom_all_gg, units = "cm", dpi = 300)
+```
+
 # 10. Control analyses {.tabset}
 
 ##10.1 Theory-of-Mind network

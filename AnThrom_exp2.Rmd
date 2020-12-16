@@ -979,21 +979,25 @@ colours2 <- c(
   "Accept"="red2"
 )
 
-combined_models3 %>%
+combined <- combined_models %>%
   pivot_longer(c("b_cent_sitant", "b_cent_sitant2", "b_cent_disant", "b_cent_disant2"),names_to = "var_anth") %>%
   mutate(Decision= ifelse(model=="modelef"&var_anth=="b_cent_sitant", "Reject",
                           ifelse(var_anth=="b_cent_disant"|model=="modelfb"&var_anth=="b_cent_sitant","Undecided", 
                           ifelse(model=="modelfb"&var_anth=="b_cent_sitant2", "Undecided",
                           ifelse(model=="modelfb"&var_anth=="b_cent_disant2", "Accept",
-                          ifelse(model=="modelef"&var_anth=="b_cent_disant2"|model=="modelef"&var_anth=="b_cent_sitant2", "Accept", "NA"))))))%>%
+                          ifelse(model=="modelef"&var_anth=="b_cent_disant2","Undecided",
+                          ifelse(model=="modelef"&var_anth=="b_cent_sitant2", "Accept", "NA"))))))) %>%
   group_by("Decision")%>%
   ggplot(aes(y = var_anth, x = value,fill=Decision)) +
   stat_halfeye(alpha=0.5) +
   scale_y_discrete(labels=c("b_cent_sitant"="situational linear","b_cent_sitant2"="situational quadratic","b_cent_disant"="dispositional linear","b_cent_disant2"="dispositional quadratic")) +
   geom_vline(xintercept = c(-.1, .1), linetype = "dashed") +
-  labs(y = "Model", x="") +
+  labs(y = "Predictor", x="") +
+  theme_classic() +
   scale_fill_manual(values=colours2)+
   facet_wrap(~model,labeller = model_labeller)
+
+ggsave("experiment2/figures/HDIROPE.TIFF", width = 24,height = 16, plot = combined, units = "cm", dpi = 300)
 ```
 
 # 10. Control models {.tabset .tabset-fade .tabset-pills}
