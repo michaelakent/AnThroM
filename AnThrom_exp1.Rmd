@@ -2,14 +2,14 @@
 title: "Exploring the relationship between anthropomorphism and Theory-of-Mind in brain and behaviour: Experiment 1"
 author: Ruud Hortensius and Michaela Kent
 output:
-  html_document:
-    df_print: paged
-    toc: yes
-    toc_float: yes
-    code_folding: show
   html_notebook:
     number_sections: no
     theme: default
+    toc: yes
+    toc_float: yes
+    code_folding: show
+  html_document:
+    df_print: paged
     toc: yes
     toc_float: yes
     code_folding: show
@@ -24,18 +24,38 @@ June 2019 - November 2020
 
 ## 1.1 Libraries
 ```{r, message=FALSE}
+###
+library("groundhog") #https://groundhogr.com/
+groundhog.day="2020-02-19" 
+
+###
+groundhog.library("psych", groundhog.day)
+groundhog.library("ordinal", groundhog.day)
+groundhog.library("brms", groundhog.day)
+groundhog.library("fs", groundhog.day)
+groundhog.library("patchwork", groundhog.day) #devtools::install_github("thomasp85/patchwork")
+groundhog.library("easystats", groundhog.day) #devtools::install_github("easystats/easystats")
+groundhog.library("sjPlot", groundhog.day)
+groundhog.library("httr", groundhog.day)
+groundhog.library("kableExtra", groundhog.day)
+groundhog.library("magrittr", groundhog.day)
+groundhog.library("modelr", groundhog.day)
+groundhog.library("ggdist", groundhog.day)
+groundhog.library("tidybayes", groundhog.day)
+groundhog.library("cowplot", groundhog.day)
+groundhog.library("rstan", groundhog.day)
+groundhog.library("ggrepel", groundhog.day)
+groundhog.library("RColorBrewer", groundhog.day)
+groundhog.library("gganimate", groundhog.day)
+groundhog.library("see", groundhog.day)
+groundhog.library("reticulate", groundhog.day)
+groundhog.library("tidyverse", groundhog.day)
+
+###
 source("dependencies/R_rainclouds.R") 
 source("dependencies/summarySE.R")
-library(psych)
-library(ordinal)
-library(brms)
-library(fs)
-library(patchwork) #devtools::install_github("thomasp85/patchwork")
-library(easystats) #devtools::install_github("easystats/easystats")
-library(sjPlot)
-library(httr)
-library(kableExtra)
-library(tidyverse)
+
+###
 theme_set(theme_classic(base_size = 15)) 
 options(mc.cores = parallel::detectCores()) #run on multiple cores)
 options("scipen"=10, "digits"=4) 
@@ -1427,28 +1447,11 @@ hdi_rope(tom) + hdi_rope(pain) + plot_layout(guides = 'collect')
 
 ```
 
-## 9.6 HDI+ROPE using ggplot based on [http://mjskay.github.io/tidybayes/articles/tidy-brms.html#posterior-predictions-kruschke-style-1]
+## 9.6 HDI+ROPE using ggplot 
+Based on [http://mjskay.github.io/tidybayes/articles/tidy-brms.html#posterior-predictions-kruschke-style-1]
 
 Pain and tom networks
 ```{r}
-#check required packages and make sure necessary ones are loaded
-#library(dplyr)
-#library(magrittr)
-#library(forcats)
-#library(purrr)
-#library(tidyr)
-#library(modelr)
-#library(ggdist) 
-#library(tidybayes)
-#library(ggplot2)
-#library(cowplot)
-#library(rstan)
-#library(brms)
-#library(ggrepel)
-#library(RColorBrewer)
-#library(gganimate)
-#library(see)
-
 get_variables(tom)
 
 tom_pain <-
@@ -1612,6 +1615,10 @@ rmfg_bias <- update_model(mmpfc, "rmfg")
 lmfg_bias <- update_model(dmpfc, "lmfg")
 amcc_bias <- update_model(dmpfc, "amcc")
 ```
+
+# 10. Control analyses {.tabset}
+
+##10.1 Theory-of-Mind network
 
 ```{r}
 sessionInfo()
