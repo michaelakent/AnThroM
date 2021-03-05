@@ -1099,35 +1099,83 @@ ggscatterstats(
   data = DF.exploratory,
   x = rating_rh,
   y = rating_mk,
+  title = "Reliability of ratings between coders - accuracy"
 )
 
 ggscatterstats(
   data = DF.exploratory,
   x = tom_rh,
   y = tom_mk,
+  title = "Reliability of ratings between coders - ToM"
 )
 ```
+
+## 11.3 Descriptive stats
+Number of (in)correct predictions
+```{r}
+DF.exploratory %>% 
+  dplyr::group_by(accuracy_discussed) %>%
+  tally() %>%
+  knitr::kable(., "html", caption = "binary prediction") %>%
+  kable_styling("striped")
+```
+
+```{r}
+summarySEwithin(DF.exploratory, measurevar="tom_combined", betweenvars= c("accuracy_discussed"), idvar="participant_id" )%>%
+  knitr::kable(., "html", caption = "tom") %>%
+  kable_styling("striped")
+```
+## 11.4 Exploration of indices
 ```{r}
 ggscatterstats(
   data = DF.exploratory,
   x = rating_combined,
   y = tom_combined,
+  title = "Rating of accuracy and ToM"
 )
-
-ggscatterstats(
+```
+```{r}
+ggbetweenstats(
   data = DF.exploratory,
-  x = rating_rh,
-  y = tom_rh,
-)
-
-ggscatterstats(
-  data = DF.exploratory,
-  x = rating_mk,
-  y = tom_mk,
+  x = accuracy_discussed,
+  y = tom_combined,
+  title = "Tom for accurate/inaccurate",
+  type = "Bayesian"
 )
 ```
 
-## 11.3 Visualise the relationship between prediction and anthropomorphism 
+```{r}
+ggscatterstats(
+  data = DF.exploratory,
+  x = cent_acc,
+  y = cent_effectance,
+  title = "Accuracy and effectance"
+)
+
+ggscatterstats(
+  data = DF.exploratory,
+  x = cent_acc,
+  y = cent_falsebelief,
+  title = "Accuracy and false belief"
+)
+
+ggscatterstats(
+  data = DF.exploratory,
+  x = cent_tom,
+  y = cent_effectance,
+  title = "ToM and effectance"
+)
+
+ggscatterstats(
+  data = DF.exploratory,
+  x = cent_acc,
+  y = cent_falsebelief,
+  title = "ToM and falsebelief"
+)
+```
+
+
+## 11.5 Visualise the relationship between prediction and anthropomorphism 
 Rating of accuracy of prediction
 ```{r}
 p15 <- DF.exploratory %>%
@@ -1164,12 +1212,21 @@ p16 <- DF.exploratory %>%
 p15 | p16
 ```
 
-## 11.4 Testing the relationship between prediction and anthropomorphism 
+## 11.6 Testing the relationship between prediction and anthropomorphism 
+```{r}
+p17 <- DF.exploratory %>%
+  pivot_longer(cols = c("cent_acc", "cent_tom"), names_to = "dv") %>%
+  ggplot(.) +
+  geom_density(aes(x=value, group = dv, fill = dv), alpha = .1)
+p17
+```
+
+
 Rating of accuracy of prediction
 ```{r}
 modelacc <- brm(formula = cent_acc ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
       data = DF.exploratory,
-      family = gaussian,
+      ?family = skew_normal(),
       prior = priors1,
       chains = 4,
       iter = 4000,
@@ -1181,7 +1238,7 @@ Rating of theory-of-Mind of prediction
 ```{r}
 modeltom <- brm(formula = cent_tom ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
       data = DF.exploratory,
-      family = gaussian,
+      family = skew_normal(),
       prior = priors1,
       chains = 4,
       iter = 4000,
@@ -1193,13 +1250,13 @@ modeltom <- brm(formula = cent_tom ~ cent_sitant + cent_sitant2 + cent_disant + 
 summary(modelacc)
 summary(modeltom)
 ```
-## 11.5 Posterior distribution
+## 11.7 Posterior distribution
 ```{r}
 tab_model(
   modelacc, modeltom,
   #show.se = TRUE, 
   pred.labels = c("Intercept", "linear situational", "quadratic situational", "linear dispositional", "quadratic dispositional"),
-  dv.labels = c("accuracy", "Theory-of-Mind"),
+  dv.labels = c("Accuracy", "Theory-of-Mind"),
   show.obs=FALSE
 )
 ```
