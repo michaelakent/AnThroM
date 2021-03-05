@@ -35,8 +35,9 @@ library(tidyverse)
 library(kableExtra)
 library(ordinal)
 library(brms)
-library(easystats) #devtools::install_github("easystats/easystats")
+#library(easystats) #devtools::install_github("easystats/easystats")
 library(sjPlot)
+library(ggstatsplot)
 library(httr)
 library(waffle) #devtools::install_github("hrbrmstr/waffle")
 options(mc.cores = parallel::detectCores()) 
@@ -1067,6 +1068,164 @@ p14 <- tom_combined_full %>%
 p14
 
 ggsave("experiment2/figures/S14.TIFF", plot = p14, width = 30, height = 20, units = "cm", dpi = 300)
+```
+
+
+# 11. Exploratory models {.tabset .tabset-fade .tabset-pills}
+
+## 11.1 Load the data 
+
+After 4:02 minutes the film was paused and the participants were  asked to describe in one or two sentences what they think would happen next (to a maximum of 2000 characters including spaces). The code below explores these predictions and relationship with anthropomorphism. 
+
+Authors RH and MK rated:
+
+    - rating/accuracy: How corect was the prediction was (scale from incorrect to correct, as well as a binary decision)
+    - tom: To what extent does the response relied on/contain Theory-of-Mind? (scale from very little to very much)
+    
+```{r}
+DF.exploratory <- DF.exp2 %>% 
+  left_join(read.csv(file = "experiment2/data/exploratory/prediction.csv") , by = c("participant_id", "prediction")) %>% 
+  left_join(read.csv(file = "experiment2/data/exploratory/tom.csv") , by = "participant_id") %>% filter(seen == 2) %>% 
+  mutate(
+    cent_tom = scale(tom_combined, scale = TRUE), #tom rating
+    cent_acc = scale(rating_combined, scale = TRUE)) %>% #accuracy rating
+  drop_na() #one participant was included but did not provide prediction (see 4.1)
+```
+
+## 11.2 Reliability of ratings
+Use ggstatsplot to inspect the reliability of  the ratings
+```{r}
+ggscatterstats(
+  data = DF.exploratory,
+  x = rating_rh,
+  y = rating_mk,
+)
+
+ggscatterstats(
+  data = DF.exploratory,
+  x = tom_rh,
+  y = tom_mk,
+)
+```
+```{r}
+ggscatterstats(
+  data = DF.exploratory,
+  x = rating_combined,
+  y = tom_combined,
+)
+
+ggscatterstats(
+  data = DF.exploratory,
+  x = rating_rh,
+  y = tom_rh,
+)
+
+ggscatterstats(
+  data = DF.exploratory,
+  x = rating_mk,
+  y = tom_mk,
+)
+```
+
+## 11.3 Visualise the relationship between prediction and anthropomorphism 
+Rating of accuracy of prediction
+```{r}
+p15 <- DF.exploratory %>%
+  dplyr::rename(situational = cent_sitant, dispositional = cent_disant) %>% 
+  pivot_longer(cols = c(situational, dispositional), names_to = "measure",  values_to = "value") %>%
+  mutate(measure = fct_relevel(measure, c("situational", "dispositional"))) %>% 
+  ggplot(aes(x=value, y=cent_acc)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
+  coord_fixed(ratio = 1/1) +
+  labs(
+    x="Anthropomorphism",
+    y="Accuracy of prediction") +
+  facet_wrap(~measure)
+```
+
+Rating of theory-of-Mind of prediction
+```{r}
+p16 <- DF.exploratory %>%
+  dplyr::rename(situational = cent_sitant, dispositional = cent_disant) %>% 
+  pivot_longer(cols = c(situational, dispositional), names_to = "measure",  values_to = "value") %>%
+  mutate(measure = fct_relevel(measure, c("situational", "dispositional"))) %>% 
+  ggplot(aes(x=value, y=cent_tom)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
+  coord_fixed(ratio = 1/1) +
+  labs(
+    x="Anthropomorphism",
+    y="Theory-of-Mind of prediction") +
+  facet_wrap(~measure)
+
+p15 | p16
+```
+
+## 11.4 Testing the relationship between prediction and anthropomorphism 
+Rating of accuracy of prediction
+```{r}
+modelacc <- brm(formula = cent_acc ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
+      data = DF.exploratory,
+      family = gaussian,
+      prior = priors1,
+      chains = 4,
+      iter = 4000,
+      seed = 42, 
+      file = "experiment2/models/modelacc.RDS")
+```
+
+Rating of theory-of-Mind of prediction
+```{r}
+modeltom <- brm(formula = cent_tom ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
+      data = DF.exploratory,
+      family = gaussian,
+      prior = priors1,
+      chains = 4,
+      iter = 4000,
+      seed = 42, 
+      file = "experiment2/models/modeltom.RDS")
+```
+
+```{r}
+summary(modelacc)
+summary(modeltom)
+```
+## 11.5 Posterior distribution
+```{r}
+tab_model(
+  modelacc, modeltom,
+  #show.se = TRUE, 
+  pred.labels = c("Intercept", "linear situational", "quadratic situational", "linear dispositional", "quadratic dispositional"),
+  dv.labels = c("accuracy", "Theory-of-Mind"),
+  show.obs=FALSE
+)
+```
+
+```{r}
+exp_combined <- bind_rows(
+"acc" = as_tibble(as.mcmc(modelacc, pars = c(
+  "b_cent_sitant","b_cent_sitant2", "b_cent_disant", "b_cent_disant2"), 
+  combine_chains = TRUE)),
+  "tom" = as_tibble(as.mcmc(modeltom, pars = c(
+  "b_cent_sitant","b_cent_sitant2", "b_cent_disant", "b_cent_disant2"), 
+  combine_chains = TRUE)), .id = "dv") %>% 
+  pivot_longer(cols = ends_with(c("ant", "ant2")), names_to = "predictor")
+```
+
+Plot the distributions:
+```{r}
+e3 <- exp_combined %>%
+  mutate_at(vars(-value),as.factor) %>%
+  ggplot(., aes(value, fill = predictor)) +
+  geom_density(alpha = .5)+
+  geom_vline(xintercept = 0, color = "black", linetype = 2) +
+  facet_wrap(~dv, ncol =1) +
+  theme(strip.background = element_blank()) +
+  scale_fill_manual(values=c("#0072B2", "#000033", "#D55E00", "#660000"))
+e3
 ```
 
 ```{r}
