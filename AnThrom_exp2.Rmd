@@ -41,7 +41,7 @@ library(ggstatsplot)
 library(httr)
 library(waffle) #devtools::install_github("hrbrmstr/waffle")
 options(mc.cores = parallel::detectCores()) 
-theme_set(theme_classic(base_size = 7)) 
+theme_set(theme_classic(base_size = 11)) 
 options("scipen"=10, "digits"=4) 
 ```
 
@@ -637,6 +637,13 @@ p5 <- DF.exp2 %>%
 p5
 
 cor.test(DF.exp2$cent_sitant, DF.exp2$cent_disant)
+
+ggscatterstats(
+  data = DF.exp2,
+  x = cent_sitant,
+  y = cent_disant,
+  title = "Situational and dispositional anthropomorphism"
+)
 ```
 
 ## 5.4 Visualise relationship between Theory-of-Mind indices
@@ -658,6 +665,13 @@ patched <- p5 | p6
 ggsave("experiment2/figures/S11.TIFF", plot = patched, width = 12, height = 5.08, units = "cm", dpi = 300)
 
 cor.test(DF.exp2$cent_falsebelief, DF.exp2$cent_effectance)
+
+ggscatterstats(
+  data = DF.exp2,
+  x = cent_falsebelief,
+  y = cent_effectance,
+  title = "False Belief accuracy and effectance ratings"
+)
 ```
 
 # 6. Analyses {.tabset .tabset-fade .tabset-pills}
@@ -1121,8 +1135,16 @@ DF.exploratory %>%
 ```
 
 ```{r}
-summarySEwithin(DF.exploratory, measurevar="tom_combined", betweenvars= c("accuracy_discussed"), idvar="participant_id" )%>%
+summarySE(DF.exploratory, measurevar="rating_combined") %>%
+  knitr::kable(., "html", caption = "accuracy") %>%
+  kable_styling("striped")
+
+summarySE(DF.exploratory, measurevar="tom_combined") %>%
   knitr::kable(., "html", caption = "tom") %>%
+  kable_styling("striped")
+
+summarySE(DF.exploratory, measurevar="tom_combined", groupvars= "accuracy_discussed") %>%
+  knitr::kable(., "html", caption = "tom for accurary groups") %>%
   kable_styling("striped")
 ```
 ## 11.4 Exploration of indices
@@ -1145,11 +1167,23 @@ ggbetweenstats(
 ```
 
 ```{r}
+DF.exploratory %>% 
+  ggcorrmat(
+  cor.vars = c(5,7,21,22),
+  output = "dataframe",
+  digits = 2
+) %>% 
+  select(1:3,5:6) %>% 
+  knitr::kable(., "html", caption = "Theory-of-Mind indices") %>%
+  kable_styling("striped")
+```
+
+```{r}
 ggscatterstats(
   data = DF.exploratory,
   x = cent_acc,
   y = cent_effectance,
-  title = "Accuracy and effectance"
+  title = "Accuracy and effectance",
 )
 
 ggscatterstats(
@@ -1168,7 +1202,7 @@ ggscatterstats(
 
 ggscatterstats(
   data = DF.exploratory,
-  x = cent_acc,
+  x = cent_tom,
   y = cent_falsebelief,
   title = "ToM and falsebelief"
 )
@@ -1209,7 +1243,10 @@ p16 <- DF.exploratory %>%
     y="Theory-of-Mind of prediction") +
   facet_wrap(~measure)
 
-p15 | p16
+patchedE <- p15 / p16
+
+ggsave("experiment2/figures/SE.TIFF", plot = patchedE, width = 30, height = 20, units = "cm", dpi = 300)
+
 ```
 
 ## 11.6 Testing the relationship between prediction and anthropomorphism 
@@ -1226,7 +1263,7 @@ Rating of accuracy of prediction
 ```{r}
 modelacc <- brm(formula = cent_acc ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
       data = DF.exploratory,
-      ?family = skew_normal(),
+      family = skew_normal(),
       prior = priors1,
       chains = 4,
       iter = 4000,
@@ -1281,8 +1318,95 @@ e3 <- exp_combined %>%
   geom_vline(xintercept = 0, color = "black", linetype = 2) +
   facet_wrap(~dv, ncol =1) +
   theme(strip.background = element_blank()) +
-  scale_fill_manual(values=c("#0072B2", "#000033", "#D55E00", "#660000"))
+  scale_fill_discrete() +
+  scale_fill_manual(values=c("#0072B2", "#000033", "#D55E00", "#660000"), name = "predictor", labels = c("Dispositional linear", "Dispositional quadratic", "Situational linear", "Situational quadratic")) 
 e3
+
+ggsave("experiment2/figures/e3.TIFF", plot = e3, width = 30, height = 20, units = "cm", dpi = 300)
+
+```
+
+## 11.8 Accurate vs. not accurate - ToM models:
+1. Incorrect (n = 151)
+```{r}
+model_incorrect <- brm(formula = cent_tom ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
+      data = DF.exploratory %>% filter(accuracy_discussed == "incorrect"),
+      family = skew_normal(),
+      prior = priors1,
+      chains = 4,
+      iter = 4000,
+      seed = 42, 
+      file = "experiment2/models/model_incorrect.RDS")
+```
+2. Correct (n = 75)
+```{r}
+model_correct <- brm(formula = cent_tom ~ cent_sitant + cent_sitant2 + cent_disant + cent_disant2, 
+      data = DF.exploratory %>% filter(accuracy_discussed == "correct"),
+      family = skew_normal(),
+      prior = priors1,
+      chains = 4,
+      iter = 4000,
+      seed = 42, 
+      file = "experiment2/models/model_correct.RDS")
+```
+
+```{r}
+summary(model_incorrect)
+summary(model_correct)
+```
+```{r}
+tab_model(
+  model_incorrect, model_correct,
+  #show.se = TRUE, 
+  pred.labels = c("Intercept", "linear situational", "quadratic situational", "linear dispositional", "quadratic dispositional"),
+  dv.labels = c("Incorrect", "Correct"),
+  show.obs=FALSE
+)
+```
+
+```{r}
+prediction_combined <- bind_rows(
+"incorrect" = as_tibble(as.mcmc(model_incorrect, pars = c(
+  "b_cent_sitant","b_cent_sitant2", "b_cent_disant", "b_cent_disant2"), 
+  combine_chains = TRUE)),
+  "correct" = as_tibble(as.mcmc(model_correct, pars = c(
+  "b_cent_sitant","b_cent_sitant2", "b_cent_disant", "b_cent_disant2"), 
+  combine_chains = TRUE)), .id = "dv") %>% 
+  pivot_longer(cols = ends_with(c("ant", "ant2")), names_to = "predictor")
+```
+
+Plot the distributions:
+```{r}
+e4 <- prediction_combined %>%
+  mutate_at(vars(-value),as.factor) %>%
+  ggplot(., aes(value, fill = predictor)) +
+  geom_density(alpha = .5)+
+  geom_vline(xintercept = 0, color = "black", linetype = 2) +
+  facet_wrap(~dv, ncol =1) +
+  theme(strip.background = element_blank()) +
+  scale_fill_discrete() +
+  scale_fill_manual(values=c("#0072B2", "#000033", "#D55E00", "#660000"), name = "predictor", labels = c("Dispositional linear", "Dispositional quadratic", "Situational linear", "Situational quadratic")) 
+e4
+
+ggsave("experiment2/figures/e4.TIFF", plot = e4, width = 30, height = 20, units = "cm", dpi = 300)
+
+```
+
+```{r}
+p17 <- DF.exploratory %>%
+  dplyr::rename(situational = cent_sitant, dispositional = cent_disant) %>% 
+  pivot_longer(cols = c(situational, dispositional), names_to = "measure",  values_to = "value") %>%
+  mutate(measure = fct_relevel(measure, c("situational", "dispositional"))) %>% 
+  ggplot(aes(x=value, y=cent_tom)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
+  coord_fixed(ratio = 1/1) +
+  labs(
+    x="Anthropomorphism",
+    y="Theory-of-Mind of prediction") +
+  facet_wrap(accuracy_discussed~measure)
+p17
 ```
 
 ```{r}
