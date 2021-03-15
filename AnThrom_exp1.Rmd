@@ -1889,7 +1889,7 @@ s11 <- painC_combined %>%
 
 s11
 
-ggsave("experiment1/figures/S11.TIFF", plot = s10, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("experiment1/figures/S11.TIFF", plot = s11, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 
@@ -2017,6 +2017,28 @@ lit <- lit %>%
 lit
 
 ```
+
+
+## 11.3 Multi-level model
+
+```{r}
+tom_ml <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2 + (1|dataset) + (1|sub),
+      data = DF.roi %>% filter(network == "tom"),
+      family = gaussian,
+      chains = 4,
+      iter = 4000,
+      control = list(adapt_delta = 0.99, max_treedepth = 11),
+      seed = 42, #so the model is reproducible
+      file = "experiment1/models/control/tom_ml.RDS")
+```
+
+Summary:
+```{r}
+pairs(tom_ml) 
+summary(tom_ml)
+```
+```
+
 
 ```{r}
 sessionInfo()
