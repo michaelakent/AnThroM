@@ -2034,11 +2034,23 @@ tom_ml <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2 + (1|dataset) + (
 
 Summary:
 ```{r}
-pairs(tom_ml) 
+#pairs(tom_ml) 
 summary(tom_ml)
 ```
-```
 
+```{r}
+ltpj_ml <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2 + (1|dataset),
+      data = DF.roi %>% filter(roi == "ltpj"),
+      family = gaussian,
+      chains = 4,
+      iter = 4000,
+      control = list(adapt_delta = 0.99, max_treedepth = 10),
+      seed = 42, #so the model is reproducible
+      file = "experiment1/models/control/ltpj_ml.RDS")
+```
+```{r}
+summary(ltpj_ml)
+```
 
 ```{r}
 sessionInfo()
