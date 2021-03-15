@@ -1681,14 +1681,17 @@ FS2 <- DF.hand %>%
   geom_point(data = roi_sum, aes(x = roi, y = contrast), position = position_nudge(.3), colour = "BLACK")+
   geom_errorbar(data = roi_sum, aes(x=roi,y=contrast, ymin = contrast-ci, ymax = contrast+ci), position=position_nudge(x = .3, y = 0), width = .05)+
   #theme_classic() + 
-  ylab("Contrast estimates (mental > pain)") + 
+  ylab("Contrast estimates") + 
   xlab("Region-of-interest") + 
-  scale_fill_brewer(palette = "Blues") +
-  scale_colour_brewer(palette = "Blues") + 
-  ggtitle(paste("Theory-of-Mind network contrasts estimates across datasets and regions")) + 
+  scale_fill_brewer(palette = "Greens") +
+  scale_colour_brewer(palette = "Greens") + 
+  ggtitle(paste("Theory-of-Mind network contrasts estimates across contrasts and regions")) + 
   theme(legend.position="none") +
   facet_wrap(~comparison) 
 FS2
+
+ggsave("experiment1/figures/S7.TIFF", plot = FS2, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+
 ```
 
 ```{r}
@@ -1706,20 +1709,22 @@ DF.hand$cent_IDAQ2 <- DF.hand$cent_IDAQ^2
 ```
 
 ```{r}
-DF.hand %>%
-  filter(comparison == "all_control" | comparison == "social_control") %>% 
+FS4 <- DF.hand %>%
+  filter(comparison == "mental_control" | comparison == "pain_control") %>% 
   ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
   geom_point(alpha=0.5,show.legend = FALSE) +
   geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
   geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
   coord_fixed(ratio = 1/1) +
-  facet_wrap(~roi, ncol = 2) +
   labs(
     x="Dispositional anthropomorphism",
     y="Contrast estimates"
   ) +
-  facet_wrap(roi~comparison)
-#+ theme_classic() 
+  facet_wrap(comparison~roi, nrow = 2)
+FS4
+
+ggsave("experiment1/figures/S9.TIFF", plot = FS4, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+
 ```
 
 All combined:
@@ -1803,8 +1808,6 @@ mmpfc_mentalC <- reg_model2("mmpfc", "mental_control")
 dmpfc_mentalC <- reg_model2("dmpfc", "mental_control")
 ```
 
-
-
 ```{r}
 tab_model(
   rtpj_mentalC, ltpj_mentalC, prec_mentalC, vmpfc_mentalC, mmpfc_mentalC, dmpfc_mentalC,
@@ -1815,6 +1818,82 @@ tab_model(
   show.obs=FALSE
 )
 ```
+
+```{r}
+mentalC_combined <- bind_rows("rtpj" = as_tibble(as.mcmc(rtpj_mentalC,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE)),
+                          "ltpj" = as_tibble(as.mcmc(ltpj_mentalC, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "prec" = as_tibble(as.mcmc(prec_mentalC, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "vmpfc" = as_tibble(as.mcmc(vmpfc_mentalC, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "mmpfc" = as_tibble(as.mcmc(mmpfc_mentalC, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "dmpfc" = as_tibble(as.mcmc(dmpfc_mentalC, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          .id = "roi")
+
+mentalC_combined <- mentalC_combined %>%
+  dplyr::rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
+  pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
+  mutate(model = "mental vs control") %>% 
+  mutate(roi = fct_relevel(roi, order[1:6])) 
+```
+
+
+Pain vs. control
+```{r}
+rtpj_painC <- reg_model2("rtpj", "pain_control")
+ltpj_painC <- reg_model2("ltpj", "pain_control")
+prec_painC <- reg_model2("prec", "pain_control")
+vmpfc_painC <- reg_model2("vmpfc", "pain_control")
+mmpfc_painC <- reg_model2("mmpfc", "pain_control")
+dmpfc_painC <- reg_model2("dmpfc", "pain_control")
+```
+
+```{r}
+tab_model(
+  rtpj_painC, ltpj_painC, prec_painC, vmpfc_painC, mmpfc_painC, dmpfc_painC,
+  show.se = TRUE,
+  #collapse.se = TRUE,
+  pred.labels = c("Intercept", "linear predictor", "quadratic predictor"),
+  dv.labels = c("rtpj","ltpj", "prec", "vmpfc" , "mmpfc", "dmpfc"),
+  show.obs=FALSE
+)
+```
+
+```{r}
+painC_combined <- bind_rows("rtpj" = as_tibble(as.mcmc(rtpj_painC,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE)),
+                          "ltpj" = as_tibble(as.mcmc(ltpj_painC, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "prec" = as_tibble(as.mcmc(prec_painC, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "vmpfc" = as_tibble(as.mcmc(vmpfc_painC, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "mmpfc" = as_tibble(as.mcmc(mmpfc_painC, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "dmpfc" = as_tibble(as.mcmc(dmpfc_painC, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          .id = "roi")
+
+s11 <- painC_combined %>%
+  dplyr::rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
+  pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
+  mutate(model = "pain vs control") %>% 
+  mutate(roi = fct_relevel(roi, order[1:6])) %>% 
+  bind_rows(mentalC_combined) %>% 
+  bind_rows(tom_combined) %>% 
+  mutate_at(vars(model), replace_na, "mental vs pain") %>%
+  mutate_at(vars(-value),as.factor) %>%
+  dplyr::rename(predictor = varIDAQ) %>%
+  ggplot(., aes(value, fill = model)) +
+  geom_density(alpha = .5)+
+  geom_vline(xintercept = 0, color = "black", linetype = 2) +
+  ggtitle(paste("Posterior distributions for the mental vs pain and mental/pain vs control models")) + 
+  facet_wrap(predictor~roi, ncol =3) +
+  coord_fixed(ratio = 1/40) +
+  theme_classic(base_size = 8) +
+  theme(strip.background = element_blank()) +
+  scale_fill_manual(values=c("#0072B2", "#D55E00", "seagreen3"))+ 
+  theme(axis.text.y = element_blank())
+
+s11
+
+ggsave("experiment1/figures/S11.TIFF", plot = s10, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+```
+
+
+
 
 ##11.2 Additional ROIs
 ```{r}
