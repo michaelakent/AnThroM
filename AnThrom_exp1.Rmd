@@ -2,14 +2,14 @@
 title: "Exploring the relationship between anthropomorphism and Theory-of-Mind in brain and behaviour: Experiment 1"
 author: Ruud Hortensius and Michaela Kent
 output:
-  html_notebook:
-    number_sections: no
-    theme: default
+  html_document:
+    df_print: paged
     toc: yes
     toc_float: yes
     code_folding: show
-  html_document:
-    df_print: paged
+  html_notebook:
+    number_sections: no
+    theme: default
     toc: yes
     toc_float: yes
     code_folding: show
@@ -24,38 +24,30 @@ June 2019 - November 2020
 
 ## 1.1 Libraries
 ```{r, message=FALSE}
-###
-library("groundhog") #https://groundhogr.com/
-groundhog.day="2020-02-19" 
-
-###
-groundhog.library("psych", groundhog.day)
-groundhog.library("ordinal", groundhog.day)
-groundhog.library("brms", groundhog.day)
-groundhog.library("fs", groundhog.day)
-groundhog.library("patchwork", groundhog.day) #devtools::install_github("thomasp85/patchwork")
-groundhog.library("easystats", groundhog.day) #devtools::install_github("easystats/easystats")
-groundhog.library("sjPlot", groundhog.day)
-groundhog.library("httr", groundhog.day)
-groundhog.library("kableExtra", groundhog.day)
-groundhog.library("magrittr", groundhog.day)
-groundhog.library("modelr", groundhog.day)
-groundhog.library("ggdist", groundhog.day)
-groundhog.library("tidybayes", groundhog.day)
-groundhog.library("cowplot", groundhog.day)
-groundhog.library("rstan", groundhog.day)
-groundhog.library("ggrepel", groundhog.day)
-groundhog.library("RColorBrewer", groundhog.day)
-groundhog.library("gganimate", groundhog.day)
-groundhog.library("see", groundhog.day)
-groundhog.library("reticulate", groundhog.day)
-groundhog.library("tidyverse", groundhog.day)
-
-###
+#groundhogr is not working?
 source("dependencies/R_rainclouds.R") 
 source("dependencies/summarySE.R")
+library(psych)
+library(ordinal)
+library(brms)
+library(fs)
+library(patchwork) 
+library(easystats) #devtools::install_github("easystats/easystats")
+library(sjPlot)
+library(httr)
+library(kableExtra)
+library(magrittr)
+library(modelr)
+library(ggdist) 
+library(tidybayes)
+library(cowplot)
+library(rstan)
+library(ggrepel)
+library(RColorBrewer)
+library(gganimate)
+library(see)
+library(tidyverse)
 
-###
 theme_set(theme_classic(base_size = 15)) 
 options(mc.cores = parallel::detectCores()) #run on multiple cores)
 options("scipen"=10, "digits"=4) 
@@ -951,8 +943,8 @@ roi_extract <- function(datasetno, substart, subend, network, nroi) {
     map_dfr(read.delim, sep = "\t", .id = "id", header = FALSE)  %>%
     mutate(dataset = datasetno) %>%
     mutate(network = network) %>%
-    mutate(network = str_extract(network, "tom|pain")) %>%
-    mutate(id = str_extract(id, "dmpfc|mmpfc|vmpfc|ltpj|rtpj|prec|amcc|lmfg|rmfg|ls2|rs2|linsula|rinsula")) %>%
+    mutate(network = str_extract(network, "tom|pain|other")) %>%
+    mutate(id = str_extract(id, "dmpfc|mmpfc|vmpfc|ltpj|rtpj|prec|amcc|lmfg|rmfg|ls2|rs2|linsula|rinsula|rmpfc-acc")) %>%
     dplyr::rename(roi = id, contrast = V1) %>%
     mutate(sub = rep(substart:subend, times=nroi, each=1)) %>%
     select(5,3,4,1:2)
@@ -1093,8 +1085,8 @@ DF.roi <- DF.roi %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, sc
 Create scatterplots with linear and non-linear lines for ToM network: 
 ```{r}
 F1D <- DF.roi %>%
-  #filter(network == "tom") %>%
-  filter(network == "tom" & !sub %in% sub_ex) %>%
+  filter(network == "tom") %>%
+  #filter(network == "tom" & !sub %in% sub_ex) %>%
   ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
   geom_point(alpha=0.5,show.legend = FALSE) +
   geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
@@ -1447,8 +1439,7 @@ hdi_rope(tom) + hdi_rope(pain) + plot_layout(guides = 'collect')
 
 ```
 
-## 9.6 HDI+ROPE using ggplot 
-Based on [http://mjskay.github.io/tidybayes/articles/tidy-brms.html#posterior-predictions-kruschke-style-1]
+## 9.6 HDI+ROPE using ggplot based on [http://mjskay.github.io/tidybayes/articles/tidy-brms.html#posterior-predictions-kruschke-style-1]
 
 Pain and tom networks
 ```{r}
@@ -1604,7 +1595,7 @@ s6
 ggsave("experiment1/figures/s6.TIFF", plot = s6, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
-##10.1 Pain Matrix
+##10.2 Pain Matrix
 Calculate the difference (bias) per Pain Matrix region:
 ```{r}
 rs2_bias <- update_model(rtpj, "rs2")
@@ -1616,9 +1607,337 @@ lmfg_bias <- update_model(dmpfc, "lmfg")
 amcc_bias <- update_model(dmpfc, "amcc")
 ```
 
-# 10. Control analyses {.tabset}
+# 11. Further exploratory/control analyses {.tabset}
 
-##10.1 Theory-of-Mind network
+## 11.1 Hand-coded events
+
+Load the Theory-of-Mind ROI data for the hand coded events (Jacoby et al., 2016):
+```{r}
+#mental vs. control
+DF.d1 <- roi_extract(1, 101, 129, "control/mental_control", 6)
+DF.d2.a <- roi_extract(2, 201, 202, "control/201_202/mental_control", 6)
+DF.d2.b <- roi_extract(2, 203, 235, "control/mental_control", 6)
+DF.d3 <- roi_extract(3, 301, 322, "control/mental_control", 6)
+DF.d4 <- roi_extract(4, 401, 422, "control/mental_control", 6)
+
+DF.mental <- bind_rows(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4) %>%
+  mutate_at(vars(-contrast),as.factor) %>% 
+  dplyr::rename(comparison = network) %>% 
+  mutate(comparison = "mental_control")
+
+#pain vs. control
+DF.d1 <- roi_extract(1, 101, 129, "control/pain_control", 6)
+DF.d2.a <- roi_extract(2, 201, 202, "control/201_202/pain_control", 6)
+DF.d2.b <- roi_extract(2, 203, 235, "control/pain_control", 6)
+DF.d3 <- roi_extract(3, 301, 322, "control/pain_control", 6)
+DF.d4 <- roi_extract(4, 401, 422, "control/pain_control", 6)
+
+DF.pain <- bind_rows(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4) %>%
+  mutate_at(vars(-contrast),as.factor) %>% 
+  dplyr::rename(comparison = network) %>% 
+  mutate(comparison = "pain_control")
+
+#social vs. control
+DF.d1 <- roi_extract(1, 101, 129, "control/social_control", 6)
+DF.d2.a <- roi_extract(2, 201, 202, "control/201_202/social_control", 6)
+DF.d2.b <- roi_extract(2, 203, 235, "control/social_control", 6)
+DF.d3 <- roi_extract(3, 301, 322, "control/social_control", 6)
+DF.d4 <- roi_extract(4, 401, 422, "control/social_control", 6)
+
+DF.social <- bind_rows(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4) %>%
+  mutate_at(vars(-contrast),as.factor) %>% 
+  dplyr::rename(comparison = network) %>% 
+  mutate(comparison = "social_control")
+
+#all vs. control
+DF.d1 <- roi_extract(1, 101, 129, "control/all_control", 6)
+DF.d2.a <- roi_extract(2, 201, 202, "control/201_202/all_control", 6)
+DF.d2.b <- roi_extract(2, 203, 235, "control/all_control", 6)
+DF.d3 <- roi_extract(3, 301, 322, "control/all_control", 6)
+DF.d4 <- roi_extract(4, 401, 422, "control/all_control", 6)
+
+DF.all<- bind_rows(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4) %>%
+  mutate_at(vars(-contrast),as.factor) %>% 
+  dplyr::rename(comparison = network) %>% 
+  mutate(comparison = "all_control") 
+
+DF.hand<- bind_rows(DF.mental, DF.pain, DF.social, DF.all) %>% 
+  group_by(sub, dataset) %>%
+  mutate_at(vars(-contrast),as.factor) %>% 
+  mutate(roi = fct_relevel(roi, order)) 
+rm(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4, DF.mental, DF.pain, DF.social, DF.all)
+```
+
+
+```{r}
+roi_sum <- summarySEwithin(DF.hand, measurevar="contrast", withinvars= c("roi","comparison"), idvar="sub") 
+
+FS2 <- DF.hand %>%
+  ggplot(.,aes(x=roi,y=contrast,fill=roi))+
+  geom_hline(yintercept = 0, color = "grey", linetype = 2) +
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, colour = "Black") +
+  geom_point(aes(colour = roi, fill = roi), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
+  geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
+  geom_point(data = roi_sum, aes(x = roi, y = contrast), position = position_nudge(.3), colour = "BLACK")+
+  geom_errorbar(data = roi_sum, aes(x=roi,y=contrast, ymin = contrast-ci, ymax = contrast+ci), position=position_nudge(x = .3, y = 0), width = .05)+
+  #theme_classic() + 
+  ylab("Contrast estimates (mental > pain)") + 
+  xlab("Region-of-interest") + 
+  scale_fill_brewer(palette = "Blues") +
+  scale_colour_brewer(palette = "Blues") + 
+  ggtitle(paste("Theory-of-Mind network contrasts estimates across datasets and regions")) + 
+  theme(legend.position="none") +
+  facet_wrap(~comparison) 
+FS2
+```
+
+```{r}
+DF.hand <- left_join(DF.hand, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
+  pivot_wider(names_from=scale, values_from = score) #
+```
+
+Center the variables for the formal analysis:
+```{r}
+DF.hand$cent_IDAQNA <- scale(DF.hand$IDAQNA, scale = TRUE)
+DF.hand$cent_IDAQ <- scale(DF.hand$IDAQ, scale = TRUE)
+DF.hand <- DF.hand %>% group_by(roi, comparison) %>% mutate(cent_contrast = scale(contrast, scale =TRUE)) #scale per roi (analyses are done per roi)
+DF.hand$cent_IDAQ2 <- DF.hand$cent_IDAQ^2
+
+```
+
+```{r}
+DF.hand %>%
+  filter(comparison == "all_control" | comparison == "social_control") %>% 
+  ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
+  coord_fixed(ratio = 1/1) +
+  facet_wrap(~roi, ncol = 2) +
+  labs(
+    x="Dispositional anthropomorphism",
+    y="Contrast estimates"
+  ) +
+  facet_wrap(roi~comparison)
+#+ theme_classic() 
+```
+
+All combined:
+
+Mental vs. control:
+```{r}
+mentalC <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
+      data = DF.hand %>% filter(comparison == "mental_control"),
+      family = gaussian,
+      chains = 4,
+      iter = 4000,
+      seed = 42, #so the model is reproducible
+      file = "experiment1/models/control/mental_control.RDS")
+```
+
+Pain vs. control
+```{r}
+painC <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
+      data = DF.hand %>% filter(comparison == "pain_control"),
+      family = gaussian,
+      chains = 4,
+      iter = 4000,
+      seed = 42, #so the model is reproducible
+      file = "experiment1/models/control/pain_control.RDS")
+```
+
+Social vs. control
+```{r}
+socialC <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
+      data = DF.hand %>% filter(comparison == "social_control"),
+      family = gaussian,
+      chains = 4,
+      iter = 4000,
+      seed = 42, #so the model is reproducible
+      file = "experiment1/models/control/social_control.RDS")
+```
+
+All vs. control
+```{r}
+allC <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
+      data = DF.hand %>% filter(comparison == "all_control"),
+      family = gaussian,
+      chains = 4,
+      iter = 4000,
+      seed = 42, #so the model is reproducible
+      file = "experiment1/models/control/all_control.RDS")
+```
+
+
+```{r}
+tab_model(
+  mentalC, painC, socialC, allC,
+  show.se = TRUE,
+  #collapse.se = TRUE,
+  pred.labels = c("Intercept", "linear predictor", "quadratic predictor"),
+  dv.labels = c("mental events","pain events", "social events", "all events"),
+  show.obs=FALSE
+)
+```
+
+Individual regions:
+```{r}
+reg_model2 <- function(region, comp){
+  brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
+      data = DF.hand %>% filter(roi == region & comparison == comp),
+      family = gaussian,
+      chains = 4,
+      iter = 4000,
+      seed = 42, #so the model is reproducible
+      file = paste0("experiment1/models/control/", region, "_", comp, ".RDS", sep = ""))
+}
+```
+
+Mental vs. control
+```{r}
+rtpj_mentalC <- reg_model2("rtpj", "mental_control")
+ltpj_mentalC <- reg_model2("ltpj", "mental_control")
+prec_mentalC <- reg_model2("prec", "mental_control")
+vmpfc_mentalC <- reg_model2("vmpfc", "mental_control")
+mmpfc_mentalC <- reg_model2("mmpfc", "mental_control")
+dmpfc_mentalC <- reg_model2("dmpfc", "mental_control")
+```
+
+
+
+```{r}
+tab_model(
+  rtpj_mentalC, ltpj_mentalC, prec_mentalC, vmpfc_mentalC, mmpfc_mentalC, dmpfc_mentalC,
+  show.se = TRUE,
+  #collapse.se = TRUE,
+  pred.labels = c("Intercept", "linear predictor", "quadratic predictor"),
+  dv.labels = c("rtpj","ltpj", "prec", "vmpfc" , "mmpfc", "dmpfc"),
+  show.obs=FALSE
+)
+```
+
+##11.2 Additional ROIs
+```{r}
+DF.d1 <- roi_extract(1, 101, 129, "other", 2)
+DF.d2.a <- roi_extract(2, 201, 202, "other/201_202", 2)
+DF.d2.b <- roi_extract(2, 203, 235, "other", 2)
+DF.d3 <- roi_extract(3, 301, 322, "other", 2)
+DF.d4 <- roi_extract(4, 401, 422, "other", 2)
+
+DF.lit <- bind_rows(DF.d1, DF.d2.a, DF.d2.b, DF.d3, DF.d4) %>%
+  mutate_at(vars(-contrast),as.factor)
+```
+
+Plot
+```{r}
+roi_sum <- summarySEwithin(DF.lit, measurevar="contrast", betweenvars="dataset", withinvars= c("roi","network"), idvar="sub") 
+
+FS2 <- DF.lit %>%
+  ggplot(.,aes(x=roi,y=contrast,fill=roi))+
+  geom_hline(yintercept = 0, color = "grey", linetype = 2) +
+  geom_flat_violin(position=position_nudge(x = .2, y = 0),adjust =2, trim = FALSE, colour = "Black") +
+  geom_point(aes(colour = roi, fill = roi), position=position_jitter(width = .05), size = .5, shape = 21, colour = "Black") +
+  geom_boxplot(aes(x=roi,y=contrast),position=position_nudge(x = .1, y = 0),outlier.shape = NA, alpha = .5, width = .1, colour = "black") + 
+  geom_point(data = roi_sum %>% filter(network == "tom"), aes(x = roi, y = contrast), position = position_nudge(.3), colour = "BLACK")+
+  geom_errorbar(data = roi_sum %>% filter(network == "tom"), aes(x=roi,y=contrast, ymin = contrast-ci, ymax = contrast+ci), position=position_nudge(x = .3, y = 0), width = .05)+
+  #theme_classic() + 
+  ylab("Contrast estimates (mental > pain)") + 
+  xlab("Region-of-interest") + 
+  scale_fill_brewer(palette = "Blues") +
+  scale_colour_brewer(palette = "Blues") + 
+  ggtitle(paste("Theory-of-Mind network contrasts estimates across datasets and regions")) + 
+  theme(legend.position="none") +
+  facet_wrap(~dataset) 
+```
+
+```{r}
+DF.lit <- left_join(DF.lit, DF.idaq, by = c("sub","dataset"), keep = FALSE) %>%
+  pivot_wider(names_from=scale, values_from = score) #
+```
+
+Center the variables for the formal analysis:
+```{r}
+DF.lit$cent_IDAQNA <- scale(DF.lit$IDAQNA, scale = TRUE)
+DF.lit$cent_IDAQ <- scale(DF.lit$IDAQ, scale = TRUE)
+DF.lit <- DF.lit %>% group_by(roi) %>% mutate(cent_contrast = scale(contrast, scale =TRUE)) #scale per roi (analyses are done per roi)
+DF.lit$cent_IDAQ2 <- DF.lit$cent_IDAQ^2
+
+```
+
+```{r}
+DF.lit %>%
+  ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
+  coord_fixed(ratio = 1/1) +
+  facet_wrap(~roi, ncol = 2) +
+  labs(
+    x="Dispositional anthropomorphism",
+    y="Contrast estimates"
+  ) #+ theme_classic() 
+```
+
+```{r}
+lit_ltpj <-  brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
+      data = DF.lit %>% filter(roi == "ltpj"),
+      family = gaussian,
+      chains = 4,
+      iter = 4000,
+      seed = 42, #so the model is reproducible
+      file = "lit-ltpj.RDS")
+
+lit_mpfc_acc <-  brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
+      data = DF.lit %>% filter(roi == "rmpfc-acc"),
+      family = gaussian,
+      chains = 4,
+      iter = 4000,
+      seed = 42, #so the model is reproducible
+      file = "lit-rmpfc-acc.RDS")
+```
+
+
+```{r}
+summary(lit_ltpj)
+summary(lit_mpfc_acc)
+```
+```{r}
+tab_model(
+  lit_ltpj,lit_mpfc_acc,
+  show.se = TRUE,
+  #collapse.se = TRUE,
+  pred.labels = c("Intercept", "linear predictor", "quadratic predictor"),
+  dv.labels = c("ltpj", "mpfc-acc"),
+  show.obs=FALSE
+)
+```
+
+```{r}
+lit <-
+  bind_rows("lit_ltpj" = as_tibble(as.mcmc(lit_ltpj,
+  pars = c( "b_cent_IDAQ","b_cent_IDAQ2"),
+  combine_chains = TRUE)),
+  "lit_mpfc_acc" = as_tibble(as.mcmc(lit_mpfc_acc,
+  pars = c( "b_cent_IDAQ","b_cent_IDAQ2"),
+  combine_chains = TRUE)),
+  .id = "region")
+
+lit <- lit %>%
+  pivot_longer(c("b_cent_IDAQ","b_cent_IDAQ2"),names_to = "predictor") %>%
+  mutate(region = as.factor(region)) %>%
+  ggplot(aes(y = predictor, x = value)) +
+  stat_halfeye(alpha=0.5) +
+  geom_vline(xintercept = c(-.1, .1), linetype = "dashed") +
+  labs(y = "Predictor", x="") +
+  scale_y_discrete(labels=c("b_cent_IDAQ"="linear","b_cent_IDAQ2"="quadratic")) +
+  theme_classic() +
+  scale_fill_manual(values=colours2)+
+  theme_set(theme_classic(base_size = 15))+
+  facet_wrap(~region)
+
+lit
+
+```
 
 ```{r}
 sessionInfo()
