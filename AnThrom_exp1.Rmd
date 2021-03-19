@@ -2020,16 +2020,99 @@ lit
 
 
 ## 11.3 Multi-level model
-
+ToM
 ```{r}
-tom_ml <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2 + (1|dataset) + (1|sub),
-      data = DF.roi %>% filter(network == "tom"),
-      family = gaussian,
-      chains = 4,
-      iter = 4000,
-      control = list(adapt_delta = 0.99, max_treedepth = 11),
-      seed = 42, #so the model is reproducible
-      file = "experiment1/models/control/tom_ml.RDS")
+tom_ML <- update(tom, 
+                      newdata = DF.roi %>% filter(network == "tom"), 
+                      formula. = ~ . + (1|dataset) + (1|sub),
+                      control = list(adapt_delta = 0.99, max_treedepth = 11),
+                      seed = 41)
+
+tom_ML <- update(tom_ML, formula. = ~ . - (1|sub), seed = 41)
+
+
+tom_ML_p <- bind_rows("all" = as_tibble(as.mcmc(tom_ML,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE), .id = "network")  %>%
+                        dplyr::rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
+                        pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
+                        mutate(network = "tom", model = "ML"))
+tom_ML_p %>% 
+  bind_rows(tom_all) %>% 
+  mutate_at(vars(model), replace_na, "original") %>%
+  mutate_at(vars(-value),as.factor) %>%
+  dplyr::rename(predictor = varIDAQ) %>%
+  ggplot(., aes(value, fill = model)) +
+  geom_density(alpha = .5)+
+  geom_vline(xintercept = 0, color = "black", linetype = 2) +
+  ggtitle(paste("Posterior distributions for the original and multi-level models")) + 
+  facet_wrap(~predictor, ncol =2) +
+  coord_fixed(ratio = 1/40) +
+  theme_classic(base_size = 8) +
+  theme(strip.background = element_blank()) +
+  scale_fill_manual(values=c("#0072B2", "#D55E00"))+ 
+  theme(axis.text.y = element_blank())
+```
+
+
+
+For all regions individually 
+```{r}
+update_ML <- function(model_old, region){
+  model_new <- update(model_old, 
+                      newdata = DF.roi %>% filter(roi == region), 
+                      formula. = ~ . + (1|dataset) + (1|sub),
+                      control = list(adapt_delta = 0.99, max_treedepth = 11),
+                      seed = 41)
+}
+
+```
+
+Plot the difference per predictor and ToM region:
+```{r}
+rtpj_ML <- update_ML(rtpj, "rtpj")
+rtpj_ML <- update(rtpj_ML, formula. = ~ . - (1|sub), seed = 41)
+
+ltpj_ML <- update_ML(ltpj, "ltpj")
+ltpj_ML <- update(ltpj_ML, formula. = ~ . - (1|sub), seed = 41)
+
+prec_ML <- update_ML(prec, "prec")
+prec_ML <- update(prec_ML, formula. = ~ . - (1|sub), seed = 41)
+
+vmpfc_ML <- update_ML(vmpfc, "vmpfc")
+vmpfc_ML <- update(vmpfc_ML, formula. = ~ . - (1|sub), seed = 41)
+
+mmpfc_ML <- update_ML(mmpfc, "mmpfc")
+mmpfc_ML <- update(mmpfc_ML, formula. = ~ . - (1|sub), seed = 41)
+
+dmpfc_ML <- update_ML(dmpfc, "dmpfc")
+dmpfc_ML <- update(dmpfc_ML, formula. = ~ . - (1|sub), seed = 41)
+
+tom_combined_ML <- bind_rows("rtpj" = as_tibble(as.mcmc(rtpj_ML,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE)),
+                          "ltpj" = as_tibble(as.mcmc(ltpj_ML, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "prec" = as_tibble(as.mcmc(prec_ML, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "vmpfc" = as_tibble(as.mcmc(vmpfc_ML, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "mmpfc" = as_tibble(as.mcmc(mmpfc_ML, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          "dmpfc" = as_tibble(as.mcmc(dmpfc_ML, pars = c("b_cent_IDAQ", "b_cent_IDAQ2"),combine_chains = TRUE)),
+                          .id = "roi")
+
+tom_combined_ML %>%
+  dplyr::rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
+  pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
+  mutate(model = "ML") %>% 
+  mutate(roi = fct_relevel(roi, order[1:6])) %>% 
+  bind_rows(tom_combined) %>% 
+  mutate_at(vars(model), replace_na, "original") %>%
+  mutate_at(vars(-value),as.factor) %>%
+  dplyr::rename(predictor = varIDAQ) %>%
+  ggplot(., aes(value, fill = model)) +
+  geom_density(alpha = .5)+
+  geom_vline(xintercept = 0, color = "black", linetype = 2) +
+  ggtitle(paste("Posterior distributions for the original and multi-level models")) + 
+  facet_wrap(predictor~roi, ncol =3) +
+  coord_fixed(ratio = 1/40) +
+  theme_classic(base_size = 8) +
+  theme(strip.background = element_blank()) +
+  scale_fill_manual(values=c("#0072B2", "#D55E00"))+ 
+  theme(axis.text.y = element_blank())
 ```
 
 Summary:
