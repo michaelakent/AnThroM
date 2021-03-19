@@ -40,6 +40,7 @@ library(sjPlot)
 library(ggstatsplot)
 library(httr)
 library(waffle) #devtools::install_github("hrbrmstr/waffle")
+library(stats)
 options(mc.cores = parallel::detectCores()) 
 theme_set(theme_classic(base_size = 11)) 
 options("scipen"=10, "digits"=4) 
@@ -477,9 +478,14 @@ p2
 ```
 
 ```{r}
+##for control (revision)
+DF.ratingC <- DF.rating 
+
 DF.rating <- DF.rating %>% 
   dplyr::group_by(participant_id, measure) %>% #focus and event_type are included or excluded based on visualisation
   dplyr::summarise(rating = mean(as.numeric(response)))  
+
+
 ```
 
 ## 5.2	Dispositional anthropomorphism:
@@ -1056,7 +1062,6 @@ Don't run section 4.5. 10.1 and 10.2 (eval=FALSE).
 model_f_inc <- update(model_f, newdata = DF.exp2, seed = 41)
 summary(model_f_inc)
 ```
-
 ## 10.4 Posterior plots - no exclusion 
 ```{r}
 tom_combined_full <- as_tibble(as.mcmc(model_f_inc, combine_chains = TRUE)) %>% 
@@ -1084,6 +1089,46 @@ p14
 ggsave("experiment2/figures/S14.TIFF", plot = p14, width = 30, height = 20, units = "cm", dpi = 300)
 ```
 
+## 10.4 Situational anthropomorphism and effectance ratings
+
+Stork to cloud
+```{r}
+DF.ratingC %>% 
+  dplyr::group_by(participant_id, measure, focus) %>% 
+  dplyr::summarise(rating = mean(as.numeric(response))) %>%  
+  pivot_wider(names_from = c(focus,measure), values_from = rating) %>% 
+  ungroup() %>% 
+  ggscatterstats(
+    x = cloud_anthropomorphism,
+    y = stork_effectance,
+    title = "cloud_anthropomorphism - stork_effectance"
+  )
+
+DF.ratingC %>% 
+  dplyr::group_by(participant_id, measure, focus) %>% 
+  dplyr::summarise(rating = mean(as.numeric(response))) %>% 
+  pivot_wider(names_from = c(focus,measure), values_from = rating) %>% 
+  ungroup() %>% 
+  ggscatterstats(
+    x = stork_anthropomorphism,
+    y = cloud_effectance,
+    title = "stork_anthropomorphism - cloud_effectance"
+  )
+```
+
+Time 1 --> Time 2
+```{r}
+DF.ratingCtime<-DF.ratingC %>% 
+  dplyr::group_by(participant_id, measure, eventnr) %>% 
+  dplyr::summarise(rating = mean(as.numeric(response))) %>%  
+  pivot_wider(names_from = measure, values_from = rating) 
+
+ccf(DF.ratingCtime$anthropomorphism, DF.ratingCtime$effectance, lag.max = 16, plot = TRUE, na.action = na.pass, main = "lagged correlation between anthropomorphism and effectance")
+
+acf(DF.ratingCtime$anthropomorphism, lag.max = 16, plot = TRUE, na.action = na.pass, main = "lagged correlation  anthropomorphism")
+
+acf(DF.ratingCtime$effectance, lag.max = 16, plot = TRUE, na.action = na.pass, main = "lagged correlation  effectance")
+```
 
 # 11. Exploratory models {.tabset .tabset-fade .tabset-pills}
 
