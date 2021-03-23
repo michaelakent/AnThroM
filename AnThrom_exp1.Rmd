@@ -1777,13 +1777,23 @@ allC <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
 ```{r}
 tab_model(
   mentalC, painC, socialC, allC,
-  show.se = TRUE,
+  show.se = FALSE,
   #collapse.se = TRUE,
   pred.labels = c("Intercept", "linear predictor", "quadratic predictor"),
   dv.labels = c("mental events","pain events", "social events", "all events"),
   show.obs=FALSE
 )
 ```
+
+Get posterior distributions:
+```{r}
+tom_handcoded_all <- bind_rows("all" = as_tibble(as.mcmc(mentalC,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE), .id = "network")  %>%
+                        dplyr::rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
+                        pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
+                        mutate(network = "Partly Cloudy: hand-coded events"))
+```
+
+
 
 Individual regions:
 ```{r}
@@ -1893,8 +1903,6 @@ ggsave("experiment1/figures/S11.TIFF", plot = s11, width = 24.7, height = 15.24,
 ```
 
 
-
-
 ##11.2 Additional ROIs
 ```{r}
 DF.d1 <- roi_extract(1, 101, 129, "other", 2)
@@ -1983,7 +1991,7 @@ summary(lit_mpfc_acc)
 ```{r}
 tab_model(
   lit_ltpj,lit_mpfc_acc,
-  show.se = TRUE,
+  show.se = FALSE,
   #collapse.se = TRUE,
   pred.labels = c("Intercept", "linear predictor", "quadratic predictor"),
   dv.labels = c("ltpj", "mpfc-acc"),
@@ -2188,26 +2196,26 @@ tab_model(
 )
 ```
 
-Compare it to the Partly Cloudy model"
+Compare it to the Partly Cloudy model (reverse correlation and hand-coded events)
 ```{r}
 tom_fb_all <- bind_rows("all" = as_tibble(as.mcmc(tom_fc,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE), .id = "network")  %>%
                         dplyr::rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
                         pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
-                        mutate(network = "False Belief task"))
+                        mutate(network = "False Belief"))
 
 F1F <- tom_all %>%
-  mutate(network = "Partly Cloudy") %>% 
-  bind_rows(., tom_fb_all) %>%
+  mutate(network = "Partly Cloudy: reverse correlation events") %>% 
+  bind_rows(., tom_fb_all, tom_handcoded_all) %>%
   mutate_at(vars(-value),as.factor,) %>%
-  dplyr::rename(predictor = varIDAQ) %>%
-  ggplot(., aes(value, fill = predictor)) +
+  dplyr::rename(predictor = varIDAQ, task = network) %>%
+  ggplot(., aes(value, fill = task)) +
   geom_density(alpha = .5)+
   geom_vline(xintercept = 0, color = "black", linetype = 2) +
-  ggtitle(paste("Posterior distributions across the two tasks")) + 
-  facet_wrap(~network) +
+  ggtitle(paste("Anthropomorphism and Theory-of-Mind network activity")) + 
+  facet_wrap(~predictor, nrow = 2) +
   coord_fixed(ratio = 1/40) +
   theme_classic(base_size = 16) +
-  scale_fill_manual(values=c("#0072B2", "#D55E00"))+ 
+  scale_fill_manual(values=c("#999999", "#E69F00", "#0072B2"))+ 
   theme(strip.background = element_blank())
 F1F
 ggsave("experiment1/figures/F1F.TIFF", plot = F1F, width = 24.7, height = 15.24, units = "cm", dpi = 300)

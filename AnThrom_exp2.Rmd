@@ -1214,7 +1214,7 @@ ggbetweenstats(
 ```{r}
 DF.exploratory %>% 
   ggcorrmat(
-  cor.vars = c(5,7,21,22),
+  cor.vars = c(5,7,19,20),
   output = "dataframe",
   digits = 2
 ) %>% 
@@ -1228,7 +1228,7 @@ ggscatterstats(
   data = DF.exploratory,
   x = cent_acc,
   y = cent_effectance,
-  title = "Accuracy and effectance",
+  title = "Accuracy of the open-ended prediction and effectance ratings",
 )
 
 ggscatterstats(
@@ -1242,26 +1242,30 @@ ggscatterstats(
   data = DF.exploratory,
   x = cent_tom,
   y = cent_effectance,
-  title = "ToM and effectance"
+  title = "Theory-of-Mind of prediction and effectance ratings"
 )
 
 ggscatterstats(
   data = DF.exploratory,
   x = cent_tom,
   y = cent_falsebelief,
-  title = "ToM and falsebelief"
+  title = "Theory-of-Mind of prediction and false belief performance"
 )
 ```
 
 
 ## 11.5 Visualise the relationship between prediction and anthropomorphism 
 Rating of accuracy of prediction
-```{r}
-p15 <- DF.exploratory %>%
-  dplyr::rename(situational = cent_sitant, dispositional = cent_disant) %>% 
-  pivot_longer(cols = c(situational, dispositional), names_to = "measure",  values_to = "value") %>%
-  mutate(measure = fct_relevel(measure, c("situational", "dispositional"))) %>% 
-  ggplot(aes(x=value, y=cent_acc)) +
+```{r} 
+p15 <- DF.exploratory %>% #this code needs to be improved, just quick and dirty
+  dplyr::rename(Situational = cent_sitant, 
+                Dispositional = cent_disant, 
+                `Theory-of-Mind reliance` = cent_tom, 
+                `Accuracy of prediction` = cent_acc) %>% 
+  pivot_longer(cols = c(Situational, Dispositional), names_to = "measure",  values_to = "value") %>%
+  pivot_longer(cols = c(`Theory-of-Mind reliance`, `Accuracy of prediction`), names_to = "predictor",  values_to = "value_pred") %>%
+  mutate(measure = fct_relevel(measure, c("Situational", "Dispositional"))) %>% 
+  ggplot(aes(x=value, y=value_pred)) +
   geom_point(alpha=0.5,show.legend = FALSE) +
   geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
   geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
@@ -1269,12 +1273,16 @@ p15 <- DF.exploratory %>%
   labs(
     x="Anthropomorphism",
     y="Accuracy of prediction") +
-  facet_wrap(~measure)
+  facet_wrap(predictor~measure)
+
+p15
+ggsave("experiment2/figures/SE.TIFF", plot = p15, width = 30, height = 20, units = "cm", dpi = 300)
+
 ```
 
 Rating of theory-of-Mind of prediction
 ```{r}
-p16 <- DF.exploratory %>%
+p16 <- DF.exploratory %>% #can be removed
   dplyr::rename(situational = cent_sitant, dispositional = cent_disant) %>% 
   pivot_longer(cols = c(situational, dispositional), names_to = "measure",  values_to = "value") %>%
   mutate(measure = fct_relevel(measure, c("situational", "dispositional"))) %>% 
@@ -1288,9 +1296,9 @@ p16 <- DF.exploratory %>%
     y="Theory-of-Mind of prediction") +
   facet_wrap(~measure)
 
-patchedE <- p15 / p16
-
-ggsave("experiment2/figures/SE.TIFF", plot = patchedE, width = 30, height = 20, units = "cm", dpi = 300)
+#patchedE <- p15 / p16
+#patchedE
+#ggsave("experiment2/figures/SE.TIFF", plot = patchedE, width = 30, height = 20, units = "cm", dpi = 300)
 
 ```
 
