@@ -1975,11 +1975,11 @@ lit_mpfc_acc <-  brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
       file = "lit-rmpfc-acc.RDS")
 ```
 
-
 ```{r}
 summary(lit_ltpj)
 summary(lit_mpfc_acc)
 ```
+
 ```{r}
 tab_model(
   lit_ltpj,lit_mpfc_acc,
@@ -2018,7 +2018,6 @@ lit
 
 ```
 
-
 ## 11.3 Multi-level model
 ToM
 ```{r}
@@ -2051,8 +2050,6 @@ tom_ML_p %>%
   scale_fill_manual(values=c("#0072B2", "#D55E00"))+ 
   theme(axis.text.y = element_blank())
 ```
-
-
 
 For all regions individually 
 ```{r}
@@ -2134,6 +2131,89 @@ ltpj_ml <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2 + (1|dataset),
 ```{r}
 summary(ltpj_ml)
 ```
+
+## 11.4 False belief and IDAQ
+This is data from the validation analysis reported in the methods of experiment 2. To provide further validation and justification for this task as a measure of general Theory-of-Mind, we re-analysed data from two studies (Darda et al., 2018, Darda & Ramsey, in prep). Participants (n = 86) completed the False Belief task to localise the Theory-of-Mind network while behavioural indices (accuracy and reaction times) were recorded. Twenty of the 86 participants also completed the IDAQ. 
+
+```{r}
+DF.falsebelief <- read.csv("experiment2/data/exploratory/falsebelief_idaq.csv") %>% 
+  pivot_longer(cols = c(dmpfc:vmpfc), names_to = "roi", values_to = "contrast") %>% 
+  mutate(cent_IDAQ = scale(idaq, scale = TRUE)) %>% 
+  group_by(roi) %>% 
+  mutate(cent_contrast = scale(contrast, scale =TRUE),
+         cent_IDAQ2 = cent_IDAQ^2
+  )  
+```
+
+```{r}
+F1E <- DF.falsebelief %>%
+  ggplot(aes(x=cent_IDAQ, y=cent_contrast)) +
+  geom_point(alpha=0.5,show.legend = FALSE) +
+  geom_smooth(method="lm", formula=y ~ x, se=TRUE, show.legend = FALSE, colour="#0072B2") +
+  geom_smooth(method="lm", formula=y ~ x+ I(x^2), se=TRUE, show.legend=FALSE, colour = "#D55E00") +
+  coord_fixed(ratio = 1/1) +
+  labs(
+    x="Dispositional anthropomorphism",
+    y="Theory-of-Mind network activity during False Belief task"
+  ) #+ theme_classic()
+
+F1E 
+
+ggsave("experiment1/figures/F1E.TIFF", plot = F1E, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+```
+
+```{r}
+tom_fc <- brm(formula = cent_contrast ~ cent_IDAQ + cent_IDAQ2,
+      data = DF.falsebelief,
+      family = gaussian,
+      chains = 4,
+      iter = 4000,
+      seed = 42, #so the model is reproducible
+      file = "experiment1/models/regions/tom_fb.RDS")
+```
+
+Summary:
+```{r}
+summary(tom_fc)
+```
+
+```{r}
+tab_model(
+  tom_fc,
+  show.se = TRUE,
+  #collapse.se = TRUE,
+  pred.labels = c("Intercept", "linear predictor", "quadratic predictor"),
+  dv.labels = "tom during false belief",
+  show.obs=FALSE
+)
+```
+
+Compare it to the Partly Cloudy model"
+```{r}
+tom_fb_all <- bind_rows("all" = as_tibble(as.mcmc(tom_fc,  pars = c("b_cent_IDAQ", "b_cent_IDAQ2"), combine_chains = TRUE), .id = "network")  %>%
+                        dplyr::rename(linear = b_cent_IDAQ, quadratic = b_cent_IDAQ2) %>%
+                        pivot_longer(c("linear", "quadratic"),names_to = "varIDAQ") %>%
+                        mutate(network = "False Belief task"))
+
+F1F <- tom_all %>%
+  mutate(network = "Partly Cloudy") %>% 
+  bind_rows(., tom_fb_all) %>%
+  mutate_at(vars(-value),as.factor,) %>%
+  dplyr::rename(predictor = varIDAQ) %>%
+  ggplot(., aes(value, fill = predictor)) +
+  geom_density(alpha = .5)+
+  geom_vline(xintercept = 0, color = "black", linetype = 2) +
+  ggtitle(paste("Posterior distributions across the two tasks")) + 
+  facet_wrap(~network) +
+  coord_fixed(ratio = 1/40) +
+  theme_classic(base_size = 16) +
+  scale_fill_manual(values=c("#0072B2", "#D55E00"))+ 
+  theme(strip.background = element_blank())
+F1F
+ggsave("experiment1/figures/F1F.TIFF", plot = F1F, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+
+```
+
 
 ```{r}
 sessionInfo()
