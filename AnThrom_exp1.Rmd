@@ -32,7 +32,7 @@ library(ordinal)
 library(brms)
 library(fs)
 library(patchwork) 
-library(easystats) #devtools::install_github("easystats/easystats")
+library(easystats) #remotes::install_github("easystats/easystats")
 library(sjPlot)
 library(httr)
 library(kableExtra)
@@ -1041,6 +1041,8 @@ ggsave("experiment1/figures/F1C.TIFF", plot = F1C, width = 24.7, height = 15.24,
 ## 6.3 Pain Matrix activation across datasets
 Plot the Pain Matrix activity across regions and datasets (Figure S3):
 ```{r}
+roi_sum <- summarySEwithin(DF.roi, measurevar="contrast", withinvars= c("roi","network"), betweenvars = "dataset", idvar="sub")
+
 FS3 <- DF.roi %>%
   filter(network == "pain") %>%
   ggplot(.,aes(x=roi,y=contrast,fill=roi))+
@@ -1429,7 +1431,6 @@ hdi_rope <- function(model){
 
 hdi_rope(tom) + hdi_rope(pain) + plot_layout(guides = 'collect')  
 
-
 (hdi_rope(rtpj) / hdi_rope(ltpj) / hdi_rope(prec)) &
 (hdi_rope(vmpfc) / hdi_rope(mmpfc) / hdi_rope(dmpfc)) + plot_layout(guides = 'collect')  
 
@@ -1592,7 +1593,7 @@ s6 <- tom_combined_updated %>%
 
 s6
 
-ggsave("experiment1/figures/s6.TIFF", plot = s6, width = 24.7, height = 15.24, units = "cm", dpi = 300)
+ggsave("experiment1/figures/s6update.TIFF", plot = s6, width = 24.7, height = 15.24, units = "cm", dpi = 300)
 ```
 
 ##10.2 Pain Matrix

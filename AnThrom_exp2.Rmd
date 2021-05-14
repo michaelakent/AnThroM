@@ -35,14 +35,15 @@ library(tidyverse)
 library(kableExtra)
 library(ordinal)
 library(brms)
-#library(easystats) #devtools::install_github("easystats/easystats")
+library(easystats) #remotes::install_github("easystats/easystats")
 library(sjPlot)
 library(ggstatsplot)
 library(httr)
 library(waffle) #devtools::install_github("hrbrmstr/waffle")
 library(stats)
+library(ggdist)
 options(mc.cores = parallel::detectCores()) 
-theme_set(theme_classic(base_size = 11)) 
+theme_set(theme_classic(base_size = 7)) 
 options("scipen"=10, "digits"=4) 
 ```
 
@@ -402,7 +403,7 @@ For the main analyses we create situational and dispositional anthropomorphism a
 The 5 anthropomorphism items will be averaged to create a situational anthropomorphism score and the 2 effectance items will be averaged to create an effectance score score (Waytz, Morewedge, et al., 2010). 
 
 Calculate reliability anthropomorphism:
-```{r}
+```{r, eval=FALSE}
 DF.rating %>% 
   filter(measure == "anthropomorphism") %>%
   group_by(participant_id)%>%
@@ -416,7 +417,7 @@ alpha.ci(0.9838,145,241,p.val=.05,digits=5)
 ```
 
 Calculate reliability effectance:
-```{r}
+```{r, eval=FALSE}
 DF.rating %>% 
   filter(measure == "effectance") %>%
   group_by(participant_id)%>%
@@ -906,7 +907,7 @@ p11 <-  ggplot(lmv_dat) +
 
   
 p11
-ggsave("experiment2/figures/S12.TIFF", plot = p11, width = 12, height = 5.08, units = "cm", dpi = 300)
+ggsave("experiment2/figures/S12.TIFF", plot = p11, height = 5.08, width = 12, units = "cm", dpi = 300)
 ```
 
 # 9. HDI+ROPE decision rule {.tabset .tabset-fade .tabset-pills}
@@ -1004,8 +1005,8 @@ combined <- combined_models %>%
   pivot_longer(c("b_cent_sitant", "b_cent_sitant2", "b_cent_disant", "b_cent_disant2"),names_to = "var_anth") %>%
   mutate(Decision= ifelse(model=="modelef"&var_anth=="b_cent_sitant", "Reject",
                           ifelse(var_anth=="b_cent_disant"|model=="modelfb"&var_anth=="b_cent_sitant","Undecided", 
-                          ifelse(model=="modelfb"&var_anth=="b_cent_sitant2", "Undecided",
-                          ifelse(model=="modelfb"&var_anth=="b_cent_disant2", "Accept",
+                          ifelse(model=="modelfb"&var_anth=="b_cent_sitant2", "Accept",
+                          ifelse(model=="modelfb"&var_anth=="b_cent_disant2", "Undecided",
                           ifelse(model=="modelef"&var_anth=="b_cent_disant2","Undecided",
                           ifelse(model=="modelef"&var_anth=="b_cent_sitant2", "Accept", "NA"))))))) %>%
   group_by("Decision")%>%
